@@ -24,6 +24,36 @@ services:
             - mysql
             - redis
             - mailpit
+    queue:
+        image: 'sail-8.5/app'
+        command: ['php', 'artisan', 'queue:listen', '--tries=3', '--sleep=1']
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
+            - mysql
+            - redis
+            - mailpit
+        restart: unless-stopped
+    scheduler:
+        image: 'sail-8.5/app'
+        command: ['php', 'artisan', 'schedule:work']
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
+            - mysql
+        restart: unless-stopped
     mysql:
         image: 'mysql:8.4'
         ports:
