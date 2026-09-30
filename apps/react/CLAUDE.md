@@ -15,9 +15,12 @@ dice altro, vince questo file.
 ## Regole di progetto
 - **Identificatori in inglese** (variabili, funzioni, componenti, hook, tipi, props). In italiano solo
   le stringhe rivolte all'utente. **Commenti in italiano**, mai misti.
-- **Styling con Tailwind**: niente `style={{}}` per layout/spacing; classi condizionali con `clsx`.
+- **Styling con Tailwind**: niente `style={{}}` per layout/spacing; classi condizionali con `cn` da `@/lib/utils`
+  (sostituisce `clsx` + `tailwind-merge`). Componenti base shadcn in `src/components/ui/` (generati con
+  `npx shadcn@4.21.0 add …`, modificabili).
 - **TypeScript rigoroso**: mai `any` (usare `unknown` + type guard), niente type assertion `as`
   (preferire type guard), `interface` per le props.
+- **`erasableSyntaxOnly`**: niente `enum` TypeScript né parameter properties nei costruttori; usare unioni di stringhe.
 - **Componenti**: solo funzionali, arrow function tipizzate, un componente per file.
 - **Data fetching con TanStack Query**: `useQuery` per le letture, `useMutation` per le scritture
   (con invalidazione delle query). Mai `useEffect` + `useState` per caricare dati dal server.
