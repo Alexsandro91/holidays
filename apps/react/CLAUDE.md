@@ -3,7 +3,8 @@
 ## Ambiente
 - React + TypeScript + **Vite**. Comandi: `npm run dev`, `npm run build`, `npm run lint`.
 - Porta del dev server da `DEV_SERVER_PORT` nel `.env` (default 5173, `strictPort`).
-- Backend: API Laravel in `../laravel` (Sail), base URL in `VITE_API_URL`.
+- Backend: API Laravel in `../laravel` (Sail). In sviluppo il proxy di Vite inoltra `/api` e `/sanctum` a
+  `API_PROXY_TARGET`: il codice chiama solo percorsi relativi, sempre tramite `src/lib/api.ts`.
 - Le variabili `VITE_*` finiscono nel bundle del browser: sono pubbliche, mai segreti.
   Ogni nuova variabile va aggiunta a `.env.example` e tipizzata in `src/env.d.ts`.
 
