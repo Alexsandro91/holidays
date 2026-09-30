@@ -14,7 +14,8 @@ export const safeRedirect = (target: string | null | undefined, fallback = '/'):
     return fallback
   }
 
-  if (url.origin !== window.location.origin) return fallback
+  // Dopo la normalizzazione dei dot segment il percorso potrebbe diventare `//host`
+  if (url.origin !== window.location.origin || url.pathname.startsWith('//')) return fallback
   if (url.pathname === '/login' || url.pathname.startsWith('/login/')) return fallback
 
   return `${url.pathname}${url.search}${url.hash}`

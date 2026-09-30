@@ -6,7 +6,7 @@ describe('safeRedirect', () => {
     expect(safeRedirect('/admin/users?status=invited')).toBe('/admin/users?status=invited')
   })
 
-  it.each([null, undefined, '', 'https://evil.test', '//evil.test', '/\\evil.test', 'javascript:alert(1)', '/login', '/login?x=1', '/\t/evil.test', '/\n/evil.test', '/\r/evil.test', '/\t\\evil.test', '/./login'])(
+  it.each([null, undefined, '', 'https://evil.test', '//evil.test', '/\\evil.test', 'javascript:alert(1)', '/login', '/login?x=1', '/\t/evil.test', '/\n/evil.test', '/\r/evil.test', '/\t\\evil.test', '/./login', '/..//evil.test', '/.//evil.test'])(
     'falls back to the home page for %s',
     (target) => {
       expect(safeRedirect(target)).toBe('/')
