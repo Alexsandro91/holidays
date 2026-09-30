@@ -13,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // La SPA sulla stessa origine usa la sessione in cookie (Sanctum SPA)
+        $middleware->statefulApi();
+        $middleware->redirectGuestsTo('/login');
+        $middleware->redirectUsersTo('/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
