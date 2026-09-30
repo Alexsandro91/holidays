@@ -7,6 +7,11 @@
 - Il DB e' raggiungibile solo dai container (`DB_HOST=mysql`); dal Mac e' su `localhost:3307`.
 - Laravel espone **solo API**: il frontend e' l'app React separata in `../react` (Vite).
 - Boost: `AGENTS.md` e' generato da `boost:update`, non modificarlo a mano. Le regole di progetto stanno qui.
+- Qualità: `sail artisan test --compact`, `sail composer analyse` (Larastan), `sail bin pint --dirty --format agent`.
+- Utenti di sviluppo (solo `local`, `sail artisan migrate:fresh --seed`): `admin@holidays.test`, `manager@holidays.test`,
+  `employee@holidays.test` con password `holidays-dev-password`; i codici di login arrivano su Mailpit (`localhost:8025`).
+- Auth: login = pipeline Fortify con `StartEmailLoginChallenge` (niente sessione fino al codice); codice in
+  `TwoFactorChallengeController`; chiavi di sessione in `App\Support\AuthSession`; testi PHP con `App\Support\Translate::text()`.
 
 ## Approccio
 Questo progetto segue le **best practice Laravel** (guideline e skill Boost), non lo scaffolding del

@@ -1,7 +1,8 @@
 # Holidays — frontend React
 
 ## Ambiente
-- React + TypeScript + **Vite**. Comandi: `npm run dev`, `npm run build`, `npm run lint`.
+- React + TypeScript + **Vite**. Comandi: `npm run dev`, `npm run build`, `npm run lint`, `npm test` (Vitest),
+  `npm run test:e2e` (Playwright: richiede Sail acceso con `queue`, `migrate:fresh --seed` e `cache:clear`).
 - Porta del dev server da `DEV_SERVER_PORT` nel `.env` (default 5173, `strictPort`).
 - Backend: API Laravel in `../laravel` (Sail). In sviluppo il proxy di Vite inoltra `/api` e `/sanctum` a
   `API_PROXY_TARGET`: il codice chiama solo percorsi relativi, sempre tramite `src/lib/api.ts`.
