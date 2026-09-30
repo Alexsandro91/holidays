@@ -34,7 +34,9 @@ const LoginPage = () => {
   const [searchParams] = useSearchParams()
   const login = useLogin()
   const lock = useCountdown()
-  const [failed, setFailed] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  // secondi iniziali del blocco: testo costante per gli screen reader, così non è riannunciato a ogni tick
+  const [lockedFor, setLockedFor] = useState(0)
   const schema = useMemo(() => createLoginSchema(t), [t])
   const form = useForm<LoginValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
   const { errors } = form.formState
@@ -42,18 +44,25 @@ const LoginPage = () => {
   const redirect = searchParams.get('redirect')
 
   const onSubmit = form.handleSubmit(async (values) => {
-    setFailed(false)
+    setFormError(null)
     try {
       await login.mutateAsync(values)
       navigate({ pathname: '/login/verify', search: redirect ? `?${new URLSearchParams({ redirect }).toString()}` : '' }, { state: { email: values.email } })
     } catch (error) {
       if (isApiError(error, 'throttled')) {
-        lock.start(error.retryAfter ?? 60)
+        const seconds = error.retryAfter ?? 60
+        setLockedFor(seconds)
+        lock.start(seconds)
         return
       }
-      setFailed(true)
-      form.resetField('password')
-      form.setFocus('password')
+      if (isApiError(error, 'validation')) {
+        setFormError(t('login.error'))
+        form.resetField('password')
+        form.setFocus('password')
+        return
+      }
+      // rete o server: la password resta com'è, il problema non sono le credenziali
+      setFormError(isApiError(error, 'network') ? t('errors.network') : t('errors.generic'))
     }
   })
 
@@ -70,13 +79,18 @@ const LoginPage = () => {
         {lock.secondsLeft > 0 ? (
           <Alert>
             <Clock aria-hidden="true" />
-            <AlertDescription className="tabular-nums">{t('login.locked', { count: lock.secondsLeft })}</AlertDescription>
+            <AlertDescription>
+              <span className="sr-only">{t('login.locked', { count: lockedFor })}</span>
+              <span aria-hidden="true" className="tabular-nums">
+                {t('login.locked', { count: lock.secondsLeft })}
+              </span>
+            </AlertDescription>
           </Alert>
         ) : (
-          failed && (
+          formError && (
             <Alert variant="destructive">
               <CircleAlert aria-hidden="true" />
-              <AlertDescription>{t('login.error')}</AlertDescription>
+              <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )
         )}

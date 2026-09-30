@@ -74,8 +74,68 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Password'), 'sbagliata')
     await user.click(screen.getByRole('button', { name: 'Continua' }))
 
-    expect(await screen.findByText('Troppi tentativi. Potrai riprovare tra 30 secondi.')).toBeInTheDocument()
+    // due copie: una solo per screen reader (costante), una visiva (conto alla rovescia)
+    const messages = await screen.findAllByText(/Troppi tentativi\. Potrai riprovare tra \d+ secondi\./)
+    expect(messages).toHaveLength(2)
+    expect(messages[0]).toHaveTextContent('tra 30 secondi.')
+    expect(messages[0]).toHaveClass('sr-only')
+    expect(messages[1]).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByRole('button', { name: 'Continua' })).toBeDisabled()
+  })
+
+  it('keeps the password and shows a network message when the server is unreachable', async () => {
+    server.use(http.post('/api/auth/login', () => HttpResponse.error()))
+    const { user } = renderRoutes(routes, ['/login'])
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.type(screen.getByLabelText('Password'), 'segreta')
+    await user.click(screen.getByRole('button', { name: 'Continua' }))
+
+    expect(await screen.findByText('Impossibile contattare il server. Controlla la connessione e riprova.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toHaveValue('segreta')
+  })
+
+  it('shows a generic message on a server error', async () => {
+    server.use(http.post('/api/auth/login', () => HttpResponse.json({ message: 'boom' }, { status: 500 })))
+    const { user } = renderRoutes(routes, ['/login'])
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.type(screen.getByLabelText('Password'), 'segreta')
+    await user.click(screen.getByRole('button', { name: 'Continua' }))
+
+    expect(await screen.findByText('Qualcosa non ha funzionato. Riprova tra poco.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toHaveValue('segreta')
+  })
+
+  it('toggles the password visibility with an accessible button', async () => {
+    const { user } = renderRoutes(routes, ['/login'])
+    const toggle = await screen.findByRole('button', { name: 'Mostra password' })
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password')
+
+    await user.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text')
+  })
+
+  it('links the invalid email to its error message', async () => {
+    const { user } = renderRoutes(routes, ['/login'])
+
+    await user.click(await screen.findByRole('button', { name: 'Continua' }))
+
+    const email = await screen.findByLabelText('Email')
+    await screen.findByText('Inserisci la tua email.')
+    expect(email).toHaveAttribute('aria-invalid', 'true')
+    expect(email).toHaveAccessibleDescription('Inserisci la tua email.')
+  })
+
+  it('declares the autocomplete hints for password managers', async () => {
+    renderRoutes(routes, ['/login'])
+
+    expect(await screen.findByLabelText('Email')).toHaveAttribute('autocomplete', 'username')
+    expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password')
   })
 
   it('shows the notice passed in the URL', async () => {
