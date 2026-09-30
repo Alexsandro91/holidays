@@ -97,4 +97,12 @@ describe('api client', () => {
 
     expect(isApiError(error, 'network')).toBe(true)
   })
+
+  it('reports network failures while fetching the CSRF cookie', async () => {
+    server.use(http.get('/sanctum/csrf-cookie', () => HttpResponse.error()))
+
+    const error = await request('POST', '/api/ping').catch((caught: unknown) => caught)
+
+    expect(isApiError(error, 'network')).toBe(true)
+  })
 })

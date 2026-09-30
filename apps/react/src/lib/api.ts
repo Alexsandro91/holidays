@@ -72,6 +72,9 @@ let csrfRequest: Promise<void> | null = null
 const refreshCsrfCookie = (): Promise<void> => {
   csrfRequest ??= fetch(toUrl('/sanctum/csrf-cookie'), { credentials: 'include', headers: { Accept: 'application/json' } })
     .then(() => undefined)
+    .catch(() => {
+      throw new ApiError({ status: 0, kind: 'network', message: i18n.t('errors.network') })
+    })
     .finally(() => {
       csrfRequest = null
     })
