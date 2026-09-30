@@ -41,6 +41,8 @@ const VerifyCodePage = () => {
   const [resendBlocked, setResendBlocked] = useState(false)
   // Evita il doppio invio (auto-invio al sesto numero + Invio): letto solo nei gestori di evento
   const submitting = useRef(false)
+  // Riporta il focus sul campo dopo errori e nuovo invio: letto solo nei gestori di evento
+  const codeInput = useRef<HTMLInputElement>(null)
 
   const parsedState = locationStateSchema.safeParse(location.state)
   const email = parsedState.success ? parsedState.data.email : null
@@ -75,6 +77,7 @@ const VerifyCodePage = () => {
       else if (meta.success && meta.data.attempts_left !== undefined) setError(t('verify.invalid', { count: meta.data.attempts_left }))
       else setError(t('errors.generic'))
       setCode('')
+      codeInput.current?.focus()
     } finally {
       submitting.current = false
     }
@@ -87,6 +90,7 @@ const VerifyCodePage = () => {
       setCode('')
       setInfo(t('verify.resent'))
       cooldown.start(RESEND_COOLDOWN_SECONDS)
+      codeInput.current?.focus()
     } catch (caught) {
       const meta = metaOf(caught)
       if (meta.success && meta.data.restart) {
@@ -124,6 +128,7 @@ const VerifyCodePage = () => {
         <Field data-invalid={error ? true : undefined}>
           <FieldLabel htmlFor="code">{t('verify.label')}</FieldLabel>
           <InputOTP
+            ref={codeInput}
             id="code"
             maxLength={6}
             value={code}

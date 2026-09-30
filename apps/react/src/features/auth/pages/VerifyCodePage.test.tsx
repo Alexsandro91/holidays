@@ -79,6 +79,7 @@ describe('VerifyCodePage', () => {
 
     expect(await screen.findByText('Codice non corretto. Tentativi rimasti: 3.')).toBeInTheDocument()
     expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
   })
 
   it('shows the network error message when the server is unreachable', async () => {
@@ -113,6 +114,7 @@ describe('VerifyCodePage', () => {
     await user.click(screen.getByRole('button', { name: 'Invia un nuovo codice' }))
 
     expect(await screen.findByText('Nuovo codice inviato. Il precedente non è più valido.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Codice di verifica')).toHaveFocus()
   })
 
   it('stops offering new codes when the limit is reached', async () => {
