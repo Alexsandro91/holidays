@@ -40,3 +40,6 @@ tmp/
 # --- Tool locali ---
 graphify-out/
 .claude/settings.local.json
+
+# --- Workspace degli agenti (superpowers) ---
+.superpowers/
