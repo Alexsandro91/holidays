@@ -7,7 +7,9 @@
 - Il DB e' raggiungibile solo dai container (`DB_HOST=mysql`); dal Mac e' su `localhost:3307`.
 - Laravel espone **solo API**: il frontend e' l'app React separata in `../react` (Vite).
 - Boost: `AGENTS.md` e' generato da `boost:update`, non modificarlo a mano. Le regole di progetto stanno qui.
-- Qualità: `sail artisan test --compact`, `sail composer analyse` (Larastan), `sail bin pint --dirty --format agent`.
+- Qualità: `sail artisan test --compact`, `sail composer analyse` (Larastan), `sail bin pint <file PHP modificati> --format agent`
+  (formattazione) e `sail bin pint --test` (controllo di tutto il progetto). `--dirty` non funziona perche' il container
+  non vede la cartella .git della root.
 - Utenti di sviluppo (solo `local`, `sail artisan migrate:fresh --seed`): `admin@holidays.test`, `manager@holidays.test`,
   `employee@holidays.test` con password `holidays-dev-password`; i codici di login arrivano su Mailpit (`localhost:8025`).
 - Auth: login = pipeline Fortify con `StartEmailLoginChallenge` (niente sessione fino al codice); codice in
