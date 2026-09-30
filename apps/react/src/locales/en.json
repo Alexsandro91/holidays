@@ -1,0 +1,95 @@
+{
+  "app": { "name": "Holidays" },
+  "common": {
+    "close": "Close",
+    "retry": "Try again",
+    "loading": "Loading…",
+    "showPassword": "Show password"
+  },
+  "preferences": {
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "currentLanguage": "Language: {{language}}",
+    "currentTheme": "Theme: {{theme}}"
+  },
+  "brand": {
+    "tagline": "Your team’s time off, at a glance.",
+    "subtitle": "Requests, approvals and the company calendar in one place.",
+    "calendar": "October 2026 · team absences",
+    "legendLeave": "Leave",
+    "legendPermit": "Time off"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Use your work email and password.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Continue",
+    "submitting": "Checking…",
+    "error": "Incorrect email or password. Check your details and try again.",
+    "locked": "Too many attempts. You can try again in {{count}} seconds.",
+    "noAccount": "No account yet? Ask HR for an invitation.",
+    "notice": {
+      "expired": "Your session expired. Please sign in again.",
+      "logged-out": "You signed out. See you soon.",
+      "restart": "For your security, please sign in again."
+    }
+  },
+  "verify": {
+    "title": "Check your email",
+    "subtitle": "We sent a 6-digit code to {{email}}. It expires in 10 minutes.",
+    "subtitleUnknown": "We sent a 6-digit code to your email address. It expires in 10 minutes.",
+    "label": "Verification code",
+    "submit": "Verify and sign in",
+    "submitting": "Checking…",
+    "incomplete": "Enter all 6 digits.",
+    "invalid_one": "Incorrect code. You have {{count}} attempt left.",
+    "invalid_other": "Incorrect code. Attempts left: {{count}}.",
+    "throttled": "Too many attempts. Try again in {{count}} seconds.",
+    "resend": "Send a new code",
+    "resendIn": "New code in {{count}} s",
+    "resent": "New code sent. The previous one no longer works.",
+    "resendLimit": "You reached the limit of new codes. If it doesn’t arrive, sign in again.",
+    "otherAccount": "Use another account"
+  },
+  "validation": {
+    "emailRequired": "Enter your email.",
+    "emailInvalid": "Enter a valid email address, for example name@company.com.",
+    "passwordRequired": "Enter your password."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again shortly.",
+    "network": "Can’t reach the server. Check your connection and try again.",
+    "serverTitle": "Service unavailable"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "mobileDescription": "Application navigation menu.",
+    "toggle": "Show or hide the menu",
+    "skip": "Skip to content",
+    "home": "Home",
+    "leave": "Leave and time off",
+    "soon": "soon"
+  },
+  "account": { "menu": "Account menu", "logout": "Sign out" },
+  "home": {
+    "greeting": "Hi, {{name}}",
+    "subtitle": "Here you’ll find leave, time off and the team calendar.",
+    "comingSoon": "Leave and time-off management is coming in the next phases."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The address you opened doesn’t exist or is no longer available.",
+    "back": "Back to home"
+  },
+  "titles": {
+    "login": "Sign in",
+    "verify": "Verification code",
+    "home": "Home",
+    "notFound": "Page not found"
+  },
+  "a11y": { "pageAnnouncement": "Page: {{title}}" }
+}

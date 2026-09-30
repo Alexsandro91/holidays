@@ -1,0 +1,95 @@
+{
+  "app": { "name": "Holidays" },
+  "common": {
+    "close": "Chiudi",
+    "retry": "Riprova",
+    "loading": "Caricamento in corso…",
+    "showPassword": "Mostra password"
+  },
+  "preferences": {
+    "language": "Lingua",
+    "theme": "Tema",
+    "themeLight": "Chiaro",
+    "themeDark": "Scuro",
+    "themeSystem": "Sistema",
+    "currentLanguage": "Lingua: {{language}}",
+    "currentTheme": "Tema: {{theme}}"
+  },
+  "brand": {
+    "tagline": "Le ferie del team, in chiaro.",
+    "subtitle": "Richieste, approvazioni e calendario di tutta l’azienda in un unico posto.",
+    "calendar": "Ottobre 2026 · assenze del team",
+    "legendLeave": "Ferie",
+    "legendPermit": "Permesso"
+  },
+  "login": {
+    "title": "Accedi",
+    "subtitle": "Usa l’email aziendale e la tua password.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Continua",
+    "submitting": "Verifica in corso…",
+    "error": "Email o password non corrette. Controlla i dati e riprova.",
+    "locked": "Troppi tentativi. Potrai riprovare tra {{count}} secondi.",
+    "noAccount": "Non hai un account? Chiedi un invito all’ufficio HR.",
+    "notice": {
+      "expired": "Sessione scaduta. Accedi di nuovo.",
+      "logged-out": "Sei uscito. A presto.",
+      "restart": "Per sicurezza ricomincia l’accesso."
+    }
+  },
+  "verify": {
+    "title": "Controlla la tua email",
+    "subtitle": "Abbiamo inviato un codice di 6 cifre a {{email}}. Scade tra 10 minuti.",
+    "subtitleUnknown": "Abbiamo inviato un codice di 6 cifre al tuo indirizzo email. Scade tra 10 minuti.",
+    "label": "Codice di verifica",
+    "submit": "Verifica e accedi",
+    "submitting": "Verifica in corso…",
+    "incomplete": "Inserisci tutte e 6 le cifre.",
+    "invalid_one": "Codice non corretto. Ti resta {{count}} tentativo.",
+    "invalid_other": "Codice non corretto. Tentativi rimasti: {{count}}.",
+    "throttled": "Troppi tentativi. Riprova tra {{count}} secondi.",
+    "resend": "Invia un nuovo codice",
+    "resendIn": "Nuovo codice tra {{count}} s",
+    "resent": "Nuovo codice inviato. Il precedente non è più valido.",
+    "resendLimit": "Hai raggiunto il limite di nuovi codici. Se non lo ricevi, ricomincia l’accesso.",
+    "otherAccount": "Usa un altro account"
+  },
+  "validation": {
+    "emailRequired": "Inserisci la tua email.",
+    "emailInvalid": "Inserisci un indirizzo email valido, ad esempio nome@azienda.it.",
+    "passwordRequired": "Inserisci la password."
+  },
+  "errors": {
+    "generic": "Qualcosa non ha funzionato. Riprova tra poco.",
+    "network": "Impossibile contattare il server. Controlla la connessione e riprova.",
+    "serverTitle": "Servizio non raggiungibile"
+  },
+  "nav": {
+    "main": "Navigazione principale",
+    "mobileDescription": "Menu di navigazione dell’applicazione.",
+    "toggle": "Mostra o nascondi il menu",
+    "skip": "Vai al contenuto",
+    "home": "Home",
+    "leave": "Ferie e permessi",
+    "soon": "presto"
+  },
+  "account": { "menu": "Menu account", "logout": "Esci" },
+  "home": {
+    "greeting": "Ciao, {{name}}",
+    "subtitle": "Qui troverai ferie, permessi e il calendario del team.",
+    "comingSoon": "La gestione di ferie e permessi arriverà nelle prossime fasi."
+  },
+  "notFound": {
+    "title": "Pagina non trovata",
+    "description": "L’indirizzo che hai aperto non esiste o non è più disponibile.",
+    "back": "Torna alla home"
+  },
+  "titles": {
+    "login": "Accedi",
+    "verify": "Codice di verifica",
+    "home": "Home",
+    "notFound": "Pagina non trovata"
+  },
+  "a11y": { "pageAnnouncement": "Pagina: {{title}}" }
+}
