@@ -26,6 +26,9 @@ class FortifyServiceProvider extends ServiceProvider
             ];
         });
 
+        // Endpoint del codice: 10 richieste al minuto per IP
+        RateLimiter::for('two-factor', fn (Request $request): Limit => Limit::perMinute(10)->by('two-factor:'.$request->ip()));
+
         // Il limite ai tentativi lo applica il middleware throttle:login sulla rotta
         Fortify::authenticateThrough(fn (Request $request): array => [
             CanonicalizeUsername::class,
