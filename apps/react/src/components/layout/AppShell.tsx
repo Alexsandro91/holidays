@@ -1,5 +1,4 @@
 import { CalendarDays, ChevronsUpDown, House, LogOut } from 'lucide-react'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import Logo from '@/components/brand/Logo'
@@ -40,14 +39,6 @@ const AppShell = () => {
   const { data: user } = useCurrentUser()
   const logout = useLogout()
   const titleKey = useRouteTitleKey()
-
-  const hasUser = Boolean(user)
-
-  // Il loader iniziale consuma il focus di RouteAnnouncer prima che l'h1 esista: se non c'è un focus, lo si porta sul titolo
-  useEffect(() => {
-    if (!hasUser || document.activeElement !== document.body) return
-    document.getElementById('page-title')?.focus({ preventScroll: true })
-  }, [hasUser])
 
   // ProtectedRoute garantisce l'utente: questo ramo copre solo l'istante del logout
   if (!user) return null

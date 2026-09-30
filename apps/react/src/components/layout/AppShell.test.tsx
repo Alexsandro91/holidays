@@ -32,6 +32,13 @@ describe('AppShell', () => {
     expect(router.state.location.pathname).toBe('/login')
   })
 
+  it('focuses the heading on a first load of the login page', async () => {
+    renderRoutes(routes, ['/login'])
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Accedi' })
+    await waitFor(() => expect(heading).toHaveFocus())
+  })
+
   it('shows a 404 page for unknown addresses', async () => {
     renderRoutes(routes, ['/non-esiste'])
 

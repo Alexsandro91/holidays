@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
+import { useCurrentUser } from '@/features/auth/api'
 import { APP_NAME } from '@/lib/appName'
 import { useRouteTitleKey } from '@/lib/routeTitle'
 
@@ -11,12 +12,19 @@ const RouteAnnouncer = () => {
   const titleKey = useRouteTitleKey()
   const title = titleKey ? t(titleKey) : null
 
+  const { isPending } = useCurrentUser()
+
+  // Titolo del documento: dipende solo dal titolo, così un cambio di lingua non sposta il focus
   useEffect(() => {
-    if (!title) return
-    document.title = `${title} · ${APP_NAME}`
+    if (title) document.title = `${title} · ${APP_NAME}`
+  }, [title])
+
+  // Focus sull'h1: solo a guardia sbloccata, altrimenti l'h1 non esiste ancora (loader di GuestRoute/ProtectedRoute)
+  useEffect(() => {
+    if (isPending) return
     const frame = window.requestAnimationFrame(() => document.getElementById('page-title')?.focus({ preventScroll: true }))
     return () => window.cancelAnimationFrame(frame)
-  }, [title, location.pathname])
+  }, [location.pathname, isPending])
 
   return (
     <div className="sr-only" aria-live="polite" aria-atomic="true">
