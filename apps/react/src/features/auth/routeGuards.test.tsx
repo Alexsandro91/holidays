@@ -77,4 +77,25 @@ describe('route guards', () => {
     expect(await screen.findByText('login-page')).toBeInTheDocument()
     expect(router.state.location.search).toBe('?reason=logged-out')
   })
+
+  it('shows the server error state to guests when the user check fails with a server error', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ message: 'boom' }, { status: 500 })))
+    renderRoutes(routes, ['/'])
+
+    expect(await screen.findByRole('button', { name: 'Riprova' })).toBeInTheDocument()
+  })
+
+  it('keeps the protected page when a background refresh fails with a server error', async () => {
+    signedIn()
+    const { queryClient } = renderRoutes(routes, ['/admin'])
+    await screen.findByText('admin-page')
+
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ message: 'boom' }, { status: 500 })))
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: userQueryKey })
+    })
+
+    expect(screen.getByText('admin-page')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Riprova' })).not.toBeInTheDocument()
+  })
 })

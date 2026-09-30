@@ -10,9 +10,10 @@ const ProtectedRoute = () => {
 
   if (isPending) return <FullPageLoader />
   if (user === null) return <Navigate to="/login?reason=logged-out" replace />
-  if (error && !isApiError(error, 'unauthenticated')) return <ServerErrorState onRetry={() => void refetch()} />
+  // Errore di rete/5xx: pagina d'errore solo senza utente in cache; altrimenti si tengono i dati (e lo stato della pagina)
+  if (error && !user && !isApiError(error, 'unauthenticated')) return <ServerErrorState onRetry={() => void refetch()} />
 
-  if (error || !user) {
+  if (!user || (error && isApiError(error, 'unauthenticated'))) {
     const params = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
     // Dati ancora in cache ma 401: la sessione c'era ed è scaduta
     if (user) params.set('reason', 'expired')
