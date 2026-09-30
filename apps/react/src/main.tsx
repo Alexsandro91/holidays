@@ -3,11 +3,12 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from 'next-themes'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { RouterProvider } from 'react-router'
 import '@/index.css'
 import '@/lib/i18n'
-import App from '@/App'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { queryClient } from '@/lib/queryClient'
+import { router } from '@/routes'
 
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Elemento #root mancante in index.html')
@@ -17,7 +18,7 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="holidays-theme" disableTransitionOnChange>
         <TooltipProvider>
-          <App />
+          <RouterProvider router={router} />
         </TooltipProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
