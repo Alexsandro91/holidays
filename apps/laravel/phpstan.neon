@@ -8,3 +8,5 @@ parameters:
         - database
         - routes
     level: 6
+    # Legge i cast dal corpo di casts() (enum e datetime) invece che dal PHPDoc
+    parseModelCastsMethod: true

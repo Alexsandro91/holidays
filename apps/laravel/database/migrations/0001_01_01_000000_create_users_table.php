@@ -15,9 +15,14 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('password')->nullable();
+            $table->string('role', 20)->default('employee');
+            $table->string('status', 20)->default('invited')->index();
+            $table->string('locale', 5)->default('it');
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+            $table->string('privacy_notice_version', 20)->nullable();
+            $table->timestamp('privacy_notice_acknowledged_at')->nullable();
+            $table->timestamp('last_login_at')->nullable();
             $table->timestamps();
         });
 
