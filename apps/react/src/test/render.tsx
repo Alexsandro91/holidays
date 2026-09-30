@@ -16,7 +16,8 @@ interface RenderRoutesOptions {
 export const renderRoutes = (routes: RouteObject[], initialEntries: Entry[] = ['/'], options: RenderRoutesOptions = {}) => {
   const queryClient = createQueryClient({ retry: false })
   const router = createMemoryRouter(routes, { initialEntries })
-  const user = userEvent.setup({ advanceTimers: options.advanceTimers })
+  // con advanceTimers: undefined esplicito user-event sovrascrive il default e fallisce
+  const user = userEvent.setup(options.advanceTimers ? { advanceTimers: options.advanceTimers } : {})
   const view = render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem storageKey="holidays-theme">
