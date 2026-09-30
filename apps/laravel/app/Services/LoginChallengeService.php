@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ChallengeResult;
 use App\Models\LoginChallenge;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Codice di 6 cifre inviato via email a ogni login: generazione, verifica, nuovo invio.
@@ -40,35 +41,52 @@ final class LoginChallengeService
         return [$challenge, $code];
     }
 
+    /**
+     * La verifica avviene in transazione sulla riga bloccata: richieste parallele
+     * non superano il limite di tentativi e un codice vale una sola volta.
+     */
     public function verify(LoginChallenge $challenge, string $code): ChallengeResult
     {
-        if ($challenge->expires_at->isPast()) {
-            $challenge->delete();
+        return DB::transaction(function () use ($challenge, $code): ChallengeResult {
+            $locked = LoginChallenge::query()->lockForUpdate()->find($challenge->id);
 
-            return ChallengeResult::Expired;
-        }
+            // Già usata o eliminata da un'altra richiesta.
+            if ($locked === null) {
+                return ChallengeResult::Expired;
+            }
 
-        if ($challenge->attempts >= self::MAX_ATTEMPTS) {
-            $challenge->delete();
+            if ($locked->expires_at->isPast()) {
+                $locked->delete();
 
-            return ChallengeResult::Locked;
-        }
+                return ChallengeResult::Expired;
+            }
 
-        if (hash_equals($challenge->code_hash, $this->hash($code))) {
-            $challenge->delete();
+            if ($locked->attempts >= self::MAX_ATTEMPTS) {
+                $locked->delete();
 
-            return ChallengeResult::Valid;
-        }
+                return ChallengeResult::Locked;
+            }
 
-        $challenge->increment('attempts');
+            if (hash_equals($locked->code_hash, $this->hash($code))) {
+                $locked->delete();
 
-        if ($challenge->attempts >= self::MAX_ATTEMPTS) {
-            $challenge->delete();
+                return ChallengeResult::Valid;
+            }
 
-            return ChallengeResult::Locked;
-        }
+            $locked->increment('attempts');
 
-        return ChallengeResult::Invalid;
+            // Allinea l'istanza del chiamante al valore reale nel database.
+            $challenge->attempts = $locked->attempts;
+            $challenge->syncOriginalAttribute('attempts');
+
+            if ($locked->attempts >= self::MAX_ATTEMPTS) {
+                $locked->delete();
+
+                return ChallengeResult::Locked;
+            }
+
+            return ChallengeResult::Invalid;
+        });
     }
 
     public function attemptsLeft(LoginChallenge $challenge): int

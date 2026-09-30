@@ -118,6 +118,35 @@ class LoginChallengeServiceTest extends TestCase
         $this->assertFalse($this->service->canResend($challenge));
     }
 
+    public function test_a_stale_instance_cannot_bypass_the_attempts_limit(): void
+    {
+        [$challenge, $code] = $this->service->start(User::factory()->create());
+        $stale = $challenge->fresh();
+
+        $challenge->forceFill(['attempts' => 4])->save();
+
+        $this->assertSame(ChallengeResult::Locked, $this->service->verify($stale, $this->wrongCode($code)));
+        $this->assertModelMissing($challenge);
+    }
+
+    public function test_a_code_cannot_be_used_twice_from_two_instances(): void
+    {
+        [$challenge, $code] = $this->service->start(User::factory()->create());
+        $copy = $challenge->fresh();
+
+        $this->assertSame(ChallengeResult::Valid, $this->service->verify($challenge, $code));
+        $this->assertSame(ChallengeResult::Expired, $this->service->verify($copy, $code));
+    }
+
+    public function test_attempts_left_is_in_sync_on_the_same_instance_after_a_wrong_code(): void
+    {
+        [$challenge, $code] = $this->service->start(User::factory()->create());
+
+        $this->service->verify($challenge, $this->wrongCode($code));
+
+        $this->assertSame(4, $this->service->attemptsLeft($challenge));
+    }
+
     private function wrongCode(string $code): string
     {
         return $code === '000000' ? '111111' : '000000';
