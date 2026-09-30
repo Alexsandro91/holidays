@@ -1,0 +1,42 @@
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+Icon?
+
+# --- Editor / IDE ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+.fleet/
+.zed/
+
+# --- Environment (rete di sicurezza: mai committare segreti) ---
+.env
+.env.*
+!.env.example
+
+# --- Log / temporanei ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+tmp/
+
+# --- Tool locali ---
+graphify-out/
+.claude/settings.local.json
