@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -21,7 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
         $middleware->append(SecurityHeaders::class);
         $middleware->appendToGroup('web', SetLocale::class);
-        $middleware->appendToGroup('api', SetLocale::class);
+        $middleware->appendToGroup('api', [
+            SetLocale::class,
+            EnsureUserIsActive::class,
+            EnforceAbsoluteSessionLifetime::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

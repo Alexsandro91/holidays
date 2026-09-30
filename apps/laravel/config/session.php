@@ -37,6 +37,11 @@ return [
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
     /*
+    | Durata massima della sessione in minuti dal login, anche con attività continua.
+    */
+    'absolute_lifetime' => (int) env('SESSION_ABSOLUTE_LIFETIME', 720),
+
+    /*
     |--------------------------------------------------------------------------
     | Session Encryption
     |--------------------------------------------------------------------------
