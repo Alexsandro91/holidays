@@ -22,7 +22,12 @@ const RouteAnnouncer = () => {
   // Focus sull'h1: solo a guardia sbloccata, altrimenti l'h1 non esiste ancora (loader di GuestRoute/ProtectedRoute)
   useEffect(() => {
     if (isPending) return
-    const frame = window.requestAnimationFrame(() => document.getElementById('page-title')?.focus({ preventScroll: true }))
+    const frame = window.requestAnimationFrame(() => {
+      // Se la pagina ha già portato il focus su un campo (es. il codice di verifica), non glielo togliamo
+      const active = document.activeElement
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return
+      document.getElementById('page-title')?.focus({ preventScroll: true })
+    })
     return () => window.cancelAnimationFrame(frame)
   }, [location.pathname, isPending])
 

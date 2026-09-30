@@ -27,7 +27,7 @@ const AuthLayout = () => {
           </div>
           <TeamCalendar />
         </div>
-        <p className="text-[12.5px] opacity-70">
+        <p className="text-[12.5px]">
           © {CURRENT_YEAR} {APP_NAME}
         </p>
       </aside>

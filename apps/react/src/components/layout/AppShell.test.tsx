@@ -32,6 +32,16 @@ describe('AppShell', () => {
     expect(router.state.location.pathname).toBe('/login')
   })
 
+  it('leaves the focus on the code field of the verification page', async () => {
+    renderRoutes(routes, ['/login/verify'])
+
+    const field = await screen.findByRole('textbox', { name: 'Codice di verifica' })
+    await waitFor(() => expect(field).toHaveFocus())
+    // Dopo il frame in cui il router annuncia la pagina il focus non passa al titolo
+    await new Promise((resolve) => window.requestAnimationFrame(() => resolve(null)))
+    expect(field).toHaveFocus()
+  })
+
   it('focuses the heading on a first load of the login page', async () => {
     renderRoutes(routes, ['/login'])
 
