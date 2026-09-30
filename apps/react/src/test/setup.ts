@@ -28,6 +28,8 @@ Object.defineProperty(window, 'ResizeObserver', { writable: true, value: ResizeO
 Element.prototype.scrollIntoView = () => undefined
 Element.prototype.hasPointerCapture = () => false
 Element.prototype.releasePointerCapture = () => undefined
+// input-otp interroga il punto sotto il cursore (assente in jsdom)
+document.elementFromPoint = () => null
 
 // jsdom dichiara en-US: i test partono sempre dall'italiano, come da lingua predefinita dell'app
 beforeAll(async () => {
