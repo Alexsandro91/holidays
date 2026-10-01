@@ -1,7 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
+import { loadEnv } from 'vite'
 
-// Stessa porta del dev server (DEV_SERVER_PORT nel .env; 5174 finché ats occupa la 5173)
-const port = Number(process.env.DEV_SERVER_PORT) || 5174
+// Stessa porta del dev server: DEV_SERVER_PORT letto come in vite.config.ts (.env, sovrascrivibile dall'ambiente)
+const env = loadEnv('development', process.cwd(), '')
+const port = Number(env.DEV_SERVER_PORT) || 5173
 
 export default defineConfig({
   testDir: './e2e',
