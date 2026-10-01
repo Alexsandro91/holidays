@@ -83,6 +83,16 @@ describe('route guards', () => {
     renderRoutes(routes, ['/'])
 
     expect(await screen.findByRole('button', { name: 'Riprova' })).toBeInTheDocument()
+    // Il server ha risposto: non è un problema di connessione
+    expect(screen.getByText('Qualcosa non ha funzionato. Riprova tra poco.')).toBeInTheDocument()
+    expect(screen.queryByText(/Controlla la connessione/)).not.toBeInTheDocument()
+  })
+
+  it('suggests checking the connection when the server cannot be reached', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.error()))
+    renderRoutes(routes, ['/'])
+
+    expect(await screen.findByText('Impossibile contattare il server. Controlla la connessione e riprova.')).toBeInTheDocument()
   })
 
   it('keeps the protected page when a background refresh fails with a server error', async () => {

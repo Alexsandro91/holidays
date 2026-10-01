@@ -11,7 +11,9 @@ const ProtectedRoute = () => {
   if (isPending) return <FullPageLoader />
   if (user === null) return <Navigate to="/login?reason=logged-out" replace />
   // Errore di rete/5xx: pagina d'errore solo senza utente in cache; altrimenti si tengono i dati (e lo stato della pagina)
-  if (error && !user && !isApiError(error, 'unauthenticated')) return <ServerErrorState onRetry={() => void refetch()} />
+  if (error && !user && !isApiError(error, 'unauthenticated')) {
+    return <ServerErrorState isNetworkError={isApiError(error, 'network')} onRetry={() => void refetch()} />
+  }
 
   if (!user || (error && isApiError(error, 'unauthenticated'))) {
     const params = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
