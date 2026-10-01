@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronsUpDown, House, LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
+import { toast } from 'sonner'
 import Logo from '@/components/brand/Logo'
 import SkipLink from '@/components/layout/SkipLink'
 import LanguageMenu from '@/components/preferences/LanguageMenu'
@@ -29,7 +30,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { useCurrentUser, useLogout } from '@/features/auth/api'
+import { isAlreadySignedOut, useCurrentUser, useLogout } from '@/features/auth/api'
 import { APP_NAME } from '@/lib/appName'
 import { initials } from '@/lib/initials'
 import { useRouteTitleKey } from '@/lib/routeTitle'
@@ -104,7 +105,15 @@ const AppShell = () => {
                 <DropdownMenuContent side="top" align="start" className="min-w-56">
                   <DropdownMenuLabel className="truncate font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => logout.mutate()}>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      logout.mutate(undefined, {
+                        onError: (error) => {
+                          if (!isAlreadySignedOut(error)) toast.error(t('account.logoutError'))
+                        },
+                      })
+                    }
+                  >
                     <LogOut aria-hidden="true" />
                     {t('account.logout')}
                   </DropdownMenuItem>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { request, requestData } from '@/lib/api'
+import { isApiError, request, requestData } from '@/lib/api'
 import { userQueryKey } from '@/lib/queryKeys'
 
 export const userSchema = z.object({
@@ -50,13 +50,19 @@ export const useVerifyCode = () => {
 
 export const useResendCode = () => useMutation({ mutationFn: () => request('POST', '/api/auth/two-factor/resend') })
 
+/** Errori del logout che significano "sessione già chiusa": per l'utente l'uscita è comunque riuscita. */
+export const isAlreadySignedOut = (error: unknown): boolean => isApiError(error, 'unauthenticated') || isApiError(error, 'csrf')
+
 export const useLogout = () => {
   const queryClient = useQueryClient()
+  // null (e non "nessun dato"): le route protette mostrano l'avviso di uscita
+  const signOut = () => queryClient.setQueryData(userQueryKey, null)
   return useMutation({
     mutationFn: () => request('POST', '/api/auth/logout'),
-    onSettled: () => {
-      // null (e non "nessun dato"): le route protette mostrano l'avviso di uscita
-      queryClient.setQueryData(userQueryKey, null)
+    onSuccess: signOut,
+    onError: (error) => {
+      // Su altri errori (rete, 5xx) la sessione potrebbe essere ancora attiva: l'utente resta dentro
+      if (isAlreadySignedOut(error)) signOut()
     },
   })
 }

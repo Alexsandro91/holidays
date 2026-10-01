@@ -74,7 +74,7 @@
     "leave": "Ferie e permessi",
     "soon": "presto"
   },
-  "account": { "menu": "Menu account", "logout": "Esci" },
+  "account": { "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
   "home": {
     "greeting": "Ciao, {{name}}",
     "subtitle": "Qui troverai ferie, permessi e il calendario del team.",

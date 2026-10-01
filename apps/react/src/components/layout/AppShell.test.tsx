@@ -32,6 +32,41 @@ describe('AppShell', () => {
     expect(router.state.location.pathname).toBe('/login')
   })
 
+  it('keeps the user signed in when the sign-out fails on the server', async () => {
+    signedIn()
+    server.use(http.post('/api/auth/logout', () => HttpResponse.json({ message: 'Server Error' }, { status: 500 })))
+    const { user, router } = renderRoutes(routes, ['/'])
+
+    await user.click(await screen.findByRole('button', { name: /Menu account/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
+
+    expect(await screen.findByText('Uscita non riuscita. Riprova.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Ciao, Giulia' })).toBeInTheDocument()
+    expect(screen.queryByText('Sei uscito. A presto.')).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
+  })
+
+  it('treats an already expired session as signed out', async () => {
+    let expired = false
+    server.use(
+      http.get('/api/auth/user', () =>
+        expired ? HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }) : HttpResponse.json({ data: adminUser }),
+      ),
+      http.post('/api/auth/logout', () => {
+        // La sessione era già scaduta sul server: anche l'utente corrente risponde 401
+        expired = true
+        return HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 })
+      }),
+    )
+    const { user, router } = renderRoutes(routes, ['/'])
+
+    await user.click(await screen.findByRole('button', { name: /Menu account/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
+
+    expect(await screen.findByText('Sei uscito. A presto.')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+  })
+
   it('leaves the focus on the code field of the verification page', async () => {
     renderRoutes(routes, ['/login/verify'])
 

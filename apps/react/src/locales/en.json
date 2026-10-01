@@ -74,7 +74,7 @@
     "leave": "Leave and time off",
     "soon": "soon"
   },
-  "account": { "menu": "Account menu", "logout": "Sign out" },
+  "account": { "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
   "home": {
     "greeting": "Hi, {{name}}",
     "subtitle": "Here you’ll find leave, time off and the team calendar.",
