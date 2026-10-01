@@ -29,6 +29,24 @@ class LoginTest extends TestCase
         Mail::assertQueued(LoginCodeMail::class, fn (LoginCodeMail $mail): bool => $mail->hasTo($user->email));
     }
 
+    public function test_successful_login_changes_the_session_id(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create();
+
+        // Sessione già avviata prima del login, come quella di un browser (spec §8.2)
+        $this->get('/sanctum/csrf-cookie')->assertNoContent();
+        $before = session()->getId();
+
+        // Senza cookie di sessione (postJson lo invia solo con withCredentials) l'id cambierebbe comunque
+        $this->withCredentials()
+            ->withCookie((string) config('session.cookie'), $before)
+            ->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertOk();
+
+        $this->assertNotSame($before, session()->getId());
+    }
+
     public function test_email_with_spaces_and_capitals_is_accepted(): void
     {
         Mail::fake();
