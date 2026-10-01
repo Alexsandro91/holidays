@@ -6,13 +6,15 @@ use App\Support\Translate;
 use App\Support\UserAgentSummary;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class LoginCodeMail extends Mailable implements ShouldQueue
+// Cifrata in coda: il codice non resta in chiaro in jobs/failed_jobs
+class LoginCodeMail extends Mailable implements ShouldBeEncrypted, ShouldQueue
 {
     use Queueable, SerializesModels;
 

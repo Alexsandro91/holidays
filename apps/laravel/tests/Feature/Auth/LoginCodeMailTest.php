@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Mail\LoginCodeMail;
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -31,5 +32,11 @@ class LoginCodeMailTest extends TestCase
         Mail::to($user)->send(new LoginCodeMail('123456', '', now()));
 
         Mail::assertQueued(LoginCodeMail::class, fn (LoginCodeMail $mail): bool => $mail->locale === 'en');
+    }
+
+    public function test_is_encrypted_in_the_queue(): void
+    {
+        // Il codice non deve finire in chiaro in jobs/failed_jobs
+        $this->assertInstanceOf(ShouldBeEncrypted::class, new LoginCodeMail('123456', '', now()));
     }
 }

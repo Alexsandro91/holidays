@@ -20,6 +20,9 @@ final class LoginChallengeService
 
     public const RESEND_COOLDOWN_SECONDS = 60;
 
+    /** Oltre questa età dall'inizio del login non si inviano altri codici: si ricomincia dal login. */
+    public const MAX_AGE_MINUTES = 30;
+
     /**
      * @return array{0: LoginChallenge, 1: string}
      */

@@ -115,6 +115,19 @@ class TwoFactorChallengeTest extends TestCase
         $this->postJson('/api/auth/two-factor', ['code' => $second])->assertOk();
     }
 
+    public function test_resend_after_thirty_minutes_forces_a_new_login(): void
+    {
+        $this->startLogin(User::factory()->create());
+
+        $this->travel(31)->minutes();
+
+        $this->postJson('/api/auth/two-factor/resend')
+            ->assertUnprocessable()
+            ->assertJsonPath('meta.restart', true);
+
+        $this->assertNull(session(AuthSession::CHALLENGE_ID));
+    }
+
     public function test_resend_stops_after_three_new_codes(): void
     {
         $this->startLogin(User::factory()->create());

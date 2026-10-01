@@ -53,6 +53,11 @@ final class TwoFactorChallengeController extends Controller
             return $this->restart($request);
         }
 
+        // Un login lasciato a metà troppo a lungo non si tiene in vita con i nuovi invii
+        if ($challenge->created_at->lt(now()->subMinutes(LoginChallengeService::MAX_AGE_MINUTES))) {
+            return $this->restart($request);
+        }
+
         if (! $this->challenges->canResend($challenge)) {
             return response()->json([
                 'message' => Translate::text('login.resend_limit'),
