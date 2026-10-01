@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
 import { useCurrentUser } from '@/features/auth/api'
@@ -13,6 +13,13 @@ const RouteAnnouncer = () => {
   const title = titleKey ? t(titleKey) : null
 
   const { isPending } = useCurrentUser()
+
+  // Annuncio fissato al cambio di indirizzo: un cambio di lingua aggiorna il titolo ma non riannuncia la pagina
+  const announcement = title ? t('a11y.pageAnnouncement', { title }) : ''
+  const [announced, setAnnounced] = useState({ pathname: location.pathname, text: announcement })
+  if (announced.pathname !== location.pathname) {
+    setAnnounced({ pathname: location.pathname, text: announcement })
+  }
 
   // Titolo del documento: dipende solo dal titolo, così un cambio di lingua non sposta il focus
   useEffect(() => {
@@ -33,7 +40,7 @@ const RouteAnnouncer = () => {
 
   return (
     <div className="sr-only" aria-live="polite" aria-atomic="true">
-      {title ? t('a11y.pageAnnouncement', { title }) : ''}
+      {announced.text}
     </div>
   )
 }

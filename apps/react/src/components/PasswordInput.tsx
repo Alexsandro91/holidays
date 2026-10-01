@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-/** Campo password con pulsante "mostra" (etichetta fissa + aria-pressed, come da pattern ARIA). */
+/** Campo password con pulsante "mostra" (etichetta fissa + aria-pressed, come da pattern ARIA). Focus del pulsante a tinta piena: contrasto ≥ 3:1. */
 const PasswordInput = ({ className, ...props }: ComponentProps<'input'>) => {
   const { t } = useTranslation()
   const [visible, setVisible] = useState(false)
@@ -17,7 +17,7 @@ const PasswordInput = ({ className, ...props }: ComponentProps<'input'>) => {
         onClick={() => setVisible((current) => !current)}
         aria-pressed={visible}
         aria-label={t('common.showPassword')}
-        className="absolute top-1/2 right-0.5 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="absolute top-1/2 right-0.5 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
         {visible ? <EyeOff className="size-[18px]" aria-hidden="true" /> : <Eye className="size-[18px]" aria-hidden="true" />}
       </button>

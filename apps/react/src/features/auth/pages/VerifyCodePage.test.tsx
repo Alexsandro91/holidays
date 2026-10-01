@@ -132,6 +132,78 @@ describe('VerifyCodePage', () => {
     expect(screen.getByRole('button', { name: 'Invia un nuovo codice' })).toBeDisabled()
   })
 
+  it('describes the code field with the page description and, on error, the error', async () => {
+    server.use(
+      http.post('/api/auth/two-factor', () =>
+        HttpResponse.json({ message: 'Codice non corretto.', errors: { code: ['Codice non corretto.'] }, meta: { attempts_left: 3 } }, { status: 422 }),
+      ),
+    )
+    const { user } = renderRoutes(routes, ['/login/verify'])
+    const description = 'Abbiamo inviato un codice di 6 cifre al tuo indirizzo email. Scade tra 10 minuti.'
+
+    const input = await screen.findByLabelText('Codice di verifica')
+    expect(input).toHaveAccessibleDescription(description)
+
+    await user.type(input, '000000')
+
+    await screen.findByText('Codice non corretto. Tentativi rimasti: 3.')
+    expect(input).toHaveAccessibleDescription(`${description} Codice non corretto. Tentativi rimasti: 3.`)
+  })
+
+  it('locks the submit button for the Retry-After seconds after too many attempts', async () => {
+    let requests = 0
+    server.use(
+      http.post('/api/auth/two-factor', () => {
+        requests += 1
+        return HttpResponse.json({ message: 'Too Many Attempts.' }, { status: 429, headers: { 'Retry-After': '30' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, [entry])
+
+    const input = await screen.findByLabelText('Codice di verifica')
+    await user.type(input, '000000')
+
+    expect(await screen.findByText('Troppi tentativi. Riprova tra 30 secondi.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verifica e accedi' })).toBeDisabled()
+
+    // Durante il blocco il sesto numero non fa partire un'altra richiesta
+    await user.type(input, '111111')
+    expect(requests).toBe(1)
+  })
+
+  it('shows the confirmation of a new code in a single polite live region', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'ok' }, { status: 202 })))
+    const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
+    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+
+    await act(async () => {
+      vi.advanceTimersByTime(61_000)
+    })
+    await user.click(screen.getByRole('button', { name: 'Invia un nuovo codice' }))
+
+    const message = await screen.findByText('Nuovo codice inviato. Il precedente non è più valido.')
+    expect(message.closest('[aria-live]')).toHaveAttribute('aria-live', 'polite')
+    // Niente role="alert" annidato nella live region: verrebbe annunciato due volte
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('reports a failed resend in the status region, not as a code error', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.error()))
+    const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
+    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+
+    await act(async () => {
+      vi.advanceTimersByTime(61_000)
+    })
+    await user.click(screen.getByRole('button', { name: 'Invia un nuovo codice' }))
+
+    const message = await screen.findByText('Impossibile contattare il server. Controlla la connessione e riprova.')
+    expect(message.closest('[aria-live]')).toHaveAttribute('aria-live', 'polite')
+    expect(screen.getByLabelText('Codice di verifica')).not.toHaveAttribute('aria-invalid')
+  })
+
   it('has no accessibility violations', async () => {
     const { container } = renderRoutes(routes, [entry])
     await screen.findByLabelText('Codice di verifica')

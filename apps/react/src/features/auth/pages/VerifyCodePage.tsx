@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { z } from 'zod'
 import PageHeading from '@/components/layout/PageHeading'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertDescription, alertVariants } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
@@ -35,6 +35,8 @@ const VerifyCodePage = () => {
   const verify = useVerifyCode()
   const resend = useResendCode()
   const cooldown = useCountdown(RESEND_COOLDOWN_SECONDS)
+  // Blocco dopo un 429 sulla verifica: niente invii finché non passano i secondi di Retry-After
+  const lock = useCountdown()
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -55,7 +57,7 @@ const VerifyCodePage = () => {
   }
 
   const submit = async (value: string) => {
-    if (submitting.current) return
+    if (submitting.current || lock.secondsLeft > 0) return
     if (!CODE_PATTERN.test(value)) {
       setError(t('verify.incomplete'))
       return
@@ -72,8 +74,11 @@ const VerifyCodePage = () => {
         restartLogin()
         return
       }
-      if (isApiError(caught, 'throttled')) setError(t('verify.throttled', { count: caught.retryAfter ?? RESEND_COOLDOWN_SECONDS }))
-      else if (isApiError(caught, 'network')) setError(t('errors.network'))
+      if (isApiError(caught, 'throttled')) {
+        const seconds = caught.retryAfter ?? RESEND_COOLDOWN_SECONDS
+        lock.start(seconds)
+        setError(t('verify.throttled', { count: seconds }))
+      } else if (isApiError(caught, 'network')) setError(t('errors.network'))
       else if (meta.success && meta.data.attempts_left !== undefined) setError(t('verify.invalid', { count: meta.data.attempts_left }))
       else setError(t('errors.generic'))
       setCode('')
@@ -85,6 +90,8 @@ const VerifyCodePage = () => {
 
   const onResend = async () => {
     setError(null)
+    // Svuota la regione di stato: lo stesso messaggio ripetuto viene annunciato di nuovo
+    setInfo(null)
     try {
       await resend.mutateAsync()
       setCode('')
@@ -106,7 +113,8 @@ const VerifyCodePage = () => {
         cooldown.start(caught.retryAfter ?? RESEND_COOLDOWN_SECONDS)
         return
       }
-      setError(isApiError(caught, 'network') ? t('errors.network') : t('errors.generic'))
+      // Errore del nuovo invio, non del codice: va nella regione di stato e il campo resta valido
+      setInfo(isApiError(caught, 'network') ? t('errors.network') : t('errors.generic'))
     }
   }
 
@@ -115,6 +123,7 @@ const VerifyCodePage = () => {
       <PageHeading
         icon={<MailOpen className="size-5" aria-hidden="true" />}
         title={t('verify.title')}
+        descriptionId="verify-description"
         description={email ? t('verify.subtitle', { email: maskEmail(email) }) : t('verify.subtitleUnknown')}
       />
       <form
@@ -134,7 +143,8 @@ const VerifyCodePage = () => {
             value={code}
             onChange={(value) => {
               setCode(value)
-              setError(null)
+              // Durante il blocco il messaggio con l'attesa resta visibile
+              if (lock.secondsLeft === 0) setError(null)
             }}
             onComplete={(value) => void submit(value)}
             pattern={REGEXP_ONLY_DIGITS}
@@ -143,7 +153,7 @@ const VerifyCodePage = () => {
             autoComplete="one-time-code"
             autoFocus
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'code-error' : undefined}
+            aria-describedby={error ? 'verify-description code-error' : 'verify-description'}
             containerClassName="gap-2 sm:gap-3"
           >
             <InputOTPGroup>
@@ -160,7 +170,7 @@ const VerifyCodePage = () => {
           </InputOTP>
           <FieldError id="code-error">{error}</FieldError>
         </Field>
-        <Button type="submit" size="lg" className="w-full" disabled={verify.isPending}>
+        <Button type="submit" size="lg" className="w-full" disabled={verify.isPending || lock.secondsLeft > 0}>
           {verify.isPending ? (
             <>
               <LoaderCircle className="animate-spin" aria-hidden="true" />
@@ -187,11 +197,12 @@ const VerifyCodePage = () => {
             {cooldown.secondsLeft > 0 ? t('verify.resendIn', { count: cooldown.secondsLeft }) : t('verify.resend')}
           </Button>
         </div>
+        {/* Unica live region: il messaggio è un elemento semplice con lo stile di Alert, senza role="alert" */}
         <div aria-live="polite">
           {info && (
-            <Alert>
+            <div data-slot="alert" className={alertVariants()}>
               <AlertDescription>{info}</AlertDescription>
-            </Alert>
+            </div>
           )}
         </div>
       </form>
