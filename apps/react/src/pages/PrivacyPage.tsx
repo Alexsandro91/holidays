@@ -13,9 +13,10 @@ const PrivacyPage = () => {
       <div className="grid gap-4">
         <p className="text-[15px] leading-relaxed">{t('privacy.placeholder')}</p>
         <Button asChild variant="link" className="justify-self-start px-0">
-          <Link to="/login">
+          {/* Chi non è entrato finisce comunque sull'accesso (ProtectedRoute) */}
+          <Link to="/">
             <ArrowLeft aria-hidden="true" />
-            {t('invitation.toLogin')}
+            {t('privacy.back')}
           </Link>
         </Button>
       </div>

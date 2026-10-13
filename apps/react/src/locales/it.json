@@ -211,10 +211,12 @@
     "expiredTitle": "Invito scaduto",
     "expired": "Gli inviti valgono 72 ore.",
     "askHr": "Chiedi all’ufficio HR di inviartene uno nuovo.",
-    "toLogin": "Vai all’accesso"
+    "toLogin": "Vai all’accesso",
+    "loadErrorTitle": "Impossibile caricare l’invito"
   },
   "privacy": {
     "title": "Informativa privacy",
+    "back": "Torna a Holidays",
     "placeholder": "Testo segnaposto: l’informativa definitiva sarà validata dal DPO prima del rilascio. Holidays tratta nome, email, ruolo e i dati di ferie e permessi per gestire le assenze (art. 6.1.b GDPR); i log di accesso servono solo alla sicurezza e si conservano 180 giorni."
   },
   "titles": {

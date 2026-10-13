@@ -211,10 +211,12 @@
     "expiredTitle": "Invitation expired",
     "expired": "Invitations are valid for 72 hours.",
     "askHr": "Ask HR to send you a new one.",
-    "toLogin": "Go to sign in"
+    "toLogin": "Go to sign in",
+    "loadErrorTitle": "Couldn’t load the invitation"
   },
   "privacy": {
     "title": "Privacy notice",
+    "back": "Back to Holidays",
     "placeholder": "Placeholder text: the final notice will be validated by the DPO before release. Holidays processes name, email, role and leave data to manage absences (art. 6.1.b GDPR); access logs are used only for security and kept for 180 days."
   },
   "titles": {

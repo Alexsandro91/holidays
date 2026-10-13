@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -73,6 +73,40 @@ describe('AcceptInvitationPage', () => {
     expect(await screen.findByRole('heading', { name: 'Invito scaduto' })).toBeInTheDocument()
     expect(screen.getByText('Chiedi all’ufficio HR di inviartene uno nuovo.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Vai all’accesso' })).toHaveAttribute('href', '/login')
+  })
+
+  it('moves focus to the title once the invitation is loaded', async () => {
+    validInvitation()
+    renderRoutes(routes, ['/invitation/abc'])
+
+    const heading = await screen.findByRole('heading', { name: 'Benvenuto, Sara Colombo' })
+    await waitFor(() => expect(heading).toHaveFocus())
+  })
+
+  it('moves focus to the title of an expired invitation', async () => {
+    server.use(http.get('/api/invitations/abc', () => HttpResponse.json({ message: 'expired' }, { status: 410 })))
+    renderRoutes(routes, ['/invitation/abc'])
+
+    const heading = await screen.findByRole('heading', { name: 'Invito scaduto' })
+    await waitFor(() => expect(heading).toHaveFocus())
+  })
+
+  it('shows a titled error with retry when the server is unreachable', async () => {
+    let calls = 0
+    server.use(
+      http.get('/api/invitations/abc', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({ message: 'boom' }, { status: 500 }) : HttpResponse.json({ data: { name: 'Sara Colombo', email: 'sara@holidays.test', expires_at: '2099-01-01T00:00:00+00:00' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/invitation/abc'])
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Impossibile caricare l’invito' })
+    await waitFor(() => expect(heading).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: 'Riprova' }))
+
+    const formHeading = await screen.findByRole('heading', { name: 'Benvenuto, Sara Colombo' })
+    await waitFor(() => expect(formHeading).toHaveFocus())
   })
 
   it('explains an invalid or used invitation, also when it fails on submit', async () => {

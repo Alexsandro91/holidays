@@ -68,10 +68,12 @@ const AcceptInvitationPage = () => {
   const queryRejection = rejectionOf(invitation.error)
   const state = rejection ?? queryRejection
 
-  // Il contenuto cambia senza cambiare pagina: il focus va sul nuovo titolo
+  // Il contenuto cambia senza cambiare pagina (caricamento finito, rifiuto, errore, nuovo tentativo riuscito):
+  // il focus va sul nuovo titolo
+  const view = invitation.isPending ? null : (state ?? (invitation.data ? 'form' : 'error'))
   useEffect(() => {
-    if (rejection) document.getElementById('page-title')?.focus()
-  }, [rejection])
+    if (view) document.getElementById('page-title')?.focus()
+  }, [view])
 
   const submit = async ({ password, confirmation }: InvitationValues) => {
     if (submitting.current || !invitation.data) return
@@ -145,17 +147,20 @@ const AcceptInvitationPage = () => {
   }
 
   if (!invitation.data) {
-    // Rete o 5xx: errore in linea con nuovo tentativo (il layout ha già il suo <main>)
+    // Rete o 5xx: titolo ed errore in linea con nuovo tentativo (il layout ha già il suo <main>)
     return (
-      <Alert>
-        <CircleAlert aria-hidden="true" />
-        <AlertDescription className="grid gap-3">
-          <p>{t(isApiError(invitation.error, 'network') ? 'errors.network' : 'errors.generic')}</p>
-          <Button variant="outline" size="sm" className="justify-self-start" onClick={() => void invitation.refetch()}>
-            {t('common.retry')}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <>
+        <PageHeading title={t('invitation.loadErrorTitle')} />
+        <Alert>
+          <CircleAlert aria-hidden="true" />
+          <AlertDescription className="grid gap-3">
+            <p>{t(isApiError(invitation.error, 'network') ? 'errors.network' : 'errors.generic')}</p>
+            <Button variant="outline" size="sm" className="justify-self-start" onClick={() => void invitation.refetch()}>
+              {t('common.retry')}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </>
     )
   }
 
