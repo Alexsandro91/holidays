@@ -18,7 +18,11 @@ import { isApiError } from '@/lib/api'
 
 const MIN_PASSWORD_LENGTH = 12
 
-const createResetSchema = (t: TFunction) => z.object({ password: z.string().min(MIN_PASSWORD_LENGTH, t('validation.passwordMin')) })
+const createResetSchema = (t: TFunction) =>
+  z
+    .object({ password: z.string().min(MIN_PASSWORD_LENGTH, t('validation.passwordMin')), confirmation: z.string() })
+    // Errore sotto la conferma: è il campo da correggere
+    .refine((values) => values.password === values.confirmation, { message: t('validation.passwordMismatch'), path: ['confirmation'] })
 
 type ResetValues = z.infer<ReturnType<typeof createResetSchema>>
 
@@ -37,7 +41,7 @@ const ResetPasswordPage = () => {
   // Evita il doppio invio (doppio click, Invio ripetuto): letto solo nei gestori di evento
   const submitting = useRef(false)
   const schema = useMemo(() => createResetSchema(t), [t])
-  const form = useForm<ResetValues>({ resolver: zodResolver(schema), defaultValues: { password: '' } })
+  const form = useForm<ResetValues>({ resolver: zodResolver(schema), defaultValues: { password: '', confirmation: '' } })
   const { errors } = form.formState
 
   // Link troncato dal client email (senza email o token) o rifiutato dal server: il form non serve più
@@ -48,13 +52,14 @@ const ResetPasswordPage = () => {
     if (rejected) document.getElementById('page-title')?.focus()
   }, [rejected])
 
-  const submit = async ({ password }: ResetValues) => {
+  const submit = async ({ password, confirmation }: ResetValues) => {
     if (submitting.current) return
     submitting.current = true
     setFormError(null)
     try {
-      await reset.mutateAsync({ token, email, password })
-      navigate('/login?reason=password-reset', { replace: true, state: { email } })
+      await reset.mutateAsync({ token, email, password, password_confirmation: confirmation })
+      // Il reset non apre la sessione: si entra con il codice appena inviato (spec §6.3)
+      navigate('/login/verify', { replace: true, state: { email, passwordReset: true } })
     } catch (error) {
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60
@@ -145,6 +150,17 @@ const ResetPasswordPage = () => {
               />
               <FieldDescription id="password-hint">{t('reset.hint')}</FieldDescription>
               <FieldError id="password-error">{errors.password?.message}</FieldError>
+            </Field>
+            <Field data-invalid={errors.confirmation ? true : undefined}>
+              <FieldLabel htmlFor="password-confirmation">{t('reset.confirmation')}</FieldLabel>
+              <PasswordInput
+                id="password-confirmation"
+                autoComplete="new-password"
+                aria-invalid={errors.confirmation ? true : undefined}
+                aria-describedby={errors.confirmation ? 'password-confirmation-error' : undefined}
+                {...form.register('confirmation')}
+              />
+              <FieldError id="password-confirmation-error">{errors.confirmation?.message}</FieldError>
             </Field>
             <Button type="submit" size="lg" className="w-full" disabled={reset.isPending || lock.secondsLeft > 0}>
               {reset.isPending ? (

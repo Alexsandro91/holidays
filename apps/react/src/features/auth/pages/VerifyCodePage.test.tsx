@@ -36,6 +36,20 @@ describe('VerifyCodePage', () => {
     expect(await screen.findByText(/g•••@example\.test/)).toBeInTheDocument()
   })
 
+  it('confirms the password reset above the code field', async () => {
+    renderRoutes(routes, [{ pathname: '/login/verify', state: { email: 'giulia.rossi@example.test', passwordReset: true } }])
+
+    expect(await screen.findByText('Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato.')).toBeInTheDocument()
+    expect(screen.getByText(/g•••@example\.test/)).toBeInTheDocument()
+  })
+
+  it('shows no reset notice after a normal sign-in', async () => {
+    renderRoutes(routes, [entry])
+
+    await screen.findByLabelText('Codice di verifica')
+    expect(screen.queryByText(/Password aggiornata/)).not.toBeInTheDocument()
+  })
+
   it('still works after a refresh without navigation state', async () => {
     renderRoutes(routes, ['/login/verify'])
 
@@ -204,10 +218,14 @@ describe('VerifyCodePage', () => {
     expect(screen.getByLabelText('Codice di verifica')).not.toHaveAttribute('aria-invalid')
   })
 
-  it('has no accessibility violations', async () => {
-    const { container } = renderRoutes(routes, [entry])
+  it('has no accessibility violations, with and without the reset notice', async () => {
+    const { container, unmount } = renderRoutes(routes, [entry])
     await screen.findByLabelText('Codice di verifica')
-
     await expectNoA11yViolations(container)
+    unmount()
+
+    const afterReset = renderRoutes(routes, [{ ...entry, state: { ...entry.state, passwordReset: true } }])
+    await screen.findByText('Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato.')
+    await expectNoA11yViolations(afterReset.container)
   })
 })

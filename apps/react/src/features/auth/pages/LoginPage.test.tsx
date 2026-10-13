@@ -155,11 +155,17 @@ describe('LoginPage', () => {
     expect(router.state.location.state).toEqual({ email: 'giulia@example.test' })
   })
 
-  it('confirms the password reset and prefills the email', async () => {
-    renderRoutes(routes, [{ pathname: '/login', search: '?reason=password-reset', state: { email: 'giulia@example.test' } }])
+  it('prefills the email passed in the navigation state', async () => {
+    renderRoutes(routes, [{ pathname: '/login', state: { email: 'giulia@example.test' } }])
 
-    expect(await screen.findByText('Password aggiornata. Accedi con la nuova password.')).toBeInTheDocument()
-    expect(screen.getByLabelText('Email')).toHaveValue('giulia@example.test')
+    expect(await screen.findByLabelText('Email')).toHaveValue('giulia@example.test')
+  })
+
+  it('ignores the old password-reset notice', async () => {
+    renderRoutes(routes, ['/login?reason=password-reset'])
+
+    await screen.findByLabelText('Email')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('has no accessibility violations', async () => {

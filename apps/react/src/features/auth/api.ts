@@ -57,6 +57,7 @@ export interface ResetPasswordInput {
   token: string
   email: string
   password: string
+  password_confirmation: string
 }
 
 export const useResetPassword = () =>

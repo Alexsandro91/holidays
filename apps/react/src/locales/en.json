@@ -35,8 +35,7 @@
     "notice": {
       "expired": "Your session expired. Please sign in again.",
       "logged-out": "You signed out. See you soon.",
-      "restart": "For your security, please sign in again.",
-      "password-reset": "Password updated. Sign in with your new password."
+      "restart": "For your security, please sign in again."
     },
     "forgot": "Forgot your password?"
   },
@@ -55,7 +54,8 @@
     "resendIn": "New code in {{count}} s",
     "resent": "New code sent. The previous one no longer works.",
     "resendLimit": "You reached the limit of new codes. If it doesn’t arrive, sign in again.",
-    "otherAccount": "Use another account"
+    "otherAccount": "Use another account",
+    "passwordReset": "Password updated. To sign in, enter the code we just sent you."
   },
   "forgot": {
     "title": "Forgot your password?",
@@ -73,8 +73,9 @@
   },
   "reset": {
     "title": "Choose a new password",
-    "subtitle": "Then you’ll sign in with the new password and the code we email you.",
+    "subtitle": "Then we’ll email you the code to sign in.",
     "password": "New password",
+    "confirmation": "Confirm password",
     "hint": "At least 12 characters. An easy-to-remember phrase works great.",
     "submit": "Save password",
     "submitting": "Saving…",
@@ -87,7 +88,8 @@
     "emailRequired": "Enter your email.",
     "emailInvalid": "Enter a valid email address, for example name@company.com.",
     "passwordRequired": "Enter your password.",
-    "passwordMin": "Your password must be at least 12 characters long."
+    "passwordMin": "Your password must be at least 12 characters long.",
+    "passwordMismatch": "The passwords don’t match."
   },
   "errors": {
     "generic": "Something went wrong. Please try again shortly.",

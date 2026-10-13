@@ -17,10 +17,9 @@ import { emailField, emailStateSchema } from '@/features/auth/validation'
 import { useCountdown } from '@/hooks/useCountdown'
 import { isApiError } from '@/lib/api'
 
-type Notice = 'expired' | 'logged-out' | 'restart' | 'password-reset'
+type Notice = 'expired' | 'logged-out' | 'restart'
 
-const isNotice = (value: string | null): value is Notice =>
-  value === 'expired' || value === 'logged-out' || value === 'restart' || value === 'password-reset'
+const isNotice = (value: string | null): value is Notice => value === 'expired' || value === 'logged-out' || value === 'restart'
 
 const createLoginSchema = (t: TFunction) =>
   z.object({

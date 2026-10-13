@@ -1,11 +1,11 @@
 import { REGEXP_ONLY_DIGITS } from 'input-otp'
-import { ArrowLeft, LoaderCircle, MailOpen, RotateCw } from 'lucide-react'
+import { ArrowLeft, CircleCheck, LoaderCircle, MailOpen, RotateCw } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { z } from 'zod'
 import PageHeading from '@/components/layout/PageHeading'
-import { AlertDescription, alertVariants } from '@/components/ui/alert'
+import { Alert, AlertDescription, alertVariants } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
@@ -18,7 +18,8 @@ const RESEND_COOLDOWN_SECONDS = 60
 const CODE_PATTERN = /^\d{6}$/
 const SLOT_CLASS = 'h-14 w-11 sm:h-15 sm:w-12'
 
-const locationStateSchema = z.object({ email: z.string() })
+// passwordReset: si arriva dalla nuova password, non dal login
+const locationStateSchema = z.object({ email: z.string(), passwordReset: z.boolean().optional() })
 
 const maskEmail = (email: string): string => {
   const [local = '', domain = ''] = email.split('@')
@@ -48,6 +49,7 @@ const VerifyCodePage = () => {
 
   const parsedState = locationStateSchema.safeParse(location.state)
   const email = parsedState.success ? parsedState.data.email : null
+  const afterPasswordReset = parsedState.success && parsedState.data.passwordReset === true
   const redirect = searchParams.get('redirect')
 
   const restartLogin = () => {
@@ -126,6 +128,12 @@ const VerifyCodePage = () => {
         descriptionId="verify-description"
         description={email ? t('verify.subtitle', { email: maskEmail(email) }) : t('verify.subtitleUnknown')}
       />
+      {afterPasswordReset && (
+        <Alert className="mb-5">
+          <CircleCheck aria-hidden="true" />
+          <AlertDescription>{t('verify.passwordReset')}</AlertDescription>
+        </Alert>
+      )}
       <form
         className="grid gap-5"
         noValidate
