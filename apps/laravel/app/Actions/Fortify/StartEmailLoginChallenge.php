@@ -3,17 +3,14 @@
 namespace App\Actions\Fortify;
 
 use App\Enums\AuthEventType;
-use App\Mail\LoginCodeMail;
 use App\Models\User;
 use App\Services\AuthEventLogger;
 use App\Services\LoginChallengeService;
-use App\Support\AuthSession;
 use App\Support\Translate;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Timebox;
 use Illuminate\Validation\ValidationException;
@@ -34,14 +31,7 @@ final class StartEmailLoginChallenge
 
     public function handle(Request $request, Closure $next): JsonResponse
     {
-        $user = $this->authenticatableUser($request);
-
-        [$challenge, $code] = $this->challenges->start($user);
-
-        $request->session()->regenerate();
-        $request->session()->put(AuthSession::CHALLENGE_ID, $challenge->id);
-
-        Mail::to($user)->send(new LoginCodeMail($code, (string) $request->userAgent(), now()));
+        $this->challenges->beginFor($request, $this->authenticatableUser($request));
 
         return response()->json(['two_factor' => true]);
     }

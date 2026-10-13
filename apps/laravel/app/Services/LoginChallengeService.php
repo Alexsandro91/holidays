@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Enums\ChallengeResult;
+use App\Mail\LoginCodeMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
+use App\Support\AuthSession;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Codice di 6 cifre inviato via email a ogni login: generazione, verifica, nuovo invio.
@@ -22,6 +26,20 @@ final class LoginChallengeService
 
     /** Oltre questa età dall'inizio del login non si inviano altri codici: si ricomincia dal login. */
     public const MAX_AGE_MINUTES = 30;
+
+    /**
+     * Avvia il passo del codice per un utente già verificato (password giusta o reset riuscito):
+     * nuova challenge, sessione rigenerata con l'ID della challenge, codice via email. La sessione resta da ospite.
+     */
+    public function beginFor(Request $request, User $user): void
+    {
+        [$challenge, $code] = $this->start($user);
+
+        $request->session()->regenerate();
+        $request->session()->put(AuthSession::CHALLENGE_ID, $challenge->id);
+
+        Mail::to($user)->send(new LoginCodeMail($code, (string) $request->userAgent(), now()));
+    }
 
     /**
      * @return array{0: LoginChallenge, 1: string}
