@@ -32,7 +32,8 @@ class ResetPasswordRequest extends FormRequest
             'token' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255'],
             // max: un testo enorme renderebbe costoso l'hash Argon2id
-            'password' => ['required', 'string', 'max:255', Password::defaults()],
+            'password' => ['required', 'string', 'max:255', 'confirmed', Password::defaults()],
+            'password_confirmation' => ['required', 'string', 'max:255'],
         ];
     }
 }

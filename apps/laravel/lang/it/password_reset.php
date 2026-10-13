@@ -3,7 +3,7 @@
 return [
     'link_sent' => 'Se l’indirizzo corrisponde a un account attivo, riceverai un’email con il link per scegliere una nuova password.',
     'invalid_link' => 'Il link non è valido o è scaduto. Chiedine uno nuovo.',
-    'done' => 'Password aggiornata. Accedi con la nuova password.',
+    'done' => 'Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato via email.',
     'mail' => [
         'link' => [
             'subject' => 'Reimposta la password di Holidays',

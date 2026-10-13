@@ -38,14 +38,19 @@ final class PasswordResetService
 
     /**
      * Imposta la nuova password se il link è valido, non scaduto e di un utente attivo.
+     * Restituisce l'utente del link, oppure null se il link non vale.
      *
      * @param  array{email: string, token: string, password: string}  $credentials
      */
-    public function reset(#[\SensitiveParameter] array $credentials, Request $request): bool
+    public function reset(#[\SensitiveParameter] array $credentials, Request $request): ?User
     {
+        $resetUser = null;
+
         $status = $this->broker()->reset(
             [...$credentials, 'status' => UserStatus::Active->value],
-            function (User $user, string $password) use ($request): void {
+            function (User $user, string $password) use ($request, &$resetUser): void {
+                $resetUser = $user;
+
                 DB::transaction(function () use ($user, $password): void {
                     $user->forceFill(['password' => $password])->save();
                     // Chi aveva rubato la password perde subito l'accesso e i codici in attesa
@@ -59,7 +64,7 @@ final class PasswordResetService
             },
         );
 
-        return $status === PasswordBroker::PASSWORD_RESET;
+        return $status === PasswordBroker::PASSWORD_RESET ? $resetUser : null;
     }
 
     private function broker(): PasswordBroker

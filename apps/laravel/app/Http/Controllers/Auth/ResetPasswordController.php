@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Services\LoginChallengeService;
 use App\Services\PasswordResetService;
 use App\Support\Translate;
 use Illuminate\Http\JsonResponse;
@@ -11,21 +12,27 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class ResetPasswordController extends Controller
 {
-    public function __invoke(ResetPasswordRequest $request, PasswordResetService $passwords): JsonResponse
+    /**
+     * Il reset non apre la sessione: se riesce parte il passo del codice, come dopo la password (spec §6.3).
+     */
+    public function __invoke(ResetPasswordRequest $request, PasswordResetService $passwords, LoginChallengeService $challenges): JsonResponse
     {
-        $done = $passwords->reset([
+        $user = $passwords->reset([
             'email' => $request->string('email')->value(),
             'token' => $request->string('token')->value(),
             'password' => $request->string('password')->value(),
         ], $request);
 
-        if (! $done) {
+        if ($user === null) {
             // Stesso messaggio per token sbagliato, scaduto, già usato, email diversa o utente non attivo
             $message = Translate::text('password_reset.invalid_link');
 
             return response()->json(['message' => $message, 'errors' => ['token' => [$message]]], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return response()->json(['message' => Translate::text('password_reset.done')]);
+        // Codice solo all'utente del link: le challenge in attesa sono già state cancellate dal reset
+        $challenges->beginFor($request, $user);
+
+        return response()->json(['two_factor' => true, 'message' => Translate::text('password_reset.done')]);
     }
 }

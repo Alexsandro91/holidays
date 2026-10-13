@@ -3,7 +3,7 @@
 return [
     'link_sent' => 'If the address matches an active account, you’ll get an email with a link to choose a new password.',
     'invalid_link' => 'This link is invalid or has expired. Ask for a new one.',
-    'done' => 'Password updated. Sign in with your new password.',
+    'done' => 'Password updated. To sign in, enter the code we emailed you.',
     'mail' => [
         'link' => [
             'subject' => 'Reset your Holidays password',
