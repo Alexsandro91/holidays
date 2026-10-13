@@ -1,4 +1,5 @@
 import { Ellipsis } from 'lucide-react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -15,6 +16,8 @@ interface UserActionsMenuProps {
 const UserActionsMenu = ({ user, onSelect }: UserActionsMenuProps) => {
   const { t } = useTranslation()
   const actions = availableActions(user)
+  // Impostato dal gestore della voce scelta, letto alla chiusura del menu (mai durante il render)
+  const selected = useRef(false)
   if (actions.length === 0) return null
 
   return (
@@ -24,10 +27,20 @@ const UserActionsMenu = ({ user, onSelect }: UserActionsMenuProps) => {
           <Ellipsis aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
-      {/* Ogni voce apre un dialog: il focus lo gestisce il dialog (vedi focusReturn), non la chiusura del menu */}
-      <DropdownMenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
+      {/* Scegliendo una voce si apre un dialog e il focus lo gestisce lui (vedi focusReturn);
+          chiudendo il menu senza scelta (Escape, clic fuori) il focus torna al trigger come di default */}
+      <DropdownMenuContent
+        align="end"
+        onCloseAutoFocus={(event) => {
+          if (selected.current) event.preventDefault()
+          selected.current = false
+        }}
+      >
         {actions.map((action) => (
-          <DropdownMenuItem key={action} variant={action === 'disable' ? 'destructive' : 'default'} onSelect={() => onSelect(action)}>
+          <DropdownMenuItem key={action} variant={action === 'disable' ? 'destructive' : 'default'} onSelect={() => {
+              selected.current = true
+              onSelect(action)
+            }}>
             {t(`users.actions.${action}`)}
           </DropdownMenuItem>
         ))}

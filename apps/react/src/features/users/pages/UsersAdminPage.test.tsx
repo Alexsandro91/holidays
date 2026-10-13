@@ -224,4 +224,16 @@ describe('UsersAdminPage', () => {
     await waitFor(() => expect(document.getElementById('page-title')).toHaveFocus())
     expect(document.body.style.pointerEvents).not.toBe('none')
   })
+
+  it('returns focus to the row menu when it is closed without choosing', async () => {
+    listing([managedUser()])
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await screen.findByRole('menuitem', { name: 'Disattiva' })
+    await user.keyboard('{Escape}')
+
+    const trigger = within(screen.getByRole('table')).getByRole('button', { name: 'Azioni per Marco Bianchi' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
 })

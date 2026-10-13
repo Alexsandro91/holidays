@@ -123,7 +123,11 @@ const InviteUserDialog = () => {
                   <RadioGroup
                     aria-invalid={errors.role ? true : undefined}
                     aria-describedby={errors.role ? 'invite-role-error' : undefined}
-                    value={field.value} onValueChange={(value) => isRole(value) && field.onChange(value)} onBlur={field.onBlur} ref={field.ref}>
+                    value={field.value}
+                    onValueChange={(value) => isRole(value) && field.onChange(value)}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
+                  >
                     {ROLES.map((item) => (
                       <Field key={item} orientation="horizontal">
                         <RadioGroupItem value={item} id={`invite-role-${item}`} />
