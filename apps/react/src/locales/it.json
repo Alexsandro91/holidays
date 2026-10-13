@@ -120,6 +120,21 @@
     "back": "Torna alla home"
   },
   "forbidden": { "title": "Non hai i permessi per questa pagina", "description": "Se pensi che sia un errore, chiedi a un amministratore.", "back": "Torna alla home" },
+  "users": {
+    "title": "Utenti",
+    "subtitle": "Inviti, ruoli e accessi di chi usa Holidays.",
+    "invite": "Invita utente",
+    "search": "Cerca per nome o email",
+    "tabs": { "label": "Filtra per stato", "all": "Tutti", "active": "Attivi", "invited": "Invitati", "disabled": "Disattivati" },
+    "columns": { "person": "Persona", "role": "Ruolo", "status": "Stato", "details": "Dettagli", "actions": "Azioni" },
+    "you": "Tu",
+    "inviteExpires": "Invito scade il {{date}}",
+    "inviteExpired": "Invito scaduto",
+    "empty": "Nessun utente trovato.",
+    "clearFilters": "Azzera filtri",
+    "loadError": "Non è stato possibile caricare gli utenti.",
+    "pagination": { "label": "Pagine", "previous": "Precedente", "next": "Successiva", "status": "Pagina {{page}} di {{pages}}" }
+  },
   "titles": {
     "users": "Utenti",
     "administrators": "Amministratori",

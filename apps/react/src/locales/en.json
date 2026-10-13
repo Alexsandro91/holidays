@@ -120,6 +120,21 @@
     "back": "Back to home"
   },
   "forbidden": { "title": "You don’t have access to this page", "description": "If you think this is a mistake, ask an administrator.", "back": "Back to home" },
+  "users": {
+    "title": "Users",
+    "subtitle": "Invitations, roles and access of everyone using Holidays.",
+    "invite": "Invite user",
+    "search": "Search by name or email",
+    "tabs": { "label": "Filter by status", "all": "All", "active": "Active", "invited": "Invited", "disabled": "Disabled" },
+    "columns": { "person": "Person", "role": "Role", "status": "Status", "details": "Details", "actions": "Actions" },
+    "you": "You",
+    "inviteExpires": "Invitation expires on {{date}}",
+    "inviteExpired": "Invitation expired",
+    "empty": "No users found.",
+    "clearFilters": "Clear filters",
+    "loadError": "Users couldn’t be loaded.",
+    "pagination": { "label": "Pages", "previous": "Previous", "next": "Next", "status": "Page {{page}} of {{pages}}" }
+  },
   "titles": {
     "users": "Users",
     "administrators": "Administrators",

@@ -1,0 +1,104 @@
+import { screen, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import type { RouteObject } from 'react-router'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import UsersPage from '@/features/users/pages/UsersPage'
+import { expectNoA11yViolations } from '@/test/axe'
+import { managedUser, userListResponse } from '@/test/usersFixtures'
+import { renderRoutes } from '@/test/render'
+import { server } from '@/test/server'
+
+const routes: RouteObject[] = [{ path: '/admin/users', element: <UsersPage /> }]
+
+const respondWith = (onRequest: (url: URL) => void = () => undefined, users = [managedUser({ id: 1, name: 'Anna Admin', role: 'admin', role_label: 'HR / Admin', is_current_user: true }), managedUser()]) =>
+  server.use(
+    http.get('/api/users', ({ request }) => {
+      onRequest(new URL(request.url))
+      return HttpResponse.json(userListResponse(users, { all: 3, active: 2, invited: 1, disabled: 0 }))
+    }),
+  )
+
+describe('UsersPage', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('lists people with textual role and status badges and marks the current user', async () => {
+    respondWith()
+    renderRoutes(routes, ['/admin/users'])
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText('Marco Bianchi')).toBeInTheDocument()
+    expect(within(table).getAllByText('Attivo').length).toBeGreaterThan(0)
+    expect(within(table).getByText('Tu')).toBeInTheDocument()
+  })
+
+  it('shows the counts on the status tabs and filters through the URL', async () => {
+    const urls: URL[] = []
+    respondWith((url) => urls.push(url))
+    const { user, router } = renderRoutes(routes, ['/admin/users'])
+
+    await user.click(await screen.findByRole('tab', { name: /Invitati.*1/ }))
+
+    expect(router.state.location.search).toBe('?status=invited')
+    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[status]')).toBe('invited'))
+  })
+
+  it('reads filter, search and page from the URL', async () => {
+    const urls: URL[] = []
+    respondWith((url) => urls.push(url))
+    renderRoutes(routes, ['/admin/users?status=disabled&q=rossi&page=2'])
+
+    await screen.findByRole('table')
+    const last = urls.at(-1)
+    expect(last?.searchParams.get('filter[status]')).toBe('disabled')
+    expect(last?.searchParams.get('search')).toBe('rossi')
+    expect(last?.searchParams.get('page')).toBe('2')
+    expect(screen.getByRole('searchbox', { name: 'Cerca per nome o email' })).toHaveValue('rossi')
+  })
+
+  it('debounces the search and goes back to page one', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    respondWith()
+    const { user, router } = renderRoutes(routes, ['/admin/users?page=3'], { advanceTimers: vi.advanceTimersByTime })
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Cerca per nome o email' }), 'mar')
+    expect(router.state.location.search).toBe('?page=3')
+    vi.advanceTimersByTime(300)
+
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?q=mar'))
+  })
+
+  it('shows an empty state with a way to clear the filters', async () => {
+    respondWith(() => undefined, [])
+    const { user, router } = renderRoutes(routes, ['/admin/users?status=disabled&q=zzz'])
+
+    expect(await screen.findByText('Nessun utente trovato.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Azzera filtri' }))
+    expect(router.state.location.search).toBe('')
+  })
+
+  it('shows an error with retry', async () => {
+    server.use(http.get('/api/users', () => HttpResponse.json({ message: 'boom' }, { status: 500 })))
+    renderRoutes(routes, ['/admin/users'])
+
+    expect(await screen.findByText('Non è stato possibile caricare gli utenti.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Riprova' })).toBeInTheDocument()
+  })
+
+  it('shows when an invitation expires', async () => {
+    respondWith(() => undefined, [managedUser({ status: 'invited', status_label: 'Invitato', invitation_expires_at: '2099-10-16T10:00:00+00:00' })])
+    renderRoutes(routes, ['/admin/users'])
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText(/Invito scade il/)).toBeInTheDocument()
+  })
+
+  it('has no accessibility violations', async () => {
+    respondWith()
+    const { container } = renderRoutes(routes, ['/admin/users'])
+
+    await screen.findByRole('table')
+    await expectNoA11yViolations(container)
+  })
+})
