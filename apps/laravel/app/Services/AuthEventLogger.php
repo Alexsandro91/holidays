@@ -12,6 +12,7 @@ final class AuthEventLogger
 {
     public function log(AuthEventType $type, Request $request, ?User $user = null, ?User $actor = null): void
     {
+        // IP e user agent sono di chi fa la richiesta: se c'è actor_id appartengono all'autore, non a user_id
         AuthEvent::query()->create([
             'user_id' => $user?->id,
             'actor_id' => $actor?->id,
