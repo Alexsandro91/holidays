@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { routes } from '@/routes'
 import { expectNoA11yViolations } from '@/test/axe'
+import { userQueryKey } from '@/lib/queryKeys'
 import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -96,5 +97,35 @@ describe('AppShell', () => {
     await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
 
     await expectNoA11yViolations(container)
+  })
+
+  it('shows the administration group only to admins', async () => {
+    signedIn()
+    const first = renderRoutes(routes, ['/'])
+
+    expect(await screen.findByRole('link', { name: 'Utenti' })).toHaveAttribute('href', '/admin/users')
+    expect(screen.getByRole('link', { name: 'Amministratori' })).toHaveAttribute('href', '/admin/administrators')
+    first.unmount()
+
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'employee', role_label: 'Dipendente' } })))
+    renderRoutes(routes, ['/'])
+
+    await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+    expect(screen.queryByRole('link', { name: 'Utenti' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Amministratori' })).not.toBeInTheDocument()
+  })
+
+  it('logging out drops every cached admin query', async () => {
+    signedIn()
+    server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    const { user, queryClient } = renderRoutes(routes, ['/'])
+    queryClient.setQueryData(['admin', 'users', {}], { data: [] })
+
+    await user.click(await screen.findByRole('button', { name: /Menu account/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
+
+    expect(await screen.findByText('Sei uscito. A presto.')).toBeInTheDocument()
+    expect(queryClient.getQueryData(['admin', 'users', {}])).toBeUndefined()
+    expect(queryClient.getQueryData(userQueryKey)).toBeNull()
   })
 })

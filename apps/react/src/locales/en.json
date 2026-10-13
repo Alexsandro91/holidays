@@ -103,6 +103,9 @@
     "skip": "Skip to content",
     "home": "Home",
     "leave": "Leave and time off",
+    "admin": "Administration",
+    "users": "Users",
+    "administrators": "Administrators",
     "soon": "soon"
   },
   "account": { "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
@@ -116,7 +119,10 @@
     "description": "The address you opened doesn’t exist or is no longer available.",
     "back": "Back to home"
   },
+  "forbidden": { "title": "You don’t have access to this page", "description": "If you think this is a mistake, ask an administrator.", "back": "Back to home" },
   "titles": {
+    "users": "Users",
+    "administrators": "Administrators",
     "login": "Sign in",
     "verify": "Verification code",
     "home": "Home",

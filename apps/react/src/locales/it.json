@@ -103,6 +103,9 @@
     "skip": "Vai al contenuto",
     "home": "Home",
     "leave": "Ferie e permessi",
+    "admin": "Amministrazione",
+    "users": "Utenti",
+    "administrators": "Amministratori",
     "soon": "presto"
   },
   "account": { "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
@@ -116,7 +119,10 @@
     "description": "L’indirizzo che hai aperto non esiste o non è più disponibile.",
     "back": "Torna alla home"
   },
+  "forbidden": { "title": "Non hai i permessi per questa pagina", "description": "Se pensi che sia un errore, chiedi a un amministratore.", "back": "Torna alla home" },
   "titles": {
+    "users": "Utenti",
+    "administrators": "Amministratori",
     "login": "Accedi",
     "verify": "Codice di verifica",
     "home": "Home",

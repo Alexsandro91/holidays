@@ -14,14 +14,15 @@ export const createQueryClient = (options: QueryClientOptions = {}): QueryClient
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
-        if (isApiError(error, 'unauthenticated') && !isUserQuery(query.queryKey)) {
+        // 401: sessione scaduta; 403: il ruolo può essere cambiato (es. admin revocato). In entrambi i casi si rilegge l'utente
+        if ((isApiError(error, 'unauthenticated') || isApiError(error, 'forbidden')) && !isUserQuery(query.queryKey)) {
           void client.invalidateQueries({ queryKey: userQueryKey })
         }
       },
     }),
     mutationCache: new MutationCache({
       onError: (error) => {
-        if (isApiError(error, 'unauthenticated')) void client.invalidateQueries({ queryKey: userQueryKey })
+        if (isApiError(error, 'unauthenticated') || isApiError(error, 'forbidden')) void client.invalidateQueries({ queryKey: userQueryKey })
       },
     }),
     defaultOptions: {

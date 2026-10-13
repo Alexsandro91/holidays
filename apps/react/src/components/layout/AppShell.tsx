@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronsUpDown, House, LogOut } from 'lucide-react'
+import { CalendarDays, ChevronsUpDown, House, LogOut, ShieldCheck, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import { toast } from 'sonner'
@@ -21,6 +21,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -79,6 +80,31 @@ const AppShell = () => {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {user.role === 'admin' && (
+              <SidebarGroup>
+                <SidebarGroupLabel>{t('nav.admin')}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip={t('nav.users')}>
+                        <NavLink to="/admin/users">
+                          <Users aria-hidden="true" />
+                          <span>{t('nav.users')}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip={t('nav.administrators')}>
+                        <NavLink to="/admin/administrators">
+                          <ShieldCheck aria-hidden="true" />
+                          <span>{t('nav.administrators')}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
           </nav>
         </SidebarContent>
         <SidebarFooter>
