@@ -84,6 +84,22 @@ describe('ResetPasswordPage', () => {
     expect(calls).toBe(0)
   })
 
+  it('clears the stale mismatch when the first password is corrected to match', async () => {
+    const { user } = renderRoutes(routes, [LINK])
+
+    await fillPasswords(user, NEW_PASSWORD, 'una-frase-lunga-e-diversa')
+    await user.click(screen.getByRole('button', { name: 'Salva la password' }))
+    expect(await screen.findByText('Le due password non coincidono.')).toBeInTheDocument()
+
+    // Si corregge solo il primo campo: la conferma non viene toccata
+    const password = screen.getByLabelText('Nuova password')
+    await user.clear(password)
+    await user.type(password, 'una-frase-lunga-e-diversa')
+
+    expect(screen.queryByText('Le due password non coincidono.')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Conferma password')).not.toHaveAttribute('aria-invalid')
+  })
+
   it('checks the length before calling the API', async () => {
     let calls = 0
     server.use(

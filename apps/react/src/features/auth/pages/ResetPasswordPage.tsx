@@ -140,6 +140,7 @@ const ResetPasswordPage = () => {
               <FieldLabel htmlFor="email">{t('login.email')}</FieldLabel>
               <Input id="email" type="email" autoComplete="username" value={email} readOnly className="cursor-default bg-muted text-muted-foreground" />
             </Field>
+            {/* Correggere il primo campo rivaluta la conferma: l'avviso di password diverse non resta obsoleto */}
             <Field data-invalid={errors.password ? true : undefined}>
               <FieldLabel htmlFor="password">{t('reset.password')}</FieldLabel>
               <PasswordInput
@@ -147,7 +148,7 @@ const ResetPasswordPage = () => {
                 autoComplete="new-password"
                 aria-invalid={errors.password ? true : undefined}
                 aria-describedby={errors.password ? 'password-hint password-error' : 'password-hint'}
-                {...form.register('password')}
+                {...form.register('password', { deps: 'confirmation' })}
               />
               <FieldDescription id="password-hint">{t('reset.hint')}</FieldDescription>
               <FieldError id="password-error">{errors.password?.message}</FieldError>
