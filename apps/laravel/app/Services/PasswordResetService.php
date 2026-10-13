@@ -8,11 +8,13 @@ use App\Mail\PasswordChangedMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Support\AuthSession;
+use App\Support\EmailKey;
 use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Timebox;
 use LogicException;
 
@@ -24,6 +26,11 @@ final class PasswordResetService
     /** Durata minima della richiesta del link: uguale con e senza invio (hash del token, scrittura in coda). */
     private const MIN_LINK_DURATION_MICROSECONDS = 400_000;
 
+    /** Tetto di link per account in un'ora, da qualunque IP. */
+    private const MAX_LINKS_PER_HOUR = 5;
+
+    private const LINK_CAP_DECAY_SECONDS = 3600;
+
     public function __construct(private readonly AuthEventLogger $events) {}
 
     /**
@@ -34,9 +41,21 @@ final class PasswordResetService
         (new Timebox)->call(function () use ($email): void {
             // Un errore dell'infrastruttura (token, coda) è segnalato ma non cambia la risposta:
             // un 500 solo per le email registrate rivelerebbe quali account esistono
-            rescue(function () use ($email): void {
-                // Esito ignorato di proposito: utente inesistente, non attivo o link già chiesto da meno di 60 s
-                $this->broker()->sendResetLink(['email' => $email, 'status' => UserStatus::Active->value]);
+            // Tetto per account indipendente dall'IP, applicato in silenzio: un 429 per email permetterebbe
+            // a chiunque di bloccare il recupero della password di un collega
+            $capKey = 'reset-link:'.EmailKey::from($email);
+
+            if (RateLimiter::tooManyAttempts($capKey, self::MAX_LINKS_PER_HOUR)) {
+                return;
+            }
+
+            rescue(function () use ($email, $capKey): void {
+                // Utente inesistente, non attivo o link già chiesto da meno di 60 s: nessun invio e stessa risposta
+                $status = $this->broker()->sendResetLink(['email' => $email, 'status' => UserStatus::Active->value]);
+
+                if ($status === PasswordBroker::RESET_LINK_SENT) {
+                    RateLimiter::hit($capKey, self::LINK_CAP_DECAY_SECONDS);
+                }
             }, report: true);
         }, self::MIN_LINK_DURATION_MICROSECONDS);
     }

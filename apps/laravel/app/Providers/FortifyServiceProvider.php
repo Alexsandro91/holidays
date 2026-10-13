@@ -3,11 +3,11 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\StartEmailLoginChallenge;
+use App\Support\EmailKey;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\CanonicalizeUsername;
 use Laravel\Fortify\Fortify;
 
@@ -46,13 +46,8 @@ class FortifyServiceProvider extends ServiceProvider
         ]);
     }
 
-    /**
-     * Email per le chiavi dei limiti. Input non stringa (es. email[]=…) trattato come vuoto: niente errori di conversione.
-     */
     private static function normalizedEmail(Request $request): string
     {
-        $email = $request->input('email');
-
-        return is_string($email) ? Str::lower(trim($email)) : '';
+        return EmailKey::from($request->input('email'));
     }
 }

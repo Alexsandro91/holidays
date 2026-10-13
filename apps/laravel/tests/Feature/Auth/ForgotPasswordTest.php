@@ -152,6 +152,41 @@ class ForgotPasswordTest extends TestCase
         $this->postJson('/api/auth/forgot-password', ['email' => 'giulia@example.test'])->assertAccepted();
     }
 
+    public function test_accented_variants_of_the_email_share_the_same_limit(): void
+    {
+        Mail::fake();
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->postJson('/api/auth/forgot-password', ['email' => 'giulia@example.test'])->assertAccepted();
+        }
+
+        // Il database confronta le email senza accenti: la variante è lo stesso account e non apre un nuovo limite
+        $this->postJson('/api/auth/forgot-password', ['email' => 'gíulia@example.test'])->assertTooManyRequests();
+    }
+
+    public function test_an_account_receives_at_most_five_links_per_hour_from_any_ip(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create();
+
+        for ($attempt = 1; $attempt <= 6; $attempt++) {
+            // IP sempre diverso e oltre i 60 s del broker: solo il tetto per account può fermare l'invio
+            $this->withServerVariables(['REMOTE_ADDR' => "203.0.113.{$attempt}"])
+                ->postJson('/api/auth/forgot-password', ['email' => $user->email])
+                ->assertAccepted()
+                ->assertExactJson(self::SENT);
+            $this->travel(61)->seconds();
+        }
+
+        Mail::assertQueued(ResetPasswordMail::class, 5);
+
+        $this->travel(1)->hours();
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])
+            ->postJson('/api/auth/forgot-password', ['email' => $user->email])
+            ->assertAccepted();
+        Mail::assertQueued(ResetPasswordMail::class, 6);
+    }
+
     public function test_requests_are_limited_per_ip_even_with_different_emails(): void
     {
         Mail::fake();
