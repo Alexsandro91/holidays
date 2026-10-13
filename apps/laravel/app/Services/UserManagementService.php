@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
@@ -119,10 +120,19 @@ final class UserManagementService
     }
 
     /**
-     * Revoca il ruolo admin: il nuovo ruolo è solo dipendente o responsabile (lo garantisce la request).
+     * Revoca il ruolo admin: il nuovo ruolo è solo dipendente o responsabile. Lo garantiscono già request e policy,
+     * il servizio lo riverifica perché può essere chiamato anche fuori da HTTP.
      */
     public function revokeAdmin(User $target, Role $newRole, User $actor, Request $request): User
     {
+        if ($newRole === Role::Admin) {
+            throw new InvalidArgumentException('The new role of a revoked admin cannot be admin.');
+        }
+
+        if ($target->is($actor)) {
+            throw new AuthorizationException(Translate::text('users.not_on_yourself'));
+        }
+
         return DB::transaction(function () use ($target, $newRole, $actor, $request): User {
             $activeAdminIds = $this->lockActiveAdmins($actor);
             $fresh = User::query()->lockForUpdate()->findOrFail($target->id);

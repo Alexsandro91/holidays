@@ -9,6 +9,7 @@ return [
     'last_admin' => 'Serve almeno un amministratore attivo: questa azione lo lascerebbe senza.',
     'no_longer_admin' => 'Non sei più amministratore.',
     'not_promotable' => 'Si possono promuovere solo utenti attivi che non sono già amministratori.',
+    'not_on_yourself' => 'Non puoi fare questa azione sul tuo account.',
     'not_admin' => 'Questo utente non è un amministratore.',
     'state_changed' => 'La situazione dell’utente è cambiata nel frattempo. Ricarica la pagina e riprova.',
     'name_characters' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
