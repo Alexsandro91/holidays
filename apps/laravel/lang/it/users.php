@@ -1,9 +1,7 @@
 <?php
 
 return [
-    'not_found' => 'Utente non trovato.',
     'invitation_resent' => 'Invito inviato di nuovo.',
-    'role_changed' => 'Ruolo aggiornato.',
     'not_active' => 'L’utente non è attivo.',
     'not_disabled' => 'L’utente non è disattivato.',
     'last_admin' => 'Serve almeno un amministratore attivo: questa azione lo lascerebbe senza.',

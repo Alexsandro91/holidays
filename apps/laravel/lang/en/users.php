@@ -1,9 +1,7 @@
 <?php
 
 return [
-    'not_found' => 'User not found.',
     'invitation_resent' => 'Invitation sent again.',
-    'role_changed' => 'Role updated.',
     'not_active' => 'This user is not active.',
     'not_disabled' => 'This user is not disabled.',
     'last_admin' => 'At least one active admin is required: this action would leave none.',
