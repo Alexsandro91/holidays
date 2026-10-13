@@ -128,6 +128,25 @@ class UserStatusTest extends TestCase
         $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertOk();
     }
 
+    public function test_wrong_admin_passwords_and_the_lockout_are_audited(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+
+        // Il campo vuoto non conta come errore e non si registra
+        $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable")->assertUnprocessable();
+        $this->assertDatabaseCount('auth_events', 0);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'sbagliata'])->assertUnprocessable();
+        }
+        $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertTooManyRequests();
+
+        $this->assertSame(5, AuthEvent::query()->where('event', AuthEventType::AdminPasswordFailed)
+            ->where('user_id', $this->admin->id)->where('actor_id', $this->admin->id)->count());
+        $this->assertSame(1, AuthEvent::query()->where('event', AuthEventType::AdminPasswordLocked)
+            ->where('user_id', $this->admin->id)->where('actor_id', $this->admin->id)->count());
+    }
+
     public function test_a_stale_actor_is_refused_and_nothing_changes(): void
     {
         // Simula due revoche incrociate: l'attore è già stato declassato da un'altra richiesta

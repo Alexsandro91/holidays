@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Enums\AuthEventType;
+use App\Models\User;
+use App\Services\AuthEventLogger;
 use App\Support\Translate;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
@@ -30,6 +33,7 @@ trait ConfirmsCurrentPassword
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_PASSWORD_FAILURES)) {
             $seconds = RateLimiter::availableIn($key);
+            $this->logPasswordEvent(AuthEventType::AdminPasswordLocked);
 
             throw new ThrottleRequestsException(
                 Translate::text('users.password_locked', ['minutes' => (int) ceil($seconds / 60)]),
@@ -44,9 +48,22 @@ trait ConfirmsCurrentPassword
         // Contano solo le password sbagliate, non il campo lasciato vuoto
         if ($this->filled('current_password') && $validator->errors()->has('current_password')) {
             RateLimiter::hit($this->passwordFailuresKey(), self::PASSWORD_FAILURE_DECAY_SECONDS);
+            $this->logPasswordEvent(AuthEventType::AdminPasswordFailed);
         }
 
         parent::failedValidation($validator);
+    }
+
+    /**
+     * Traccia di chi sbaglia la password o resta bloccato: l'admin è sia l'utente sia chi agisce.
+     */
+    private function logPasswordEvent(AuthEventType $type): void
+    {
+        $actor = $this->user();
+
+        if ($actor instanceof User) {
+            app(AuthEventLogger::class)->log($type, $this, $actor, $actor);
+        }
     }
 
     private function passwordFailuresKey(): string
