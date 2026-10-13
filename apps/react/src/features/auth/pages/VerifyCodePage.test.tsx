@@ -43,6 +43,12 @@ describe('VerifyCodePage', () => {
     expect(screen.getByText(/g•••@example\.test/)).toBeInTheDocument()
   })
 
+  it('confirms the activation when coming from an invitation', async () => {
+    renderRoutes(routes, [{ pathname: '/login/verify', state: { email: 'sara@holidays.test', invitationAccepted: true } }])
+
+    expect(await screen.findByText('Account attivato. Per entrare inserisci il codice che ti abbiamo inviato.')).toBeInTheDocument()
+  })
+
   it('shows no reset notice after a normal sign-in', async () => {
     renderRoutes(routes, [entry])
 

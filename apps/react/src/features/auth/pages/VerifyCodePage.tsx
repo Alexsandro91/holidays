@@ -18,8 +18,8 @@ const RESEND_COOLDOWN_SECONDS = 60
 const CODE_PATTERN = /^\d{6}$/
 const SLOT_CLASS = 'h-14 w-11 sm:h-15 sm:w-12'
 
-// passwordReset: si arriva dalla nuova password, non dal login
-const locationStateSchema = z.object({ email: z.string(), passwordReset: z.boolean().optional() })
+// passwordReset / invitationAccepted: si arriva dalla nuova password o dall'attivazione, non dal login
+const locationStateSchema = z.object({ email: z.string(), passwordReset: z.boolean().optional(), invitationAccepted: z.boolean().optional() })
 
 const maskEmail = (email: string): string => {
   const [local = '', domain = ''] = email.split('@')
@@ -50,6 +50,7 @@ const VerifyCodePage = () => {
   const parsedState = locationStateSchema.safeParse(location.state)
   const email = parsedState.success ? parsedState.data.email : null
   const afterPasswordReset = parsedState.success && parsedState.data.passwordReset === true
+  const afterInvitation = parsedState.success && parsedState.data.invitationAccepted === true
   const redirect = searchParams.get('redirect')
 
   const restartLogin = () => {
@@ -132,6 +133,12 @@ const VerifyCodePage = () => {
         <Alert className="mb-5">
           <CircleCheck aria-hidden="true" />
           <AlertDescription>{t('verify.passwordReset')}</AlertDescription>
+        </Alert>
+      )}
+      {afterInvitation && (
+        <Alert className="mb-5">
+          <CircleCheck aria-hidden="true" />
+          <AlertDescription>{t('verify.invitationAccepted')}</AlertDescription>
         </Alert>
       )}
       <form

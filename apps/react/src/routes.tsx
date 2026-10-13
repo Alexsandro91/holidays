@@ -10,9 +10,11 @@ import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import AdministratorsPage from '@/features/administrators/pages/AdministratorsPage'
+import AcceptInvitationPage from '@/features/invitations/pages/AcceptInvitationPage'
 import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import PrivacyPage from '@/pages/PrivacyPage'
 
 export const routes: RouteObject[] = [
   {
@@ -27,6 +29,7 @@ export const routes: RouteObject[] = [
               { path: '/login', element: <LoginPage />, handle: { titleKey: 'titles.login' } },
               { path: '/forgot-password', element: <ForgotPasswordPage />, handle: { titleKey: 'titles.forgotPassword' } },
               { path: '/reset-password/:token', element: <ResetPasswordPage />, handle: { titleKey: 'titles.resetPassword' } },
+              { path: '/invitation/:token', element: <AcceptInvitationPage />, handle: { titleKey: 'titles.invitation' } },
               { path: '/login/verify', element: <VerifyCodePage />, handle: { titleKey: 'titles.verify' } },
             ],
           },
@@ -49,6 +52,10 @@ export const routes: RouteObject[] = [
             ],
           },
         ],
+      },
+      {
+        element: <AuthLayout />,
+        children: [{ path: '/privacy', element: <PrivacyPage />, handle: { titleKey: 'titles.privacy' } }],
       },
       { path: '*', element: <NotFoundPage />, handle: { titleKey: 'titles.notFound' } },
     ],

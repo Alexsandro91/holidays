@@ -55,7 +55,8 @@
     "resent": "New code sent. The previous one no longer works.",
     "resendLimit": "You reached the limit of new codes. If it doesn’t arrive, sign in again.",
     "otherAccount": "Use another account",
-    "passwordReset": "Password updated. To sign in, enter the code we just sent you."
+    "passwordReset": "Password updated. To sign in, enter the code we just sent you.",
+    "invitationAccepted": "Account activated. To sign in, enter the code we just sent you."
   },
   "forgot": {
     "title": "Forgot your password?",
@@ -193,6 +194,29 @@
       "done": "{{name}} is no longer an administrator."
     }
   },
+  "invitation": {
+    "title": "Welcome, {{name}}",
+    "subtitle": "Choose a password to activate your Holidays account.",
+    "password": "Password",
+    "confirmation": "Confirm password",
+    "hint": "At least 12 characters. An easy-to-remember phrase works great.",
+    "privacy": "I have read the privacy notice",
+    "privacyLink": "Read the notice (opens in a new tab)",
+    "privacyRequired": "To continue, confirm you have read the privacy notice.",
+    "submit": "Activate account",
+    "submitting": "Activating…",
+    "throttled": "Too many attempts. You can try again in {{count}} seconds.",
+    "invalidTitle": "Invalid invitation",
+    "invalid": "This invitation is invalid or has already been used.",
+    "expiredTitle": "Invitation expired",
+    "expired": "Invitations are valid for 72 hours.",
+    "askHr": "Ask HR to send you a new one.",
+    "toLogin": "Go to sign in"
+  },
+  "privacy": {
+    "title": "Privacy notice",
+    "placeholder": "Placeholder text: the final notice will be validated by the DPO before release. Holidays processes name, email, role and leave data to manage absences (art. 6.1.b GDPR); access logs are used only for security and kept for 180 days."
+  },
   "titles": {
     "users": "Users",
     "administrators": "Administrators",
@@ -201,7 +225,9 @@
     "home": "Home",
     "notFound": "Page not found",
     "forgotPassword": "Forgot password",
-    "resetPassword": "New password"
+    "resetPassword": "New password",
+    "invitation": "Activate account",
+    "privacy": "Privacy notice"
   },
   "a11y": { "pageAnnouncement": "Page: {{title}}" }
 }

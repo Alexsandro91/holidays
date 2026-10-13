@@ -55,7 +55,8 @@
     "resent": "Nuovo codice inviato. Il precedente non è più valido.",
     "resendLimit": "Hai raggiunto il limite di nuovi codici. Se non lo ricevi, ricomincia l’accesso.",
     "otherAccount": "Usa un altro account",
-    "passwordReset": "Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato."
+    "passwordReset": "Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato.",
+    "invitationAccepted": "Account attivato. Per entrare inserisci il codice che ti abbiamo inviato."
   },
   "forgot": {
     "title": "Password dimenticata?",
@@ -193,6 +194,29 @@
       "done": "{{name}} non è più amministratore."
     }
   },
+  "invitation": {
+    "title": "Benvenuto, {{name}}",
+    "subtitle": "Scegli la password per attivare il tuo account Holidays.",
+    "password": "Password",
+    "confirmation": "Conferma password",
+    "hint": "Almeno 12 caratteri. Una frase facile da ricordare va benissimo.",
+    "privacy": "Ho preso visione dell’informativa privacy",
+    "privacyLink": "Leggi l’informativa (si apre in una nuova scheda)",
+    "privacyRequired": "Per continuare conferma di aver preso visione dell’informativa.",
+    "submit": "Attiva account",
+    "submitting": "Attivazione in corso…",
+    "throttled": "Troppi tentativi. Potrai riprovare tra {{count}} secondi.",
+    "invalidTitle": "Invito non valido",
+    "invalid": "Questo invito non è valido o è già stato usato.",
+    "expiredTitle": "Invito scaduto",
+    "expired": "Gli inviti valgono 72 ore.",
+    "askHr": "Chiedi all’ufficio HR di inviartene uno nuovo.",
+    "toLogin": "Vai all’accesso"
+  },
+  "privacy": {
+    "title": "Informativa privacy",
+    "placeholder": "Testo segnaposto: l’informativa definitiva sarà validata dal DPO prima del rilascio. Holidays tratta nome, email, ruolo e i dati di ferie e permessi per gestire le assenze (art. 6.1.b GDPR); i log di accesso servono solo alla sicurezza e si conservano 180 giorni."
+  },
   "titles": {
     "users": "Utenti",
     "administrators": "Amministratori",
@@ -201,7 +225,9 @@
     "home": "Home",
     "notFound": "Pagina non trovata",
     "forgotPassword": "Password dimenticata",
-    "resetPassword": "Nuova password"
+    "resetPassword": "Nuova password",
+    "invitation": "Attiva account",
+    "privacy": "Informativa privacy"
   },
   "a11y": { "pageAnnouncement": "Pagina: {{title}}" }
 }
