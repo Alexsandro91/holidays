@@ -74,6 +74,22 @@ describe('VerifyCodePage', () => {
     expect(queryClient.getQueryData(userQueryKey)).toMatchObject({ email: 'admin@holidays.test' })
   })
 
+  it('never sends an accepted code again while the next page is loading', async () => {
+    const bodies: unknown[] = []
+    acceptCode((body) => bodies.push(body))
+    // La pagina successiva resta in caricamento: tra il codice accettato e il cambio pagina c'è una finestra
+    const slowRoutes: RouteObject[] = [...routes.filter((route) => route.path !== '/'), { path: '/', loader: () => new Promise(() => undefined), element: <p>home-page</p> }]
+    const { user, router } = renderRoutes(slowRoutes, [entry])
+
+    await user.type(await screen.findByLabelText('Codice di verifica'), '482913')
+    await vi.waitFor(() => expect(router.state.navigation.state).toBe('loading'))
+    await user.keyboard('{Enter}')
+    // Lascia il tempo a un eventuale secondo POST di arrivare al server finto
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(bodies).toEqual([{ code: '482913' }])
+  })
+
   it('accepts a pasted code with spaces or dashes', async () => {
     const bodies: unknown[] = []
     acceptCode((body) => bodies.push(body))

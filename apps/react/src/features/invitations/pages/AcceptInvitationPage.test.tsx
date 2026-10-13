@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -52,6 +52,28 @@ describe('AcceptInvitationPage', () => {
     expect(await screen.findByText('verify-page')).toBeInTheDocument()
     expect(body).toEqual({ password: PASSWORD, password_confirmation: PASSWORD, privacy_acknowledged: true })
     expect(router.state.location.state).toEqual({ email: 'sara@holidays.test', invitationAccepted: true })
+  })
+
+  it('never activates twice while the code page is loading', async () => {
+    validInvitation()
+    let calls = 0
+    server.use(
+      http.post('/api/invitations/abc/accept', () => {
+        calls += 1
+        return HttpResponse.json({ two_factor: true, message: 'ok' })
+      }),
+    )
+    // La pagina del codice resta in caricamento: tra l'attivazione e il cambio pagina c'è una finestra
+    const slowRoutes: RouteObject[] = [...routes.filter((route) => route.path !== '/login/verify'), { path: '/login/verify', loader: () => new Promise(() => undefined), element: <p>verify-page</p> }]
+    const { user, router } = renderRoutes(slowRoutes, ['/invitation/abc'])
+
+    await fillForm(user)
+    await user.click(screen.getByRole('button', { name: 'Attiva account' }))
+    await waitFor(() => expect(router.state.navigation.state).toBe('loading'))
+    await user.click(screen.getByRole('button', { name: 'Attiva account' }))
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
   })
 
   it('requires matching passwords and the privacy acknowledgment', async () => {

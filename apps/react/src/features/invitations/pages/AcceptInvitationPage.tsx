@@ -81,9 +81,8 @@ const AcceptInvitationPage = () => {
     setFormError(null)
     try {
       await accept.mutateAsync({ password, password_confirmation: confirmation, privacy_acknowledged: true })
-      // L'attivazione non apre la sessione: si entra con il codice appena inviato
-      navigate('/login/verify', { replace: true, state: { email: invitation.data.email, invitationAccepted: true } })
     } catch (error) {
+      submitting.current = false
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60
         setLockedFor(seconds)
@@ -108,9 +107,11 @@ const AcceptInvitationPage = () => {
         return
       }
       setFormError(isApiError(error, 'network') ? t('errors.network') : t('errors.generic'))
-    } finally {
-      submitting.current = false
+      return
     }
+    // Account attivato: submitting resta true fino allo smontaggio (la navigazione non è immediata e un secondo
+    // invio userebbe un invito già consumato). L'attivazione non apre la sessione: si entra con il codice appena inviato
+    navigate('/login/verify', { replace: true, state: { email: invitation.data.email, invitationAccepted: true } })
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)

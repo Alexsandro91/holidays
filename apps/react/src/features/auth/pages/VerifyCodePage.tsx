@@ -70,13 +70,14 @@ const VerifyCodePage = () => {
     setInfo(null)
     try {
       await verify.mutateAsync(value)
-      navigate(safeRedirect(redirect), { replace: true })
     } catch (caught) {
       const meta = metaOf(caught)
       if (meta.success && meta.data.restart) {
+        // Si torna all'accesso: da questa pagina non parte più nulla
         restartLogin()
         return
       }
+      submitting.current = false
       if (isApiError(caught, 'throttled')) {
         const seconds = caught.retryAfter ?? RESEND_COOLDOWN_SECONDS
         lock.start(seconds)
@@ -86,9 +87,11 @@ const VerifyCodePage = () => {
       else setError(t('errors.generic'))
       setCode('')
       codeInput.current?.focus()
-    } finally {
-      submitting.current = false
+      return
     }
+    // Codice accettato: submitting resta true fino allo smontaggio della pagina. La navigazione non è immediata
+    // e un Invio arrivato nel frattempo rimanderebbe lo stesso codice (secondo POST)
+    navigate(safeRedirect(redirect), { replace: true })
   }
 
   const onResend = async () => {
