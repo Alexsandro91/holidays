@@ -29,6 +29,8 @@ export const useGrantAdmin = () => {
   return useMutation({
     mutationFn: ({ userId, currentPassword }: GrantAdminInput) =>
       requestData('POST', '/api/administrators', resourceSchema, { user_id: userId, current_password: currentPassword }),
+    // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
+    gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
     onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
   })
@@ -39,6 +41,8 @@ export const useRevokeAdmin = () => {
   return useMutation({
     mutationFn: ({ id, role, currentPassword }: RevokeAdminInput) =>
       requestData('DELETE', `/api/administrators/${id}`, resourceSchema, { role, current_password: currentPassword }),
+    // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
+    gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
     onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
   })

@@ -71,6 +71,8 @@ export const useLogout = () => {
   const signOut = () => {
     // Dati dell'area admin o di altri utenti: non devono restare per chi usa il browser dopo
     queryClient.removeQueries({ predicate: (query) => !isUserQuery(query.queryKey) })
+    // Le mutation concluse tengono le variabili inviate, comprese le password di conferma degli admin
+    queryClient.getMutationCache().clear()
     // null (e non "nessun dato"): le route protette mostrano l'avviso di uscita
     queryClient.setQueryData(userQueryKey, null)
   }

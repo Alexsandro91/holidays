@@ -128,4 +128,22 @@ describe('AppShell', () => {
     expect(queryClient.getQueryData(['admin', 'users', {}])).toBeUndefined()
     expect(queryClient.getQueryData(userQueryKey)).toBeNull()
   })
+
+  it('logging out forgets the mutations, with the admin passwords they carried', async () => {
+    signedIn()
+    server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    const { user, queryClient } = renderRoutes(routes, ['/'], { toaster: false })
+    // Una promozione già conclusa: le variabili (password compresa) restano nella cache delle mutation
+    await queryClient
+      .getMutationCache()
+      .build(queryClient, { mutationFn: (input: { currentPassword: string }) => Promise.resolve(input) })
+      .execute({ currentPassword: 'password-admin' })
+    expect(queryClient.getMutationCache().getAll()).not.toHaveLength(0)
+
+    await user.click(await screen.findByRole('button', { name: /Menu account/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
+
+    expect(await screen.findByText('Sei uscito. A presto.')).toBeInTheDocument()
+    expect(queryClient.getMutationCache().getAll()).toHaveLength(0)
+  })
 })

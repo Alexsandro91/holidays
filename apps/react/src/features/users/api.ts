@@ -71,6 +71,8 @@ const useAdminMutation = <TInput>(mutationFn: (input: TInput) => Promise<unknown
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,
+    // Variabili (password di conferma comprese) fuori dalla cache appena il dialog si chiude
+    gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
     onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
   })
