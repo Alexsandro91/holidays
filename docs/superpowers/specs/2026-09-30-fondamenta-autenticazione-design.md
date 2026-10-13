@@ -99,6 +99,9 @@ Browser ──► localhost:5174 (Vite, React)
 ## 6. Flussi
 
 ### 6.1 Invito
+> Aggiornato dalla fase 3 (`2026-10-13-fase-3-inviti-utenti-admin-design.md`): l'invito crea solo dipendenti e
+> responsabili, gli admin nascono per promozione; dopo l'attivazione parte il passo del codice; nuova sezione amministratori.
+
 1. Admin inserisce nome, email, ruolo → utente `invited` senza password + `invitations` con token casuale
    (64 caratteri, salvato come SHA-256), validità **72 ore**, uso singolo → email di invito (in coda).
 2. Il link apre `/invitation/:token` → la SPA legge nome ed email dall'API.
