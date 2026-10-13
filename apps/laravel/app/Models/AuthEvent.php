@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Evento di sicurezza. Serve solo alla sicurezza (art. 32 GDPR), mai al controllo dell'attività lavorativa.
  */
-#[Fillable(['user_id', 'event', 'ip_address', 'user_agent'])]
+#[Fillable(['user_id', 'actor_id', 'event', 'ip_address', 'user_agent'])]
 class AuthEvent extends Model
 {
     public const UPDATED_AT = null;
@@ -29,5 +29,13 @@ class AuthEvent extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
     }
 }

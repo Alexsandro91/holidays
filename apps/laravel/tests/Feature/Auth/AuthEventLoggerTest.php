@@ -38,4 +38,18 @@ class AuthEventLoggerTest extends TestCase
 
         $this->assertNull(AuthEvent::query()->sole()->user_id);
     }
+
+    public function test_records_who_performed_the_action(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->create();
+
+        app(AuthEventLogger::class)->log(AuthEventType::UserDisabled, Request::create('/'), $target, $admin);
+
+        $this->assertDatabaseHas('auth_events', [
+            'user_id' => $target->id,
+            'actor_id' => $admin->id,
+            'event' => AuthEventType::UserDisabled->value,
+        ]);
+    }
 }

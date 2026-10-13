@@ -58,6 +58,9 @@ return [
 
     'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Rome'),
 
+    // Versione dell'informativa privacy di cui l'utente prende visione all'attivazione (spec §6.1)
+    'privacy_notice_version' => env('PRIVACY_NOTICE_VERSION', '1.0'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

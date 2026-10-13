@@ -15,4 +15,8 @@ enum AuthEventType: string
     case UserDisabled = 'user_disabled';
     case UserEnabled = 'user_enabled';
     case LoggedOut = 'logged_out';
+    case InvitationCancelled = 'invitation_cancelled';
+    case RoleChanged = 'role_changed';
+    case AdminGranted = 'admin_granted';
+    case AdminRevoked = 'admin_revoked';
 }

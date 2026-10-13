@@ -10,10 +10,11 @@ use Illuminate\Support\Str;
 
 final class AuthEventLogger
 {
-    public function log(AuthEventType $type, Request $request, ?User $user = null): void
+    public function log(AuthEventType $type, Request $request, ?User $user = null, ?User $actor = null): void
     {
         AuthEvent::query()->create([
             'user_id' => $user?->id,
+            'actor_id' => $actor?->id,
             'event' => $type,
             'ip_address' => $request->ip(),
             'user_agent' => Str::limit((string) $request->userAgent(), 255, ''),

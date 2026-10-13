@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // La SPA sulla stessa origine usa la sessione in cookie (Sanctum SPA)
         $middleware->statefulApi();
+        // API autenticata: 60 richieste al minuto per utente (spec §8.1), limiter `api` in AppServiceProvider
+        $middleware->throttleApi();
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
         $middleware->append(SecurityHeaders::class);

@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\NotPwnedVerifier;
 use Illuminate\Validation\Rules\Password;
@@ -37,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
 
             return config('auth.password_uncompromised') ? $rule->uncompromised() : $rule;
         });
+
+        // Per utente quando c'è una sessione, per IP da ospite
+        RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(60)
+            ->by('api:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
 
         // Il listener LogPwnedPasswordsRequest è registrato dall'auto-discovery degli eventi di Laravel
     }
