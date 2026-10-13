@@ -2,7 +2,7 @@
 
 ## Ambiente
 - React + TypeScript + **Vite**. Comandi: `npm run dev`, `npm run build`, `npm run lint`, `npm test` (Vitest),
-  `npm run test:e2e` (Playwright: richiede Sail acceso con `queue`, `migrate:fresh --seed` e `cache:clear`; gli E2E del recupero password usano `reset@holidays.test` e richiedono `cache:clear`, limite di 3 richieste di link ogni 15 minuti e di 5 link l’ora per account).
+  `npm run test:e2e` (Playwright: richiede Sail acceso con `queue`, `migrate:fresh --seed` e `cache:clear`; gli E2E del recupero password usano `reset@holidays.test` e richiedono `cache:clear`, limite di 3 richieste di link ogni 15 minuti e di 5 link l’ora per account; `admin-users.spec.ts` crea a ogni esecuzione un utente `e2e-<timestamp>@holidays.test`, che resta disattivato, e richiede `sail artisan migrate` dopo la fase 3).
 - Porta del dev server da `DEV_SERVER_PORT` nel `.env` (default 5173, `strictPort`).
 - Backend: API Laravel in `../laravel` (Sail). In sviluppo il proxy di Vite inoltra `/api` e `/sanctum` a
   `API_PROXY_TARGET`: il codice chiama solo percorsi relativi, sempre tramite `src/lib/api.ts`.

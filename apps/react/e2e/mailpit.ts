@@ -3,7 +3,7 @@ import { z } from 'zod'
 const MAILPIT_URL = process.env.MAILPIT_URL || 'http://localhost:8025'
 
 const listSchema = z.object({
-  messages: z.array(z.object({ ID: z.string(), To: z.array(z.object({ Address: z.string() })) })),
+  messages: z.array(z.object({ ID: z.string(), Subject: z.string(), To: z.array(z.object({ Address: z.string() })) })),
 })
 const messageSchema = z.object({ Text: z.string() })
 
@@ -32,3 +32,18 @@ export const waitForLoginCode = (email: string, timeoutMs = 20_000): Promise<str
 /** Attende l'email di recupero e ne estrae percorso e query del link (l'host dipende da FRONTEND_URL). */
 export const waitForResetLink = (email: string, timeoutMs = 20_000): Promise<string> =>
   waitForMatch(email, /https?:\/\/[^/\s]+(\/reset-password\/[A-Za-z0-9]+\?email=[^\s)\]]+)/, timeoutMs)
+
+/** Attende l'email di invito e ne estrae il percorso del link (l'host dipende da FRONTEND_URL). */
+export const waitForInvitationLink = (email: string, timeoutMs = 20_000): Promise<string> =>
+  waitForMatch(email, /https?:\/\/[^/\s]+(\/invitation\/[A-Za-z0-9]+)/, timeoutMs)
+
+/** Attende un'email per `email` con l'oggetto indicato (es. l'avviso agli admin). */
+export const waitForSubject = async (email: string, subject: RegExp, timeoutMs = 20_000): Promise<void> => {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const list = listSchema.parse(await (await fetch(`${MAILPIT_URL}/api/v1/messages`)).json())
+    if (list.messages.some((item) => item.To.some((to) => to.Address === email) && subject.test(item.Subject))) return
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  throw new Error(`Nessuna email "${subject.source}" per ${email}`)
+}
