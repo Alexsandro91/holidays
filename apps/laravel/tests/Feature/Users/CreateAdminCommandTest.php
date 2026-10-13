@@ -36,4 +36,12 @@ class CreateAdminCommandTest extends TestCase
         $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'non-una-email'])->assertFailed();
         Mail::assertNothingQueued();
     }
+
+    public function test_refuses_a_name_with_markup(): void
+    {
+        Mail::fake();
+
+        $this->artisan('app:create-admin', ['name' => '[Verifica](https://phish.example)', 'email' => 'giulia@example.test'])->assertFailed();
+        $this->assertDatabaseMissing('users', ['email' => 'giulia@example.test']);
+    }
 }

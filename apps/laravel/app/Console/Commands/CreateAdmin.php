@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\Role;
 use App\Enums\UserStatus;
+use App\Http\Requests\Users\StoreUserRequest;
 use App\Models\User;
 use App\Services\InvitationService;
 use App\Support\Translate;
@@ -28,9 +29,9 @@ class CreateAdmin extends Command
         $email = Str::lower(trim((string) $this->argument('email')));
 
         $validator = Validator::make(['name' => $name, 'email' => $email], [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'not_regex:'.StoreUserRequest::NAME_FORBIDDEN_CHARACTERS],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-        ]);
+        ], ['name.not_regex' => Translate::text('users.name_characters')]);
 
         if ($validator->fails()) {
             foreach ($validator->errors()->all() as $error) {

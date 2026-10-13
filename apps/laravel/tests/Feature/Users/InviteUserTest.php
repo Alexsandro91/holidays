@@ -101,6 +101,19 @@ class InviteUserTest extends TestCase
             ->assertJsonValidationErrors(['name', 'email', 'role']);
     }
 
+    public function test_names_with_markup_or_control_characters_are_rejected(): void
+    {
+        foreach (['[Verifica](https://phish.example)', 'Sara <b>Colombo</b>', "Sara\u{0007}Colombo"] as $name) {
+            $this->actingAs($this->admin)->withHeader('Accept-Language', 'it')
+                ->postJson('/api/users', $this->payload(['name' => $name]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['name' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.']);
+        }
+
+        $this->assertDatabaseMissing('users', ['email' => 'sara@example.test']);
+        Mail::assertNothingQueued();
+    }
+
     public function test_non_admins_cannot_invite(): void
     {
         $this->actingAs(User::factory()->manager()->create())->postJson('/api/users', $this->payload())->assertForbidden();

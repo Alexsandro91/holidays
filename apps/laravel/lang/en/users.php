@@ -11,6 +11,7 @@ return [
     'not_promotable' => 'Only active users who are not admins yet can be promoted.',
     'not_admin' => 'This user is not an admin.',
     'state_changed' => 'This user changed in the meantime. Reload the page and try again.',
+    'name_characters' => 'The name cannot contain square brackets, < > signs or control characters.',
     'password_locked' => 'Too many password attempts. Try again in :minutes minutes.',
     'mail' => [
         'admin_change' => [

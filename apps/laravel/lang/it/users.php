@@ -11,6 +11,7 @@ return [
     'not_promotable' => 'Si possono promuovere solo utenti attivi che non sono già amministratori.',
     'not_admin' => 'Questo utente non è un amministratore.',
     'state_changed' => 'La situazione dell’utente è cambiata nel frattempo. Ricarica la pagina e riprova.',
+    'name_characters' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
     'password_locked' => 'Troppi tentativi con la password. Riprova tra :minutes minuti.',
     'mail' => [
         'admin_change' => [

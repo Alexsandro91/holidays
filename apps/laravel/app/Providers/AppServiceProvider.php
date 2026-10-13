@@ -7,6 +7,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\NotPwnedVerifier;
@@ -40,6 +41,9 @@ class AppServiceProvider extends ServiceProvider
 
             return config('auth.password_uncompromised') ? $rule->uncompromised() : $rule;
         });
+
+        // Nelle email markdown i valori interpolati (nomi) non diventano link né HTML
+        Markdown::withSecuredEncoding();
 
         // Per utente quando c'è una sessione, per IP da ospite
         RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(60)

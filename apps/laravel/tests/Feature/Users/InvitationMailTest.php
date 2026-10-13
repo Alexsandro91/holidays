@@ -30,4 +30,11 @@ class InvitationMailTest extends TestCase
         // Il token dell'invito non deve finire in chiaro in jobs/failed_jobs
         $this->assertInstanceOf(ShouldBeEncrypted::class, new InvitationMail('Sara', 'abc', null, now()));
     }
+
+    public function test_names_cannot_inject_links_or_html(): void
+    {
+        $html = (new InvitationMail('[Verifica](https://phish.example)', 'abc123', '<a href="https://phish.example">Anna</a>', now()->addHours(72)))->render();
+
+        $this->assertStringNotContainsString('<a href="https://phish.example"', $html);
+    }
 }
