@@ -73,6 +73,8 @@ const InviteUserDialog = () => {
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        // Durante l'invio il dialog non si chiude (Escape, clic fuori): l'esito non va perso
+        if (!next && invite.isPending) return
         setOpen(next)
         // Chiudendo si scarta quanto scritto, errori compresi
         if (!next) form.reset()

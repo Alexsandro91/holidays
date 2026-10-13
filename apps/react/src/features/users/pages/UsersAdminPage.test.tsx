@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
@@ -134,6 +134,42 @@ describe('UsersAdminPage', () => {
     expect(body).toEqual({ role: 'manager' })
   })
 
+  it('keeps "Salva ruolo" disabled until a different role is chosen', async () => {
+    listing([managedUser()])
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+    expect(within(dialog).getByRole('button', { name: 'Salva ruolo' })).toBeDisabled()
+
+    await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
+    expect(within(dialog).getByRole('button', { name: 'Salva ruolo' })).toBeEnabled()
+    await user.click(within(dialog).getByRole('radio', { name: 'Dipendente' }))
+    expect(within(dialog).getByRole('button', { name: 'Salva ruolo' })).toBeDisabled()
+  })
+
+  it('does not close the invite dialog while the request is pending', async () => {
+    listing()
+    server.use(
+      http.post('/api/users', async () => {
+        await delay(300)
+        return HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
+    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
+    await user.keyboard('{Escape}')
+
+    expect(screen.getByRole('dialog', { name: 'Invita utente' })).toBeInTheDocument()
+    expect(await screen.findByText('Invito inviato a sara@holidays.test.')).toBeInTheDocument()
+  })
+
   it('shows the wait when resending too early', async () => {
     listing([managedUser({ status: 'invited', name: 'Luca Ferrari' })])
     server.use(http.post('/api/users/2/invitation', () => HttpResponse.json({ message: 'Attendi 42 secondi prima di inviare di nuovo l’invito.', meta: { retry_after: 42 } }, { status: 429, headers: { 'Retry-After': '42' } })))
@@ -196,6 +232,7 @@ describe('UsersAdminPage', () => {
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
     const dialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
     await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

@@ -96,7 +96,18 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
       <FieldGroup>
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" aria-label={t('administrators.grant.search')} placeholder={t('administrators.grant.search')} value={draft} onChange={(event) => setDraft(event.target.value)} className="pl-9" />
+          <Input
+            type="search"
+            aria-label={t('administrators.grant.search')}
+            placeholder={t('administrators.grant.search')}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            // Invio nella ricerca non promuove nessuno: il form si invia solo dal pulsante o dalla password
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.preventDefault()
+            }}
+            className="pl-9"
+          />
         </div>
         <Field data-invalid={errors.userId ? true : undefined}>
           {candidates.isPending ? (

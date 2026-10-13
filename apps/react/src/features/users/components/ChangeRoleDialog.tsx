@@ -30,10 +30,12 @@ const RoleForm = ({ user, onClose, onBusyChange }: RoleFormProps) => {
   const { t } = useTranslation()
   const changeRole = useChangeRole()
   const [role, setRole] = useState<ManagedRole>(user.role === 'manager' ? 'manager' : 'employee')
+  // Stesso ruolo: niente richiesta (e niente evento role_changed inutile)
+  const unchanged = role === user.role
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (changeRole.isPending) return
+    if (changeRole.isPending || unchanged) return
     onBusyChange(true)
     try {
       await changeRole.mutateAsync({ id: user.id, role })
@@ -59,7 +61,7 @@ const RoleForm = ({ user, onClose, onBusyChange }: RoleFormProps) => {
         ))}
       </RadioGroup>
       <DialogFooter>
-        <Button type="submit" disabled={changeRole.isPending}>
+        <Button type="submit" disabled={changeRole.isPending || unchanged}>
           {changeRole.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
           {t('users.roleDialog.submit')}
         </Button>

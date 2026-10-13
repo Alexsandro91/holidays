@@ -33,6 +33,36 @@ describe('AdministratorsPage', () => {
     expect(await screen.findByText(/Sei l’unico amministratore/)).toBeInTheDocument()
   })
 
+  it('counts only active administrators for the only-you notice', async () => {
+    admins([me, managedUser({ id: 4, name: 'Carla Admin', role: 'admin', role_label: 'HR / Admin', status: 'disabled', status_label: 'Disattivato' })])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    expect(await screen.findByText(/Sei l’unico amministratore/)).toBeInTheDocument()
+  })
+
+  it('does not submit when Enter is pressed in the search field', async () => {
+    admins()
+    let posted = false
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([managedUser({ id: 7, name: 'Marco Bianchi' })]))),
+      http.post('/api/administrators', () => {
+        posted = true
+        return HttpResponse.json({ data: managedUser({ id: 7, role: 'admin' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    await user.click(await within(dialog).findByRole('radio', { name: /Marco Bianchi/ }))
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Cerca un utente attivo' }), 'Marco{Enter}')
+
+    expect(within(dialog).queryByText('Scegli un utente.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Marco Bianchi ora è amministratore.')).not.toBeInTheDocument()
+    expect(posted).toBe(false)
+  })
+
   it('promotes an active user with your password', async () => {
     admins()
     let body: unknown = null
