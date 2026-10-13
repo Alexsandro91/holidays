@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { z } from 'zod'
 import { clearInbox, waitForLoginCode, waitForResetLink } from './mailpit.ts'
 
 const RESET_USER = 'reset@holidays.test'
@@ -30,7 +31,7 @@ test.beforeEach(async () => {
   await clearInbox()
 })
 
-test('a user resets the password from the emailed link and signs in with the new one', async ({ page }) => {
+test('a user resets the password from the emailed link and enters with the emailed code', async ({ page, browser }) => {
   await page.goto('/login')
   await page.getByLabel('Email').fill(RESET_USER)
   await page.getByRole('link', { name: 'Password dimenticata?' }).click()
@@ -41,29 +42,35 @@ test('a user resets the password from the emailed link and signs in with the new
   await expect(page.getByRole('heading', { name: 'Controlla la tua email' })).toBeVisible()
 
   const link = await waitForResetLink(RESET_USER)
+  // Da qui in poi nella casella arrivano solo l'avviso di cambio password e il codice
+  await clearInbox()
   const newPassword = `nuova-frase-segreta-${Date.now()}`
   await page.goto(link)
   await expect(page.getByLabel('Email')).toHaveValue(RESET_USER)
   await page.getByLabel('Nuova password').fill(newPassword)
+  await page.getByLabel('Conferma password').fill(newPassword)
   await page.getByRole('button', { name: 'Salva la password' }).click()
-  await expect(page.getByText('Password aggiornata. Accedi con la nuova password.')).toBeVisible()
-  await expect(page.getByLabel('Email')).toHaveValue(RESET_USER)
 
-  // Il link funziona una sola volta
-  await page.goto(link)
-  await page.getByLabel('Nuova password').fill(`${newPassword}-bis`)
-  await page.getByRole('button', { name: 'Salva la password' }).click()
-  await expect(page.getByRole('heading', { name: 'Link non valido' })).toBeVisible()
-
-  // Il login con la nuova password chiede comunque il codice
-  await clearInbox()
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(RESET_USER)
-  await page.getByLabel('Password', { exact: true }).fill(newPassword)
-  await page.getByRole('button', { name: 'Continua' }).click()
+  // Il reset non apre la sessione: si passa subito al codice, con l'avviso della password aggiornata
+  await expect(page).toHaveURL(/\/login\/verify$/)
   await expect(page.getByRole('heading', { name: 'Controlla la tua email' })).toBeVisible()
+  await expect(page.getByText('Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato.')).toBeVisible()
+  await expectNoViolationsInBothSchemes(page)
   await page.getByLabel('Codice di verifica').fill(await waitForLoginCode(RESET_USER))
   await expect(page.getByRole('heading', { name: 'Ciao, Paolo' })).toBeVisible()
+
+  // Il link funziona una sola volta: lo si riapre da ospite in un browser nuovo
+  const guest = await browser.newContext({ baseURL: new URL(page.url()).origin, locale: 'it-IT' })
+  try {
+    const guestPage = await guest.newPage()
+    await guestPage.goto(link)
+    await guestPage.getByLabel('Nuova password').fill(`${newPassword}-bis`)
+    await guestPage.getByLabel('Conferma password').fill(`${newPassword}-bis`)
+    await guestPage.getByRole('button', { name: 'Salva la password' }).click()
+    await expect(guestPage.getByRole('heading', { name: 'Link non valido' })).toBeVisible()
+  } finally {
+    await guest.close()
+  }
 })
 
 test('password recovery pages have no WCAG violations in light and dark mode', async ({ page }) => {
@@ -81,6 +88,7 @@ test('password recovery pages have no WCAG violations in light and dark mode', a
   await expectNoViolationsInBothSchemes(page)
 
   await page.getByLabel('Nuova password').fill('una-frase-lunga-qualsiasi')
+  await page.getByLabel('Conferma password').fill('una-frase-lunga-qualsiasi')
   await page.getByRole('button', { name: 'Salva la password' }).click()
   await expect(page.getByRole('heading', { name: 'Link non valido' })).toBeVisible()
   await expectNoViolationsInBothSchemes(page)
@@ -92,7 +100,8 @@ test('access pages fit a phone screen without horizontal scrolling', async ({ pa
   for (const path of paths) {
     await page.goto(path)
     await expect(page.locator('#page-title')).toBeVisible()
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    // Espressione come stringa: le spec girano con il tsconfig di Node, senza i tipi del DOM
+    const overflow = z.number().parse(await page.evaluate('document.documentElement.scrollWidth - window.innerWidth'))
     expect(overflow, path).toBeLessThanOrEqual(0)
   }
 })
