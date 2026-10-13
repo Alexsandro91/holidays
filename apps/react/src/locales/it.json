@@ -71,6 +71,18 @@
     "throttled_other": "Troppe richieste. Potrai riprovare tra {{count}} minuti.",
     "backToLogin": "Torna all’accesso"
   },
+  "reset": {
+    "title": "Scegli una nuova password",
+    "subtitle": "Poi accederai con la nuova password e il codice che ti mandiamo via email.",
+    "password": "Nuova password",
+    "hint": "Almeno 12 caratteri. Una frase facile da ricordare va benissimo.",
+    "submit": "Salva la password",
+    "submitting": "Salvataggio in corso…",
+    "throttled": "Troppi tentativi. Potrai riprovare tra {{count}} secondi.",
+    "invalidTitle": "Link non valido",
+    "invalid": "Il link è scaduto o è già stato usato. I link valgono 60 minuti e funzionano una sola volta.",
+    "requestNew": "Chiedi un nuovo link"
+  },
   "validation": {
     "emailRequired": "Inserisci la tua email.",
     "emailInvalid": "Inserisci un indirizzo email valido, ad esempio nome@azienda.it.",

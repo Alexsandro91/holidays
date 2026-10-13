@@ -5,6 +5,7 @@ import RootLayout from '@/components/layout/RootLayout'
 import GuestRoute from '@/features/auth/GuestRoute'
 import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
 import LoginPage from '@/features/auth/pages/LoginPage'
+import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import HomePage from '@/pages/HomePage'
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
             children: [
               { path: '/login', element: <LoginPage />, handle: { titleKey: 'titles.login' } },
               { path: '/forgot-password', element: <ForgotPasswordPage />, handle: { titleKey: 'titles.forgotPassword' } },
+              { path: '/reset-password/:token', element: <ResetPasswordPage />, handle: { titleKey: 'titles.resetPassword' } },
               { path: '/login/verify', element: <VerifyCodePage />, handle: { titleKey: 'titles.verify' } },
             ],
           },

@@ -71,6 +71,18 @@
     "throttled_other": "Too many requests. You can try again in {{count}} minutes.",
     "backToLogin": "Back to sign in"
   },
+  "reset": {
+    "title": "Choose a new password",
+    "subtitle": "Then you’ll sign in with the new password and the code we email you.",
+    "password": "New password",
+    "hint": "At least 12 characters. An easy-to-remember phrase works great.",
+    "submit": "Save password",
+    "submitting": "Saving…",
+    "throttled": "Too many attempts. You can try again in {{count}} seconds.",
+    "invalidTitle": "Invalid link",
+    "invalid": "This link has expired or was already used. Links are valid for 60 minutes and work only once.",
+    "requestNew": "Ask for a new link"
+  },
   "validation": {
     "emailRequired": "Enter your email.",
     "emailInvalid": "Enter a valid email address, for example name@company.com.",
