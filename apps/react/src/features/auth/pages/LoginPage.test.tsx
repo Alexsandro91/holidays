@@ -10,6 +10,7 @@ import { server } from '@/test/server'
 const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
   { path: '/login/verify', element: <p>verify-page</p> },
+  { path: '/forgot-password', element: <p>forgot-page</p> },
 ]
 
 describe('LoginPage', () => {
@@ -142,6 +143,23 @@ describe('LoginPage', () => {
     renderRoutes(routes, ['/login?reason=expired'])
 
     expect(await screen.findByText('Sessione scaduta. Accedi di nuovo.')).toBeInTheDocument()
+  })
+
+  it('links to the forgot password page carrying the typed email', async () => {
+    const { user, router } = renderRoutes(routes, ['/login'])
+
+    await user.type(await screen.findByLabelText('Email'), ' giulia@example.test ')
+    await user.click(screen.getByRole('link', { name: 'Password dimenticata?' }))
+
+    expect(await screen.findByText('forgot-page')).toBeInTheDocument()
+    expect(router.state.location.state).toEqual({ email: 'giulia@example.test' })
+  })
+
+  it('confirms the password reset and prefills the email', async () => {
+    renderRoutes(routes, [{ pathname: '/login', search: '?reason=password-reset', state: { email: 'giulia@example.test' } }])
+
+    expect(await screen.findByText('Password aggiornata. Accedi con la nuova password.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email')).toHaveValue('giulia@example.test')
   })
 
   it('has no accessibility violations', async () => {

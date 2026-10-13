@@ -50,6 +50,9 @@ export const useVerifyCode = () => {
 
 export const useResendCode = () => useMutation({ mutationFn: () => request('POST', '/api/auth/two-factor/resend') })
 
+export const useForgotPassword = () =>
+  useMutation({ mutationFn: (email: string) => request('POST', '/api/auth/forgot-password', { email }) })
+
 /** Errori del logout che significano "sessione già chiusa": per l'utente l'uscita è comunque riuscita. */
 export const isAlreadySignedOut = (error: unknown): boolean => isApiError(error, 'unauthenticated') || isApiError(error, 'csrf')
 

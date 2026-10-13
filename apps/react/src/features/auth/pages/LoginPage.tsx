@@ -2,9 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { TFunction } from 'i18next'
 import { ArrowRight, CircleAlert, Clock, LoaderCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { z } from 'zod'
 import PageHeading from '@/components/layout/PageHeading'
 import PasswordInput from '@/components/PasswordInput'
@@ -13,16 +13,18 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLogin } from '@/features/auth/api'
+import { emailField, emailStateSchema } from '@/features/auth/validation'
 import { useCountdown } from '@/hooks/useCountdown'
 import { isApiError } from '@/lib/api'
 
-type Notice = 'expired' | 'logged-out' | 'restart'
+type Notice = 'expired' | 'logged-out' | 'restart' | 'password-reset'
 
-const isNotice = (value: string | null): value is Notice => value === 'expired' || value === 'logged-out' || value === 'restart'
+const isNotice = (value: string | null): value is Notice =>
+  value === 'expired' || value === 'logged-out' || value === 'restart' || value === 'password-reset'
 
 const createLoginSchema = (t: TFunction) =>
   z.object({
-    email: z.string().trim().min(1, t('validation.emailRequired')).pipe(z.email(t('validation.emailInvalid'))),
+    email: emailField(t),
     password: z.string().min(1, t('validation.passwordRequired')),
   })
 
@@ -32,13 +34,19 @@ const LoginPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
   const login = useLogin()
   const lock = useCountdown()
   const [formError, setFormError] = useState<string | null>(null)
   // secondi iniziali del blocco: testo costante per gli screen reader, così non è riannunciato a ogni tick
   const [lockedFor, setLockedFor] = useState(0)
   const schema = useMemo(() => createLoginSchema(t), [t])
-  const form = useForm<LoginValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
+  const initialState = emailStateSchema.safeParse(location.state)
+  const form = useForm<LoginValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: initialState.success ? initialState.data.email : '', password: '' },
+  })
+  const typedEmail = useWatch({ control: form.control, name: 'email' })
   const { errors } = form.formState
   const notice = searchParams.get('reason')
   const redirect = searchParams.get('redirect')
@@ -119,6 +127,11 @@ const LoginPage = () => {
               />
               <FieldError id="password-error">{errors.password?.message}</FieldError>
             </Field>
+            <Button asChild variant="link" size="sm" className="-mt-2 justify-self-end px-0">
+              <Link to="/forgot-password" state={{ email: typedEmail.trim() }}>
+                {t('login.forgot')}
+              </Link>
+            </Button>
             <Button type="submit" size="lg" className="w-full" disabled={login.isPending || lock.secondsLeft > 0}>
               {login.isPending ? (
                 <>

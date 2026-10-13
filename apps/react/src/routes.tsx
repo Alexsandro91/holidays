@@ -3,6 +3,7 @@ import AppShell from '@/components/layout/AppShell'
 import AuthLayout from '@/components/layout/AuthLayout'
 import RootLayout from '@/components/layout/RootLayout'
 import GuestRoute from '@/features/auth/GuestRoute'
+import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
 import LoginPage from '@/features/auth/pages/LoginPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
@@ -20,6 +21,7 @@ export const routes: RouteObject[] = [
             element: <AuthLayout />,
             children: [
               { path: '/login', element: <LoginPage />, handle: { titleKey: 'titles.login' } },
+              { path: '/forgot-password', element: <ForgotPasswordPage />, handle: { titleKey: 'titles.forgotPassword' } },
               { path: '/login/verify', element: <VerifyCodePage />, handle: { titleKey: 'titles.verify' } },
             ],
           },

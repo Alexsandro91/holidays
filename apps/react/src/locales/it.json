@@ -35,8 +35,10 @@
     "notice": {
       "expired": "Sessione scaduta. Accedi di nuovo.",
       "logged-out": "Sei uscito. A presto.",
-      "restart": "Per sicurezza ricomincia l’accesso."
-    }
+      "restart": "Per sicurezza ricomincia l’accesso.",
+      "password-reset": "Password aggiornata. Accedi con la nuova password."
+    },
+    "forgot": "Password dimenticata?"
   },
   "verify": {
     "title": "Controlla la tua email",
@@ -55,10 +57,25 @@
     "resendLimit": "Hai raggiunto il limite di nuovi codici. Se non lo ricevi, ricomincia l’accesso.",
     "otherAccount": "Usa un altro account"
   },
+  "forgot": {
+    "title": "Password dimenticata?",
+    "subtitle": "Inserisci la tua email aziendale: ti invieremo un link per sceglierne una nuova.",
+    "submit": "Invia il link",
+    "submitting": "Invio in corso…",
+    "sentTitle": "Controlla la tua email",
+    "sent": "Se {{email}} corrisponde a un account attivo, riceverai a breve un link per scegliere una nuova password. Il link vale 60 minuti.",
+    "resend": "Invia di nuovo il link",
+    "resendIn": "Nuovo link tra {{count}} s",
+    "resent": "Link inviato di nuovo. Usa quello dell’ultima email: il precedente non vale più.",
+    "throttled_one": "Troppe richieste. Potrai riprovare tra {{count}} minuto.",
+    "throttled_other": "Troppe richieste. Potrai riprovare tra {{count}} minuti.",
+    "backToLogin": "Torna all’accesso"
+  },
   "validation": {
     "emailRequired": "Inserisci la tua email.",
     "emailInvalid": "Inserisci un indirizzo email valido, ad esempio nome@azienda.it.",
-    "passwordRequired": "Inserisci la password."
+    "passwordRequired": "Inserisci la password.",
+    "passwordMin": "La password deve avere almeno 12 caratteri."
   },
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova tra poco.",
@@ -89,7 +106,9 @@
     "login": "Accedi",
     "verify": "Codice di verifica",
     "home": "Home",
-    "notFound": "Pagina non trovata"
+    "notFound": "Pagina non trovata",
+    "forgotPassword": "Password dimenticata",
+    "resetPassword": "Nuova password"
   },
   "a11y": { "pageAnnouncement": "Pagina: {{title}}" }
 }
