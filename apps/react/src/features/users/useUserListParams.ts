@@ -22,20 +22,23 @@ export const useUserListParams = () => {
   }
 
   const setParams = useCallback(
-    (next: Partial<UserListParams>) => {
-      setSearchParams((current) => {
-        const currentStatus = current.get('status')
-        const merged: UserListParams = {
-          status: next.status ?? (isStatus(currentStatus) ? currentStatus : 'all'),
-          search: next.search ?? current.get('q') ?? '',
-          page: next.page ?? toPage(current.get('page')),
-        }
-        const query = new URLSearchParams()
-        if (merged.status !== 'all') query.set('status', merged.status)
-        if (merged.search !== '') query.set('q', merged.search)
-        if (merged.page > 1) query.set('page', String(merged.page))
-        return query
-      })
+    (next: Partial<UserListParams>, options: { replace?: boolean } = {}) => {
+      setSearchParams(
+        (current) => {
+          const currentStatus = current.get('status')
+          const merged: UserListParams = {
+            status: next.status ?? (isStatus(currentStatus) ? currentStatus : 'all'),
+            search: next.search ?? current.get('q') ?? '',
+            page: next.page ?? toPage(current.get('page')),
+          }
+          const query = new URLSearchParams()
+          if (merged.status !== 'all') query.set('status', merged.status)
+          if (merged.search !== '') query.set('q', merged.search)
+          if (merged.page > 1) query.set('page', String(merged.page))
+          return query
+        },
+        { replace: options.replace === true },
+      )
     },
     [setSearchParams],
   )

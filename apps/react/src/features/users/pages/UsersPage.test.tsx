@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -10,7 +10,19 @@ import { server } from '@/test/server'
 
 const routes: RouteObject[] = [{ path: '/admin/users', element: <UsersPage /> }]
 
-const respondWith = (onRequest: (url: URL) => void = () => undefined, users = [managedUser({ id: 1, name: 'Anna Admin', role: 'admin', role_label: 'HR / Admin', is_current_user: true }), managedUser()]) =>
+const respondWith = (
+  onRequest: (url: URL) => void = () => undefined,
+  users = [
+    managedUser({
+      id: 1,
+      name: 'Anna Admin',
+      role: 'admin',
+      role_label: 'HR / Admin',
+      is_current_user: true,
+    }),
+    managedUser(),
+  ],
+) =>
   server.use(
     http.get('/api/users', ({ request }) => {
       onRequest(new URL(request.url))
@@ -60,13 +72,61 @@ describe('UsersPage', () => {
   it('debounces the search and goes back to page one', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     respondWith()
-    const { user, router } = renderRoutes(routes, ['/admin/users?page=3'], { advanceTimers: vi.advanceTimersByTime })
+    const { user, router } = renderRoutes(routes, ['/admin/users?page=3'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
 
     await user.type(await screen.findByRole('searchbox', { name: 'Cerca per nome o email' }), 'mar')
     expect(router.state.location.search).toBe('?page=3')
     vi.advanceTimersByTime(300)
 
     await vi.waitFor(() => expect(router.state.location.search).toBe('?q=mar'))
+  })
+
+  it('keeps the search field in sync with the URL when going back', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const urls: URL[] = []
+    respondWith((url) => urls.push(url))
+    const { user, router } = renderRoutes(routes, ['/admin/users'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
+    await router.navigate('/admin/users?status=active')
+
+    const search = await screen.findByRole('searchbox', {
+      name: 'Cerca per nome o email',
+    })
+    await user.type(search, 'mar')
+    vi.advanceTimersByTime(300)
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?status=active&q=mar'))
+    // la vista segue l'URL: attendo che la ricerca sia davvero partita
+    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('search')).toBe('mar'))
+
+    await act(() => router.navigate(-1))
+    await vi.waitFor(() => expect(router.state.location.search).toBe(''))
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca per nome o email' })).toHaveValue(''))
+    vi.advanceTimersByTime(300)
+    expect(router.state.location.search).toBe('')
+  })
+
+  it('goes back to the last page when the page is out of range', async () => {
+    server.use(
+      http.get('/api/users', () =>
+        HttpResponse.json({
+          data: [],
+          links: {},
+          meta: {
+            current_page: 999,
+            last_page: 2,
+            per_page: 25,
+            total: 30,
+            counts: { all: 30, active: 30, invited: 0, disabled: 0 },
+          },
+        }),
+      ),
+    )
+    const { router } = renderRoutes(routes, ['/admin/users?page=999'])
+
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?page=2'))
   })
 
   it('shows an empty state with a way to clear the filters', async () => {
@@ -87,7 +147,16 @@ describe('UsersPage', () => {
   })
 
   it('shows when an invitation expires', async () => {
-    respondWith(() => undefined, [managedUser({ status: 'invited', status_label: 'Invitato', invitation_expires_at: '2099-10-16T10:00:00+00:00' })])
+    respondWith(
+      () => undefined,
+      [
+        managedUser({
+          status: 'invited',
+          status_label: 'Invitato',
+          invitation_expires_at: '2099-10-16T10:00:00+00:00',
+        }),
+      ],
+    )
     renderRoutes(routes, ['/admin/users'])
 
     const table = await screen.findByRole('table')
