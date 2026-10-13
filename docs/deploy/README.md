@@ -22,6 +22,10 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
   `config:cache` e `route:cache`.
 - Prima della produzione schedulare `auth:clear-resets` (token di reset scaduti) e `queue:prune-failed`.
 - Primo avvio: dopo `php artisan migrate`, eseguire `php artisan app:create-admin "Nome Cognome" email@azienda.it`: arriva
-  l'invito (72 ore) e l'admin sceglie la password dal link.
+  l'invito (72 ore) e l'admin sceglie la password dal link. L'invio è registrato in `auth_events` senza autore.
+  - Invito non arrivato o scaduto: rilanciare lo stesso comando con la stessa email. Se l'admin non ha ancora attivato
+    l'account parte un nuovo link e il precedente smette di valere.
+  - Con un amministratore attivo il comando si rifiuta: gli altri admin si invitano e promuovono dalla sezione
+    Amministratori. `--force` serve solo per recuperare l'accesso (per esempio l'unico admin ha perso la casella email).
 - `PRIVACY_NOTICE_VERSION` va aggiornata ogni volta che cambia il testo dell'informativa privacy: chi ha accettato una
   versione precedente deve accettare di nuovo.

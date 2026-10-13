@@ -17,5 +17,7 @@ return [
     ],
     'command' => [
         'sent' => 'Invito da amministratore inviato a :email. Vale :hours ore.',
+        'resent' => 'L’amministratore :email non ha ancora attivato l’account: nuovo invito inviato, il link precedente non vale più. Vale :hours ore.',
+        'admin_exists' => 'Esiste già un amministratore attivo: usa la sezione Amministratori, oppure --force.',
     ],
 ];

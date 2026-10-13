@@ -17,5 +17,7 @@ return [
     ],
     'command' => [
         'sent' => 'Admin invitation sent to :email. It is valid for :hours hours.',
+        'resent' => 'The admin :email has not activated the account yet: a new invitation was sent and the previous link no longer works. It is valid for :hours hours.',
+        'admin_exists' => 'An active admin already exists: use the Administrators section, or --force.',
     ],
 ];
