@@ -99,6 +99,48 @@ final class UserManagementService
         });
     }
 
+    public function grantAdmin(User $target, User $actor, Request $request): User
+    {
+        return DB::transaction(function () use ($target, $actor, $request): User {
+            $this->lockActiveAdmins($actor);
+            $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
+
+            // Nel frattempo il bersaglio può essere stato promosso o disattivato
+            if ($fresh->status !== UserStatus::Active || $fresh->isAdmin()) {
+                throw new ConflictHttpException(Translate::text('users.not_promotable'));
+            }
+
+            $fresh->forceFill(['role' => Role::Admin])->save();
+            $this->events->log(AuthEventType::AdminGranted, $request, $fresh, $actor);
+            $this->notifyAdmins(AdminChange::Granted, $fresh, $actor);
+
+            return $fresh;
+        });
+    }
+
+    /**
+     * Revoca il ruolo admin: il nuovo ruolo è solo dipendente o responsabile (lo garantisce la request).
+     */
+    public function revokeAdmin(User $target, Role $newRole, User $actor, Request $request): User
+    {
+        return DB::transaction(function () use ($target, $newRole, $actor, $request): User {
+            $activeAdminIds = $this->lockActiveAdmins($actor);
+            $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
+
+            if (! $fresh->isAdmin()) {
+                throw new ConflictHttpException(Translate::text('users.not_admin'));
+            }
+
+            $this->ensureAnAdminRemains($fresh, $activeAdminIds);
+
+            $fresh->forceFill(['role' => $newRole])->save();
+            $this->events->log(AuthEventType::AdminRevoked, $request, $fresh, $actor);
+            $this->notifyAdmins(AdminChange::Revoked, $fresh, $actor);
+
+            return $fresh;
+        });
+    }
+
     /**
      * Ordine dei blocchi: prima gli admin attivi (verifica anche chi agisce), poi il bersaglio riletto.
      */

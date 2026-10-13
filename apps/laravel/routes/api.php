@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdministratorController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserInvitationController;
 use App\Http\Controllers\Admin\UserRoleController;
@@ -21,4 +22,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('/users/{user}/role', UserRoleController::class)->can('changeRole', 'user')->name('users.role');
     Route::post('/users/{user}/disable', [UserStatusController::class, 'disable'])->can('disable', 'user')->name('users.disable');
     Route::post('/users/{user}/enable', [UserStatusController::class, 'enable'])->can('enable', 'user')->name('users.enable');
+
+    Route::get('/administrators', [AdministratorController::class, 'index'])->can('viewAny', User::class)->name('administrators.index');
+    Route::post('/administrators', [AdministratorController::class, 'store'])->can('viewAny', User::class)->name('administrators.store');
+    Route::delete('/administrators/{user}', [AdministratorController::class, 'destroy'])->can('revokeAdmin', 'user')->name('administrators.destroy');
 });

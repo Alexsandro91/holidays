@@ -1,0 +1,50 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Enums\Role;
+use App\Enums\UserStatus;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\GrantAdminRequest;
+use App\Http\Requests\Users\RevokeAdminRequest;
+use App\Http\Resources\ManagedUserResource;
+use App\Models\User;
+use App\Services\UserManagementService;
+use App\Support\Translate;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\Response;
+
+final class AdministratorController extends Controller
+{
+    public function __construct(private readonly UserManagementService $users) {}
+
+    public function index(): AnonymousResourceCollection
+    {
+        return ManagedUserResource::collection(
+            User::query()->where('role', Role::Admin)->with('invitation')->orderBy('name')->orderBy('id')->get(),
+        );
+    }
+
+    public function store(GrantAdminRequest $request): JsonResponse|ManagedUserResource
+    {
+        $target = User::query()->findOrFail($request->integer('user_id'));
+        Gate::authorize('grantAdmin', $target);
+
+        if ($target->status !== UserStatus::Active || $target->isAdmin()) {
+            return response()->json(['message' => Translate::text('users.not_promotable')], Response::HTTP_CONFLICT);
+        }
+
+        return new ManagedUserResource($this->users->grantAdmin($target, $this->actor($request), $request));
+    }
+
+    public function destroy(RevokeAdminRequest $request, User $user): JsonResponse|ManagedUserResource
+    {
+        if (! $user->isAdmin()) {
+            return response()->json(['message' => Translate::text('users.not_admin')], Response::HTTP_CONFLICT);
+        }
+
+        return new ManagedUserResource($this->users->revokeAdmin($user, Role::from($request->validated('role')), $this->actor($request), $request));
+    }
+}
