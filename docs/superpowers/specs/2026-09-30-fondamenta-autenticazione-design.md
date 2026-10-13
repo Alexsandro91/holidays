@@ -229,7 +229,7 @@ presenza/attività, accesso riservato all'admin. Questo limite vale anche per i 
 | Login | 5/min per email + IP, 20/min per IP |
 | Codice | 5 tentativi per challenge, 10/min per IP |
 | Nuovo codice | 60 s di attesa, max 3 per challenge |
-| Recupero password | 3 ogni 15 min per email + IP |
+| Recupero password | 3 ogni 15 min per email + IP, 20 ogni 15 min per IP; max 5 link all'ora per account (oltre: nessuna email, stessa risposta `202`). Chiavi dei limiti con l'email in minuscolo e senza accenti |
 | Reset password, accettazione invito | 10/min per IP |
 | API autenticata | 60/min per utente |
 
