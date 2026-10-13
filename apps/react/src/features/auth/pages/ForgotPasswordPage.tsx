@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { TFunction } from 'i18next'
 import { ArrowLeft, CircleAlert, Clock, LoaderCircle, MailCheck, RotateCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
 import { z } from 'zod'
@@ -42,6 +42,7 @@ const ForgotPasswordPage = () => {
     resolver: zodResolver(schema),
     defaultValues: { email: initialState.success ? initialState.data.email : '' },
   })
+  const typedEmail = useWatch({ control: form.control, name: 'email' })
   const { errors } = form.formState
 
   // Il contenuto cambia senza cambiare pagina: il focus va sul nuovo titolo (lo annuncia anche agli screen reader)
@@ -96,9 +97,10 @@ const ForgotPasswordPage = () => {
       )
     )
 
+  // WCAG 3.3.7: l'email già scritta non va reinserita nel login
   const backToLogin = (
     <Button asChild variant="link" className="justify-self-start px-0">
-      <Link to="/login">
+      <Link to="/login" state={{ email: (sentTo ?? typedEmail).trim() }}>
         <ArrowLeft aria-hidden="true" />
         {t('forgot.backToLogin')}
       </Link>
