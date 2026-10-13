@@ -126,7 +126,7 @@ const LoginPage = () => {
               />
               <FieldError id="password-error">{errors.password?.message}</FieldError>
             </Field>
-            <Button asChild variant="link" size="sm" className="-mt-2 justify-self-end px-0">
+            <Button asChild variant="link" size="sm" className="-mt-2 self-end px-0">
               <Link to="/forgot-password" state={{ email: typedEmail.trim() }}>
                 {t('login.forgot')}
               </Link>

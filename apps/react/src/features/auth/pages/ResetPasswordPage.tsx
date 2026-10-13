@@ -134,10 +134,11 @@ const ResetPasswordPage = () => {
         )}
         <form onSubmit={onSubmit} noValidate>
           <FieldGroup>
-            {/* Email visibile e in sola lettura: il gestore di password la associa alla nuova password */}
+            {/* Email visibile e in sola lettura: il gestore di password la associa alla nuova password.
+                Sfondo attenuato perché non sembri modificabile */}
             <Field>
               <FieldLabel htmlFor="email">{t('login.email')}</FieldLabel>
-              <Input id="email" type="email" autoComplete="username" value={email} readOnly />
+              <Input id="email" type="email" autoComplete="username" value={email} readOnly className="cursor-default bg-muted text-muted-foreground" />
             </Field>
             <Field data-invalid={errors.password ? true : undefined}>
               <FieldLabel htmlFor="password">{t('reset.password')}</FieldLabel>

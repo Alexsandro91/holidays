@@ -37,7 +37,12 @@ describe('ResetPasswordPage', () => {
     const { user, router } = renderRoutes(routes, [LINK])
 
     // "+" decodificato correttamente, non trasformato in spazio
-    expect(await screen.findByLabelText('Email')).toHaveValue('giulia+hr@example.test')
+    const emailInput = await screen.findByLabelText('Email')
+    expect(emailInput).toHaveValue('giulia+hr@example.test')
+    // In sola lettura ma visibile ai gestori di password, con l'aspetto di un campo non modificabile
+    expect(emailInput).toHaveAttribute('readonly')
+    expect(emailInput).toHaveAttribute('autocomplete', 'username')
+    expect(emailInput).toHaveClass('bg-muted', 'text-muted-foreground')
     await fillPasswords(user)
     await user.click(screen.getByRole('button', { name: 'Salva la password' }))
 
