@@ -21,3 +21,7 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
 - Nel deploy: `php artisan event:cache` (il listener del log HIBP è registrato dall'auto-discovery), oltre a
   `config:cache` e `route:cache`.
 - Prima della produzione schedulare `auth:clear-resets` (token di reset scaduti) e `queue:prune-failed`.
+- Primo avvio: dopo `php artisan migrate`, eseguire `php artisan app:create-admin "Nome Cognome" email@azienda.it`: arriva
+  l'invito (72 ore) e l'admin sceglie la password dal link.
+- `PRIVACY_NOTICE_VERSION` va aggiornata ogni volta che cambia il testo dell'informativa privacy: chi ha accettato una
+  versione precedente deve accettare di nuovo.

@@ -15,4 +15,7 @@ return [
         'expiry' => 'Il link vale :hours ore e si può usare una sola volta.',
         'fallback' => 'Se il pulsante non funziona, copia questo indirizzo nel browser: :url',
     ],
+    'command' => [
+        'sent' => 'Invito da amministratore inviato a :email. Vale :hours ore.',
+    ],
 ];

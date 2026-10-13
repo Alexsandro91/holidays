@@ -15,4 +15,7 @@ return [
         'expiry' => 'The link is valid for :hours hours and works only once.',
         'fallback' => 'If the button doesn’t work, copy this address into your browser: :url',
     ],
+    'command' => [
+        'sent' => 'Admin invitation sent to :email. It is valid for :hours hours.',
+    ],
 ];
