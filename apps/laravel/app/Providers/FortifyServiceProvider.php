@@ -33,6 +33,9 @@ class FortifyServiceProvider extends ServiceProvider
             Limit::perMinutes(15, 20)->by('forgot-password-ip:'.$request->ip()),
         ]);
 
+        // Nuova password dal link: 10 richieste al minuto per IP
+        RateLimiter::for('reset-password', fn (Request $request): Limit => Limit::perMinute(10)->by('reset-password:'.$request->ip()));
+
         // Endpoint del codice: 10 richieste al minuto per IP
         RateLimiter::for('two-factor', fn (Request $request): Limit => Limit::perMinute(10)->by('two-factor:'.$request->ip()));
 

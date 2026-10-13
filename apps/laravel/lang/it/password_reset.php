@@ -2,6 +2,8 @@
 
 return [
     'link_sent' => 'Se l’indirizzo corrisponde a un account attivo, riceverai un’email con il link per scegliere una nuova password.',
+    'invalid_link' => 'Il link non è valido o è scaduto. Chiedine uno nuovo.',
+    'done' => 'Password aggiornata. Accedi con la nuova password.',
     'mail' => [
         'link' => [
             'subject' => 'Reimposta la password di Holidays',
@@ -11,6 +13,12 @@ return [
             'expiry' => 'Il link vale :minutes minuti e si può usare una sola volta.',
             'not_you' => 'Se non hai chiesto tu il link, ignora questa email: la password attuale resta valida.',
             'fallback' => 'Se il pulsante non funziona, copia questo indirizzo nel browser: :url',
+        ],
+        'changed' => [
+            'subject' => 'La password di Holidays è stata cambiata',
+            'heading' => 'Password cambiata',
+            'intro' => 'La password del tuo account è stata cambiata da :device il :date. Per sicurezza abbiamo chiuso tutte le sessioni aperte.',
+            'not_you' => 'Se non sei stato tu, chiedi subito un nuovo link dalla pagina di accesso e avvisa l’ufficio HR.',
         ],
     ],
 ];

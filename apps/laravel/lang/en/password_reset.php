@@ -2,6 +2,8 @@
 
 return [
     'link_sent' => 'If the address matches an active account, you’ll get an email with a link to choose a new password.',
+    'invalid_link' => 'This link is invalid or has expired. Ask for a new one.',
+    'done' => 'Password updated. Sign in with your new password.',
     'mail' => [
         'link' => [
             'subject' => 'Reset your Holidays password',
@@ -11,6 +13,12 @@ return [
             'expiry' => 'The link is valid for :minutes minutes and works only once.',
             'not_you' => 'If you didn’t ask for this link, ignore this email: your current password still works.',
             'fallback' => 'If the button doesn’t work, copy this address into your browser: :url',
+        ],
+        'changed' => [
+            'subject' => 'Your Holidays password was changed',
+            'heading' => 'Password changed',
+            'intro' => 'The password of your account was changed from :device on :date. For your security we signed you out everywhere.',
+            'not_you' => 'If this wasn’t you, ask for a new link from the sign-in page right away and tell HR.',
         ],
     ],
 ];

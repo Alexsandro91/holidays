@@ -114,4 +114,10 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    | Controllo delle password trafugate (Have I Been Pwned): spento solo nei test (phpunit.xml),
+    | dove non si fanno richieste di rete.
+    */
+    'password_uncompromised' => (bool) env('AUTH_PASSWORD_UNCOMPROMISED', true),
+
 ];

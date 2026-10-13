@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Chiavi di sessione del flusso di accesso.
@@ -27,5 +29,13 @@ final class AuthSession
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         }
+    }
+
+    /**
+     * Chiude tutte le sessioni dell'utente su ogni dispositivo (driver `database`, spec §6.4): reset password e disattivazione.
+     */
+    public static function endAllFor(User $user): void
+    {
+        DB::table((string) config('session.table', 'sessions'))->where('user_id', $user->getKey())->delete();
     }
 }

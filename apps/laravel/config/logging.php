@@ -52,6 +52,15 @@ return [
 
     'channels' => [
 
+        // Chiamate a Have I Been Pwned (controllo password trafugate): mai l'hash, solo esito e durata
+        'hibp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/hibp.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
