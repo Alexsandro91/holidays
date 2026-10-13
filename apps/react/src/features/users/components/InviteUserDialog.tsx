@@ -120,7 +120,10 @@ const InviteUserDialog = () => {
                 control={form.control}
                 name="role"
                 render={({ field }) => (
-                  <RadioGroup value={field.value} onValueChange={(value) => isRole(value) && field.onChange(value)} onBlur={field.onBlur} ref={field.ref}>
+                  <RadioGroup
+                    aria-invalid={errors.role ? true : undefined}
+                    aria-describedby={errors.role ? 'invite-role-error' : undefined}
+                    value={field.value} onValueChange={(value) => isRole(value) && field.onChange(value)} onBlur={field.onBlur} ref={field.ref}>
                     {ROLES.map((item) => (
                       <Field key={item} orientation="horizontal">
                         <RadioGroupItem value={item} id={`invite-role-${item}`} />
@@ -130,7 +133,7 @@ const InviteUserDialog = () => {
                   </RadioGroup>
                 )}
               />
-              <FieldError>{errors.role?.message}</FieldError>
+              <FieldError id="invite-role-error">{errors.role?.message}</FieldError>
             </FieldSet>
           </FieldGroup>
           <DialogFooter className="mt-4">

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -153,5 +153,75 @@ describe('UsersAdminPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     await screen.findByRole('dialog', { name: 'Invita utente' })
     await expectNoA11yViolations(baseElement)
+  })
+
+  it('has no accessibility violations with the admin confirmation and the role dialog open', async () => {
+    listing([managedUser({ role: 'admin', role_label: 'HR / Admin', name: 'Bruno Admin' }), managedUser({ id: 3, name: 'Anna Verdi', email: 'anna@holidays.test' })])
+    const { user, baseElement } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Bruno Admin')
+    await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
+    await screen.findByRole('alertdialog', { name: 'Disattivare Bruno Admin?' })
+    await expectNoA11yViolations(baseElement)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+
+    await openMenu(user, 'Anna Verdi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
+    await screen.findByRole('dialog', { name: 'Cambia ruolo di Anna Verdi' })
+    await expectNoA11yViolations(baseElement)
+  })
+
+  it('returns focus to the row menu after closing a dialog opened from it', async () => {
+    listing([managedUser()])
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
+    await screen.findByRole('alertdialog')
+    expect(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Indietro' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    const trigger = within(screen.getByRole('table')).getByRole('button', { name: 'Azioni per Marco Bianchi' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect(document.body.style.pointerEvents).not.toBe('none')
+  })
+
+  it('returns focus to the row menu after a successful role change', async () => {
+    listing([managedUser()])
+    server.use(http.patch('/api/users/2/role', () => HttpResponse.json({ data: managedUser({ role: 'manager' }) })))
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+    await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const trigger = within(screen.getByRole('table')).getByRole('button', { name: 'Azioni per Marco Bianchi' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect(document.body.style.pointerEvents).not.toBe('none')
+  })
+
+  it('moves focus to the page title when the cancelled invitation row disappears', async () => {
+    let users = [managedUser({ status: 'invited', name: 'Luca Ferrari' })]
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse(users))),
+      http.delete('/api/users/2/invitation', () => {
+        users = []
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Luca Ferrari')
+    await user.click(await screen.findByRole('menuitem', { name: 'Annulla invito' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Annulla invito di Luca Ferrari' }))
+
+    expect(await screen.findByText('Invito annullato.')).toBeInTheDocument()
+    await waitFor(() => expect(document.getElementById('page-title')).toHaveFocus())
+    expect(document.body.style.pointerEvents).not.toBe('none')
   })
 })

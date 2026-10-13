@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { needsPassword } from '@/features/users/actions'
 import { useCancelInvitation, useDisableUser, useEnableUser, useResendInvitation, type ManagedUser } from '@/features/users/api'
+import { focusUserActionsTrigger } from '@/features/users/focusReturn'
 import { isApiError } from '@/lib/api'
 
 type ConfirmAction = 'resend' | 'cancel' | 'disable' | 'enable'
@@ -28,10 +29,11 @@ interface ConfirmBodyProps {
   user: ManagedUser
   action: ConfirmAction
   onClose: () => void
+  onBusyChange: (busy: boolean) => void
 }
 
 /** Il corpo si monta a ogni apertura: password e errori ripartono vuoti. */
-const ConfirmBody = ({ user, action, onClose }: ConfirmBodyProps) => {
+const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) => {
   const { t } = useTranslation()
   const resend = useResendInvitation()
   const cancel = useCancelInvitation()
@@ -61,6 +63,7 @@ const ConfirmBody = ({ user, action, onClose }: ConfirmBodyProps) => {
     if (submitting.current) return
     submitting.current = true
     setPending(true)
+    onBusyChange(true)
     try {
       await run(currentPassword)
       toast.success(t(`users.confirm.${action}.done`, { name: user.name }))
@@ -77,6 +80,7 @@ const ConfirmBody = ({ user, action, onClose }: ConfirmBodyProps) => {
     } finally {
       submitting.current = false
       setPending(false)
+      onBusyChange(false)
     }
   }
 
@@ -126,10 +130,19 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
   const [last, setLast] = useState<{ user: ManagedUser; action: ConfirmAction } | null>(null)
   if (user !== null && action !== null && (last?.user !== user || last.action !== action)) setLast({ user, action })
   const shown = open ? { user, action } : last
+  // Durante l'invio il dialog non si chiude (Escape, clic fuori): un errore sulla password non va perso
+  const [busy, setBusy] = useState(false)
 
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <AlertDialogContent>{shown && <ConfirmBody key={`${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} />}</AlertDialogContent>
+    <AlertDialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          focusUserActionsTrigger(shown?.user.id ?? null)
+        }}
+      >
+        {shown && <ConfirmBody key={`${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}
+      </AlertDialogContent>
     </AlertDialog>
   )
 }

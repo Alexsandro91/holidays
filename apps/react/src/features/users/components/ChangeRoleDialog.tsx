@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field, FieldLabel } from '@/components/ui/field'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useChangeRole, type ManagedRole, type ManagedUser } from '@/features/users/api'
+import { focusUserActionsTrigger } from '@/features/users/focusReturn'
 import { isApiError } from '@/lib/api'
 
 interface ChangeRoleDialogProps {
@@ -21,10 +22,11 @@ const isManagedRole = (value: string): value is ManagedRole => value === 'employ
 interface RoleFormProps {
   user: ManagedUser
   onClose: () => void
+  onBusyChange: (busy: boolean) => void
 }
 
 /** Il form vive dentro il dialog: si monta a ogni apertura e parte dal ruolo attuale. */
-const RoleForm = ({ user, onClose }: RoleFormProps) => {
+const RoleForm = ({ user, onClose, onBusyChange }: RoleFormProps) => {
   const { t } = useTranslation()
   const changeRole = useChangeRole()
   const [role, setRole] = useState<ManagedRole>(user.role === 'manager' ? 'manager' : 'employee')
@@ -32,6 +34,7 @@ const RoleForm = ({ user, onClose }: RoleFormProps) => {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (changeRole.isPending) return
+    onBusyChange(true)
     try {
       await changeRole.mutateAsync({ id: user.id, role })
       toast.success(t('users.roleDialog.done', { name: user.name }))
@@ -40,6 +43,8 @@ const RoleForm = ({ user, onClose }: RoleFormProps) => {
       // 403/409 e simili: il messaggio del server è già tradotto
       if (isApiError(error, 'network')) toast.error(t('errors.network'))
       else toast.error(isApiError(error) ? error.message : t('errors.generic'))
+    } finally {
+      onBusyChange(false)
     }
   }
 
@@ -69,14 +74,22 @@ const ChangeRoleDialog = ({ user, onClose }: ChangeRoleDialogProps) => {
   const [lastUser, setLastUser] = useState<ManagedUser | null>(user)
   if (user !== null && user !== lastUser) setLastUser(user)
   const shown = user ?? lastUser
+  // Durante l'invio il dialog non si chiude (Escape, clic fuori)
+  const [busy, setBusy] = useState(false)
 
   return (
-    <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent aria-describedby={undefined}>
+    <Dialog open={user !== null} onOpenChange={(open) => !open && !busy && onClose()}>
+      <DialogContent
+        aria-describedby={undefined}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          focusUserActionsTrigger(shown?.id ?? null)
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t('users.roleDialog.title', { name: shown?.name ?? '' })}</DialogTitle>
         </DialogHeader>
-        {user !== null && <RoleForm key={user.id} user={user} onClose={onClose} />}
+        {user !== null && <RoleForm key={user.id} user={user} onClose={onClose} onBusyChange={setBusy} />}
       </DialogContent>
     </Dialog>
   )
