@@ -14,7 +14,7 @@
   `employee@holidays.test` con password `holidays-dev-password` (più `reset@holidays.test`, riservato all'E2E del recupero password: la password cambia a ogni esecuzione); i codici di login arrivano su Mailpit (`localhost:8025`).
 - Auth: login = pipeline Fortify con `StartEmailLoginChallenge` (niente sessione fino al codice); codice in
   `TwoFactorChallengeController`; chiavi di sessione in `App\Support\AuthSession`; testi PHP con `App\Support\Translate::text()`.
-- Primo admin: `sail artisan app:create-admin "Nome Cognome" email@azienda.it` (invito come gli altri, nessuna password da terminale).
+- Primo admin: `sail artisan app:create-admin "Nome Cognome" email@azienda.it` (invito come gli altri, nessuna password da terminale). Rilanciato sulla stessa email rimanda l’invito; se esiste già un admin attivo serve `--force`.
 - Inviti: link valido 72 ore, attivazione su `/invitation/:token`. Gli admin nascono solo per promozione dalla sezione "Amministratori" (o con il comando sopra).
 
 ## Approccio

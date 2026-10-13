@@ -40,7 +40,7 @@ Nuova colonna `actor_id` (FK users, nullable, null on delete): chi ha compiuto l
 Si aggiunge con una nuova migration, perché la tabella esiste già.
 
 ### 3.3 Enum `AuthEventType` — **Novità**
-Nuovi casi `InvitationCancelled`, `RoleChanged`, `AdminGranted`, `AdminRevoked`. I casi `InvitationSent`,
+Nuovi casi `InvitationCancelled`, `RoleChanged`, `AdminGranted`, `AdminRevoked`, `AdminPasswordFailed`, `AdminPasswordLocked` (password di conferma sbagliata o bloccata: segnale di sessione admin rubata). I casi `InvitationSent`,
 `InvitationAccepted`, `UserDisabled` e `UserEnabled` esistono già.
 
 ### 3.4 Utenti
