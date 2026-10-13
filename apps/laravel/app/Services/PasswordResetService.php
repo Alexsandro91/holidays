@@ -8,12 +8,13 @@ use App\Mail\PasswordChangedMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Support\AuthSession;
-use Illuminate\Contracts\Auth\PasswordBroker;
+use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Timebox;
+use LogicException;
 
 /**
  * Recupero password con il broker di Laravel: link solo agli utenti attivi, nessun indizio sull'esistenza dell'email.
@@ -31,8 +32,12 @@ final class PasswordResetService
     public function sendLink(string $email): void
     {
         (new Timebox)->call(function () use ($email): void {
-            // Esito ignorato di proposito: utente inesistente, non attivo o link già chiesto da meno di 60 s
-            $this->broker()->sendResetLink(['email' => $email, 'status' => UserStatus::Active->value]);
+            // Un errore dell'infrastruttura (token, coda) è segnalato ma non cambia la risposta:
+            // un 500 solo per le email registrate rivelerebbe quali account esistono
+            rescue(function () use ($email): void {
+                // Esito ignorato di proposito: utente inesistente, non attivo o link già chiesto da meno di 60 s
+                $this->broker()->sendResetLink(['email' => $email, 'status' => UserStatus::Active->value]);
+            }, report: true);
         }, self::MIN_LINK_DURATION_MICROSECONDS);
     }
 
@@ -51,16 +56,21 @@ final class PasswordResetService
             function (User $user, string $password) use ($request, &$resetUser): void {
                 $resetUser = $user;
 
-                DB::transaction(function () use ($user, $password): void {
+                DB::transaction(function () use ($user, $password, $request): void {
                     $user->forceFill(['password' => $password])->save();
                     // Chi aveva rubato la password perde subito l'accesso e i codici in attesa
                     AuthSession::endAllFor($user);
                     LoginChallenge::query()->where('user_id', $user->id)->delete();
-                });
+                    $this->events->log(AuthEventType::PasswordReset, $request, $user);
+                    // Link annullato insieme al cambio: un errore dopo il commit non lo lascia riusabile
+                    $this->broker()->deleteToken($user);
 
-                $this->events->log(AuthEventType::PasswordReset, $request, $user);
-                // Dopo il commit: l'email non deve annullare il cambio di password
-                DB::afterCommit(fn () => Mail::to($user)->send(new PasswordChangedMail((string) $request->userAgent(), now())));
+                    // Dopo il commit: un errore della coda è segnalato, non annulla il cambio né la risposta
+                    DB::afterCommit(fn () => rescue(
+                        fn () => Mail::to($user)->send(new PasswordChangedMail((string) $request->userAgent(), now())),
+                        report: true,
+                    ));
+                });
             },
         );
 
@@ -69,6 +79,13 @@ final class PasswordResetService
 
     private function broker(): PasswordBroker
     {
-        return Password::broker((string) config('fortify.passwords'));
+        $broker = Password::broker((string) config('fortify.passwords'));
+
+        // Serve la classe concreta per deleteToken(), che il contratto non espone
+        if (! $broker instanceof PasswordBroker) {
+            throw new LogicException('Unexpected password broker implementation.');
+        }
+
+        return $broker;
     }
 }

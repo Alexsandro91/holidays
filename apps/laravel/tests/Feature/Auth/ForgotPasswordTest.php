@@ -6,8 +6,11 @@ use App\Mail\ResetPasswordMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
+use Tests\Fakes\FailingMailFake;
 use Tests\TestCase;
 
 class ForgotPasswordTest extends TestCase
@@ -81,6 +84,20 @@ class ForgotPasswordTest extends TestCase
 
         Mail::assertNothingQueued();
         $this->assertDatabaseCount('password_reset_tokens', 0);
+    }
+
+    public function test_an_infrastructure_error_gets_the_same_response(): void
+    {
+        Exceptions::fake();
+        FailingMailFake::install(ResetPasswordMail::class);
+        $user = User::factory()->create();
+
+        // Un 500 solo per le email registrate rivelerebbe quali account esistono
+        $this->postJson('/api/auth/forgot-password', ['email' => $user->email])
+            ->assertAccepted()
+            ->assertExactJson(self::SENT);
+
+        Exceptions::assertReported(RuntimeException::class);
     }
 
     public function test_email_with_spaces_and_capitals_is_accepted(): void

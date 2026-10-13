@@ -12,11 +12,14 @@ use App\Models\User;
 use App\Support\AuthSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 use Tests\Concerns\CompletesLogin;
+use Tests\Fakes\FailingMailFake;
 use Tests\TestCase;
 
 class ResetPasswordTest extends TestCase
@@ -122,6 +125,27 @@ class ResetPasswordTest extends TestCase
 
         Mail::assertNotQueued(LoginCodeMail::class);
         $this->postJson('/api/auth/reset-password', $this->payload($user, $token))->assertOk();
+    }
+
+    public function test_a_failing_confirmation_mail_does_not_leave_the_link_usable(): void
+    {
+        $user = User::factory()->create();
+        $token = $this->requestToken($user);
+        Exceptions::fake();
+        FailingMailFake::install(PasswordChangedMail::class);
+        $this->postJson('/api/auth/reset-password', $this->payload($user, $token))
+            ->assertOk()
+            ->assertExactJson(self::DONE);
+
+        // La password è cambiata, il link non vale più e l'evento è registrato: l'errore della coda è solo segnalato
+        $this->assertTrue(Hash::check(self::NEW_PASSWORD, (string) $user->fresh()?->password));
+        $this->assertDatabaseCount('password_reset_tokens', 0);
+        $this->assertDatabaseHas('auth_events', ['user_id' => $user->id, 'event' => AuthEventType::PasswordReset->value]);
+        Exceptions::assertReported(RuntimeException::class);
+        Mail::assertQueued(LoginCodeMail::class, fn (LoginCodeMail $mail): bool => $mail->hasTo($user->email));
+        $this->postJson('/api/auth/reset-password', $this->payload($user, $token, 'un-altra-frase-ancora'))
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.token.0', self::INVALID_LINK);
     }
 
     public function test_the_next_login_still_asks_for_the_code(): void
