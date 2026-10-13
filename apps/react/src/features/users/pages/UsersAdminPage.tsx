@@ -1,0 +1,31 @@
+import { useState } from 'react'
+import type { ManagedUser } from '@/features/users/api'
+import type { UserAction } from '@/features/users/actions'
+import ChangeRoleDialog from '@/features/users/components/ChangeRoleDialog'
+import ConfirmUserActionDialog from '@/features/users/components/ConfirmUserActionDialog'
+import InviteUserDialog from '@/features/users/components/InviteUserDialog'
+import UserActionsMenu from '@/features/users/components/UserActionsMenu'
+import UsersPage from '@/features/users/pages/UsersPage'
+
+type ConfirmAction = Exclude<UserAction, 'changeRole'>
+
+/** Pagina Utenti con invito e azioni di riga. */
+const UsersAdminPage = () => {
+  const [confirm, setConfirm] = useState<{ user: ManagedUser; action: ConfirmAction } | null>(null)
+  const [roleTarget, setRoleTarget] = useState<ManagedUser | null>(null)
+
+  const onSelect = (user: ManagedUser, action: UserAction) => {
+    if (action === 'changeRole') setRoleTarget(user)
+    else setConfirm({ user, action })
+  }
+
+  return (
+    <>
+      <UsersPage headerAction={<InviteUserDialog />} renderActions={(user) => <UserActionsMenu user={user} onSelect={(action) => onSelect(user, action)} />} />
+      <ConfirmUserActionDialog user={confirm?.user ?? null} action={confirm?.action ?? null} onClose={() => setConfirm(null)} />
+      <ChangeRoleDialog user={roleTarget} onClose={() => setRoleTarget(null)} />
+    </>
+  )
+}
+
+export default UsersAdminPage

@@ -1,6 +1,6 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { requestData } from '@/lib/api'
+import { request, requestData } from '@/lib/api'
 import { adminQueryKey } from '@/lib/queryKeys'
 
 export const managedUserSchema = z.object({
@@ -55,3 +55,44 @@ export const fetchUsers = (params: UserListParams): Promise<UserList> => request
 /** Lista per l'admin: durante il cambio di filtro o pagina restano visibili i dati precedenti. */
 export const useManagedUsers = (params: UserListParams) =>
   useQuery({ queryKey: usersQueryKey(params), queryFn: () => fetchUsers(params), placeholderData: keepPreviousData })
+
+export type ManagedRole = 'employee' | 'manager'
+
+export interface InviteUserInput {
+  name: string
+  email: string
+  role: ManagedRole
+}
+
+const userResourceSchema = z.object({ data: managedUserSchema })
+
+/** Dopo ogni modifica si ricaricano tutte le query admin (lista utenti, amministratori, conteggi). */
+const useAdminMutation = <TInput>(mutationFn: (input: TInput) => Promise<unknown>) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+  })
+}
+
+export const useInviteUser = () => useAdminMutation((input: InviteUserInput) => requestData('POST', '/api/users', userResourceSchema, input))
+
+export const useResendInvitation = () => useAdminMutation((id: number) => request('POST', `/api/users/${id}/invitation`))
+
+export const useCancelInvitation = () => useAdminMutation((id: number) => request('DELETE', `/api/users/${id}/invitation`))
+
+export const useChangeRole = () =>
+  useAdminMutation(({ id, role }: { id: number; role: ManagedRole }) => requestData('PATCH', `/api/users/${id}/role`, userResourceSchema, { role }))
+
+export interface UserStatusInput {
+  id: number
+  currentPassword?: string
+}
+
+const statusBody = ({ currentPassword }: UserStatusInput) => (currentPassword === undefined ? undefined : { current_password: currentPassword })
+
+export const useDisableUser = () =>
+  useAdminMutation((input: UserStatusInput) => requestData('POST', `/api/users/${input.id}/disable`, userResourceSchema, statusBody(input)))
+
+export const useEnableUser = () =>
+  useAdminMutation((input: UserStatusInput) => requestData('POST', `/api/users/${input.id}/enable`, userResourceSchema, statusBody(input)))

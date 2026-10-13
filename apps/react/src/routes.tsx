@@ -9,7 +9,7 @@ import LoginPage from '@/features/auth/pages/LoginPage'
 import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
-import UsersPage from '@/features/users/pages/UsersPage'
+import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
@@ -40,7 +40,7 @@ export const routes: RouteObject[] = [
               { path: '/', element: <HomePage />, handle: { titleKey: 'titles.home' } },
               {
                 element: <AdminRoute />,
-                children: [{ path: '/admin/users', element: <UsersPage />, handle: { titleKey: 'titles.users' } }],
+                children: [{ path: '/admin/users', element: <UsersAdminPage />, handle: { titleKey: 'titles.users' } }],
               },
             ],
           },

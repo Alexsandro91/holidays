@@ -89,7 +89,8 @@
     "emailInvalid": "Inserisci un indirizzo email valido, ad esempio nome@azienda.it.",
     "passwordRequired": "Inserisci la password.",
     "passwordMin": "La password deve avere almeno 12 caratteri.",
-    "passwordMismatch": "Le due password non coincidono."
+    "passwordMismatch": "Le due password non coincidono.",
+    "nameRequired": "Inserisci nome e cognome."
   },
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova tra poco.",
@@ -133,7 +134,36 @@
     "empty": "Nessun utente trovato.",
     "clearFilters": "Azzera filtri",
     "loadError": "Non è stato possibile caricare gli utenti.",
-    "pagination": { "label": "Pagine", "previous": "Precedente", "next": "Successiva", "status": "Pagina {{page}} di {{pages}}" }
+    "pagination": { "label": "Pagine", "previous": "Precedente", "next": "Successiva", "status": "Pagina {{page}} di {{pages}}" },
+    "actions": {
+      "menu": "Azioni per {{name}}",
+      "resend": "Reinvia invito",
+      "cancel": "Annulla invito",
+      "changeRole": "Cambia ruolo",
+      "disable": "Disattiva",
+      "enable": "Riattiva"
+    },
+    "inviteDialog": {
+      "title": "Invita utente",
+      "description": "Riceverà un’email con il link per attivare l’account. Il link vale 72 ore.",
+      "name": "Nome e cognome",
+      "email": "Email aziendale",
+      "role": "Ruolo",
+      "submit": "Invia invito",
+      "submitting": "Invio in corso…",
+      "done": "Invito inviato a {{email}}."
+    },
+    "roles": { "employee": "Dipendente", "manager": "Responsabile" },
+    "roleDialog": { "title": "Cambia ruolo di {{name}}", "submit": "Salva ruolo", "done": "Ruolo di {{name}} aggiornato." },
+    "confirm": {
+      "resend": { "title": "Reinviare l’invito a {{name}}?", "description": "Il link precedente smetterà di funzionare.", "action": "Reinvia", "done": "Invito inviato di nuovo." },
+      "cancel": { "title": "Annullare l’invito di {{name}}?", "description": "L’account non attivato verrà eliminato.", "action": "Annulla invito di {{name}}", "done": "Invito annullato." },
+      "disable": { "title": "Disattivare {{name}}?", "description": "Perderà subito l’accesso e verrà disconnesso da tutti i dispositivi.", "action": "Disattiva {{name}}", "done": "{{name}} è stato disattivato." },
+      "enable": { "title": "Riattivare {{name}}?", "description": "Potrà di nuovo accedere con la sua password e il codice via email.", "action": "Riattiva {{name}}", "done": "{{name}} è stato riattivato." },
+      "adminNotice": "È un amministratore: tutti gli amministratori riceveranno un’email.",
+      "password": "La tua password",
+      "back": "Indietro"
+    }
   },
   "titles": {
     "users": "Utenti",

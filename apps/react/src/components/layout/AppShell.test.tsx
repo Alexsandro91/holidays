@@ -13,7 +13,7 @@ const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.
 describe('AppShell', () => {
   it('greets the user, sets the page title and focuses the heading', async () => {
     signedIn()
-    renderRoutes(routes, ['/'])
+    renderRoutes(routes, ['/'], { toaster: false })
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
     await waitFor(() => expect(heading).toHaveFocus())
@@ -24,7 +24,7 @@ describe('AppShell', () => {
   it('signs out from the account menu', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
-    const { user, router } = renderRoutes(routes, ['/'])
+    const { user, router } = renderRoutes(routes, ['/'], { toaster: false })
 
     await user.click(await screen.findByRole('button', { name: /Menu account/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
@@ -36,7 +36,7 @@ describe('AppShell', () => {
   it('keeps the user signed in when the sign-out fails on the server', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => HttpResponse.json({ message: 'Server Error' }, { status: 500 })))
-    const { user, router } = renderRoutes(routes, ['/'])
+    const { user, router } = renderRoutes(routes, ['/'], { toaster: false })
 
     await user.click(await screen.findByRole('button', { name: /Menu account/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
@@ -59,7 +59,7 @@ describe('AppShell', () => {
         return HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 })
       }),
     )
-    const { user, router } = renderRoutes(routes, ['/'])
+    const { user, router } = renderRoutes(routes, ['/'], { toaster: false })
 
     await user.click(await screen.findByRole('button', { name: /Menu account/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Esci' }))
@@ -69,7 +69,7 @@ describe('AppShell', () => {
   })
 
   it('leaves the focus on the code field of the verification page', async () => {
-    renderRoutes(routes, ['/login/verify'])
+    renderRoutes(routes, ['/login/verify'], { toaster: false })
 
     const field = await screen.findByRole('textbox', { name: 'Codice di verifica' })
     await waitFor(() => expect(field).toHaveFocus())
@@ -79,21 +79,21 @@ describe('AppShell', () => {
   })
 
   it('focuses the heading on a first load of the login page', async () => {
-    renderRoutes(routes, ['/login'])
+    renderRoutes(routes, ['/login'], { toaster: false })
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Accedi' })
     await waitFor(() => expect(heading).toHaveFocus())
   })
 
   it('shows a 404 page for unknown addresses', async () => {
-    renderRoutes(routes, ['/non-esiste'])
+    renderRoutes(routes, ['/non-esiste'], { toaster: false })
 
     expect(await screen.findByRole('heading', { name: 'Pagina non trovata' })).toBeInTheDocument()
   })
 
   it('has no accessibility violations', async () => {
     signedIn()
-    const { container } = renderRoutes(routes, ['/'])
+    const { container } = renderRoutes(routes, ['/'], { toaster: false })
     await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
 
     await expectNoA11yViolations(container)
@@ -101,14 +101,14 @@ describe('AppShell', () => {
 
   it('shows the administration group only to admins', async () => {
     signedIn()
-    const first = renderRoutes(routes, ['/'])
+    const first = renderRoutes(routes, ['/'], { toaster: false })
 
     expect(await screen.findByRole('link', { name: 'Utenti' })).toHaveAttribute('href', '/admin/users')
     expect(screen.getByRole('link', { name: 'Amministratori' })).toHaveAttribute('href', '/admin/administrators')
     first.unmount()
 
     server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'employee', role_label: 'Dipendente' } })))
-    renderRoutes(routes, ['/'])
+    renderRoutes(routes, ['/'], { toaster: false })
 
     await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
     expect(screen.queryByRole('link', { name: 'Utenti' })).not.toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('AppShell', () => {
   it('logging out drops every cached admin query', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
-    const { user, queryClient } = renderRoutes(routes, ['/'])
+    const { user, queryClient } = renderRoutes(routes, ['/'], { toaster: false })
     queryClient.setQueryData(['admin', 'users', {}], { data: [] })
 
     await user.click(await screen.findByRole('button', { name: /Menu account/ }))

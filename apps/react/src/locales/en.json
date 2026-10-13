@@ -89,7 +89,8 @@
     "emailInvalid": "Enter a valid email address, for example name@company.com.",
     "passwordRequired": "Enter your password.",
     "passwordMin": "Your password must be at least 12 characters long.",
-    "passwordMismatch": "The passwords don’t match."
+    "passwordMismatch": "The passwords don’t match.",
+    "nameRequired": "Enter the full name."
   },
   "errors": {
     "generic": "Something went wrong. Please try again shortly.",
@@ -133,7 +134,36 @@
     "empty": "No users found.",
     "clearFilters": "Clear filters",
     "loadError": "Users couldn’t be loaded.",
-    "pagination": { "label": "Pages", "previous": "Previous", "next": "Next", "status": "Page {{page}} of {{pages}}" }
+    "pagination": { "label": "Pages", "previous": "Previous", "next": "Next", "status": "Page {{page}} of {{pages}}" },
+    "actions": {
+      "menu": "Actions for {{name}}",
+      "resend": "Resend invitation",
+      "cancel": "Cancel invitation",
+      "changeRole": "Change role",
+      "disable": "Disable",
+      "enable": "Enable"
+    },
+    "inviteDialog": {
+      "title": "Invite user",
+      "description": "They’ll get an email with a link to activate the account. The link is valid for 72 hours.",
+      "name": "Full name",
+      "email": "Work email",
+      "role": "Role",
+      "submit": "Send invitation",
+      "submitting": "Sending…",
+      "done": "Invitation sent to {{email}}."
+    },
+    "roles": { "employee": "Employee", "manager": "Manager" },
+    "roleDialog": { "title": "Change {{name}}’s role", "submit": "Save role", "done": "{{name}}’s role updated." },
+    "confirm": {
+      "resend": { "title": "Resend the invitation to {{name}}?", "description": "The previous link will stop working.", "action": "Resend", "done": "Invitation sent again." },
+      "cancel": { "title": "Cancel {{name}}’s invitation?", "description": "The account was never activated and will be deleted.", "action": "Cancel {{name}}’s invitation", "done": "Invitation cancelled." },
+      "disable": { "title": "Disable {{name}}?", "description": "They’ll lose access right away and be signed out on every device.", "action": "Disable {{name}}", "done": "{{name}} has been disabled." },
+      "enable": { "title": "Enable {{name}} again?", "description": "They’ll be able to sign in again with their password and the emailed code.", "action": "Enable {{name}}", "done": "{{name}} has been enabled again." },
+      "adminNotice": "This person is an administrator: every administrator will get an email.",
+      "password": "Your password",
+      "back": "Back"
+    }
   },
   "titles": {
     "users": "Users",

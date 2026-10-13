@@ -6,7 +6,7 @@ import { renderRoutes } from '@/test/render'
 
 describe('RouteAnnouncer', () => {
   it('announces a page only when the address changes, not on a language switch', async () => {
-    const { router } = renderRoutes(routes, ['/login'])
+    const { router } = renderRoutes(routes, ['/login'], { toaster: false })
     await screen.findByRole('heading', { level: 1, name: 'Accedi' })
     expect(screen.getByText('Pagina: Accedi')).toBeInTheDocument()
 
