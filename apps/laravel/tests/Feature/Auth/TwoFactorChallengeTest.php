@@ -88,7 +88,7 @@ class TwoFactorChallengeTest extends TestCase
         $user = User::factory()->create();
         $code = $this->startLogin($user);
 
-        $user->update(['status' => UserStatus::Disabled]);
+        $user->forceFill(['status' => UserStatus::Disabled])->save();
 
         $this->postJson('/api/auth/two-factor', ['code' => $code])->assertJsonPath('meta.restart', true);
         $this->assertGuest();

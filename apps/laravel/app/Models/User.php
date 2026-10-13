@@ -15,7 +15,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Mail;
 
-#[Fillable(['name', 'email', 'password', 'role', 'status', 'locale'])]
+#[Fillable(['name', 'email', 'password', 'locale'])]
 #[Hidden(['password'])]
 class User extends Authenticatable implements HasLocalePreference
 {

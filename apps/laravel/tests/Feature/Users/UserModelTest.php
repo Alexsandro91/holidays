@@ -25,6 +25,16 @@ class UserModelTest extends TestCase
         $this->assertFalse($user->isAdmin());
     }
 
+    public function test_role_and_status_are_not_mass_assignable(): void
+    {
+        // Si impostano solo nei service con forceFill
+        $user = (new User)->fill(['name' => 'Sara', 'role' => 'admin', 'status' => 'active']);
+
+        $this->assertSame('Sara', $user->name);
+        $this->assertNull($user->getAttributes()['role'] ?? null);
+        $this->assertNull($user->getAttributes()['status'] ?? null);
+    }
+
     public function test_invited_users_have_no_password_and_are_not_active(): void
     {
         $user = User::factory()->invited()->create();
