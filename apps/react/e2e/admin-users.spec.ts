@@ -11,15 +11,12 @@ const PASSWORD = 'holidays-dev-password'
 const NEW_USER = `e2e-${Date.now()}@holidays.test`
 const NEW_USER_NAME = 'E2E Invitato'
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
-// Problema noto dell'app, non del test: le schede inattive di /admin/users in chiaro hanno contrasto 4,25:1 (#6a7276 su #eaf0f0, minimo 4,5:1).
-// Da correggere nell'app e poi togliere questa esclusione (vedi task-13-report.md)
-const KNOWN_LOW_CONTRAST = '[role=tab]'
 const COLOR_SCHEMES: Array<'light' | 'dark'> = ['light', 'dark']
 
 test.describe.configure({ mode: 'serial' })
 
 const expectNoViolations = async (page: Page): Promise<void> => {
-  const results = await new AxeBuilder({ page }).exclude(KNOWN_LOW_CONTRAST).withTags(WCAG_TAGS).analyze()
+  const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
   const violations = results.violations.map(
     (violation) => `${violation.id}: ${violation.help} → ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`,
   )
@@ -46,7 +43,7 @@ const focusedLabel = async (page: Page): Promise<string | null> =>
 
 let browserRef: Browser
 let baseURL: string
-let adminContext: BrowserContext
+let adminContext: BrowserContext | null = null
 let admin: Page
 let newUserContext: BrowserContext | null = null
 let newUserPage: Page | null = null
@@ -60,14 +57,16 @@ test.beforeAll(async ({ browser }) => {
   baseURL = configured
   await clearInbox()
   // Un solo login admin per file: il limite è di 5 al minuto per email e IP
-  adminContext = await newContext()
-  admin = await adminContext.newPage()
+  const context = await newContext()
+  adminContext = context
+  admin = await context.newPage()
   await signIn(admin, ADMIN, PASSWORD)
 })
 
 test.afterAll(async () => {
   await newUserContext?.close()
-  await adminContext.close()
+  // beforeAll può fallire prima di aprire il contesto admin
+  await adminContext?.close()
 })
 
 test('an admin invites a user who activates the account and enters with the code', async () => {
@@ -189,11 +188,15 @@ test('employees see the forbidden page', async () => {
 test('admin pages fit a phone screen and work with the keyboard', async () => {
   await admin.emulateMedia({ colorScheme: 'light' })
   await admin.setViewportSize({ width: 360, height: 740 })
-  for (const path of ['/admin/users', '/admin/administrators']) {
+  // Ricerca per nome: ogni esecuzione aggiunge un "E2E Invitato" che in ordine alfabetico viene prima di Marco Bianchi
+  for (const { path, name } of [
+    { path: '/admin/users?q=marco', name: 'Marco Bianchi' },
+    { path: '/admin/administrators', name: 'Giulia Rossi' },
+  ]) {
     await admin.goto(path)
     await expect(admin.locator('#page-title')).toBeVisible()
     // Su telefono la lista ha una versione a schede e una a tabella: conta quella visibile
-    await expect(admin.getByText(path.endsWith('users') ? 'Marco Bianchi' : 'Giulia Rossi').locator('visible=true').first()).toBeVisible()
+    await expect(admin.getByText(name).locator('visible=true').first()).toBeVisible()
     expect(await horizontalOverflow(admin), path).toBeLessThanOrEqual(0)
   }
 

@@ -1,5 +1,5 @@
 import { act, screen, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import UsersPage from '@/features/users/pages/UsersPage'
@@ -54,6 +54,19 @@ describe('UsersPage', () => {
 
     expect(router.state.location.search).toBe('?status=invited')
     await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[status]')).toBe('invited'))
+  })
+
+  it('shows no counts on the tabs until the first load ends', async () => {
+    server.use(
+      http.get('/api/users', async () => {
+        await delay('infinite')
+        return HttpResponse.json(userListResponse([]))
+      }),
+    )
+    renderRoutes(routes, ['/admin/users'])
+
+    expect(await screen.findByRole('tab', { name: 'Tutti' })).toBeInTheDocument()
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
 
   it('reads filter, search and page from the URL', async () => {
