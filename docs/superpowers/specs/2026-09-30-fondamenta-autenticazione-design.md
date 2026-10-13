@@ -128,8 +128,11 @@ Browser ──► localhost:5174 (Vite, React)
 1. `POST /api/auth/forgot-password`: risposta **sempre** `202` con lo stesso messaggio (si sovrascrive la risposta
    di Fortify che segnalerebbe email inesistenti). Email solo per utenti `active`.
 2. Link a `/reset-password/:token?email=…`, validità **60 minuti**, uso singolo (broker Laravel).
-3. `POST /api/auth/reset-password`: nuova password → cancellate tutte le sessioni dell'utente, email
-   "password cambiata", redirect al login. Il login successivo richiede comunque il codice.
+3. `POST /api/auth/reset-password` con nuova password e conferma: cancellate tutte le sessioni dell'utente,
+   email "password cambiata", poi parte subito il passo del codice come dopo le credenziali (challenge in sessione,
+   codice via email) e la SPA va su `/login/verify`. Il reset non apre mai la sessione da solo: senza il codice non
+   si entra (dal passo del codice si può tornare al login normale). Deciso il 13/10/2026: niente login automatico
+   dopo il reset, perché scavalcherebbe il secondo fattore (oggi il codice via email, domani TOTP/passkey).
 
 ### 6.4 Sessione, profilo, logout
 - Scadenza per inattività **2 ore** (`SESSION_LIFETIME=120`) e assoluta **12 ore** dal login
@@ -149,7 +152,7 @@ Browser ──► localhost:5174 (Vite, React)
 | `POST /api/auth/two-factor/resend` | `202` · `429 {retry_after}` · `422 meta.restart` |
 | `POST /api/auth/logout` | `204` |
 | `POST /api/auth/forgot-password` | `202` sempre |
-| `POST /api/auth/reset-password` | `200` · `422` |
+| `POST /api/auth/reset-password` | `200 {two_factor:true}` · `422` · `429` |
 | `GET /api/auth/user` | `200 UserResource` · `401` |
 | `GET /api/invitations/{token}` | `200 {name, email}` · `404` non valido · `410` scaduto |
 | `POST /api/invitations/{token}/accept` | `200` · `422` · `410` |

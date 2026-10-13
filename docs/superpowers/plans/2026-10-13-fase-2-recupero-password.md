@@ -2419,3 +2419,47 @@ git commit -m "test(e2e): recupero password completo, wcag e schermi piccoli"
 1. Gate completi: backend (`sail artisan test --compact`, `sail composer analyse`, `sail bin pint --test`, `sail composer audit`) e frontend (`npm test`, `npm run lint`, `npm run build`, `npm audit`, `npm run test:e2e`).
 2. Controllo visivo con Playwright a 360, 768 e 1280 px, in chiaro e in scuro, delle pagine `/login`, `/forgot-password` (form e conferma), `/reset-password/:token` (form e link non valido).
 3. Code review dell'intero branch (correttezza e qualità) e security review del recupero password (enumerazione, tempi, token, limiti, sessioni, CSRF, link nelle email), con correzione dei problemi trovati.
+
+---
+
+## Task 7: Dopo il reset si passa al codice (decisione del 13/10/2026) e conferma password
+
+Decisione dell'utente, registrata nella spec §6.3: dopo "Salva la password" non si torna al login. Parte subito il passo del codice (stessa challenge del login) e dalla pagina del codice si entra nella dashboard. Il reset non apre mai la sessione da solo. Il form chiede anche la conferma della password.
+
+**Files:**
+- Modify: `apps/laravel/app/Services/LoginChallengeService.php` (o una classe dedicata), `apps/laravel/app/Actions/Fortify/StartEmailLoginChallenge.php`, `apps/laravel/app/Services/PasswordResetService.php`, `apps/laravel/app/Http/Controllers/Auth/ResetPasswordController.php`, `apps/laravel/app/Http/Requests/Auth/ResetPasswordRequest.php`
+- Modify: `apps/react/src/features/auth/pages/{ResetPasswordPage,VerifyCodePage,LoginPage}.tsx` (+ test), `apps/react/src/locales/{it,en}.json`, `apps/react/e2e/password-reset.spec.ts`
+- Test: `apps/laravel/tests/Feature/Auth/ResetPasswordTest.php`
+
+**Requisiti:**
+1. **Backend: avvio del codice riusabile.**
+   - Estrai da `StartEmailLoginChallenge::handle()` i passi "crea challenge, rigenera sessione, salva `AuthSession::CHALLENGE_ID`, accoda `LoginCodeMail`" in un unico metodo pubblico riusabile, ad esempio `LoginChallengeService::beginFor(Request $request, User $user): void`.
+   - Il login usa questo metodo con lo stesso comportamento di oggi: i test di login restano verdi.
+2. **Backend: reset.**
+   - `PasswordResetService::reset()` restituisce l'utente (`?User`, `null` se il link non è valido) invece di `bool`.
+   - Se il reset riesce, il controller avvia il codice con il metodo del punto 1 e risponde `200 {"two_factor": true, "message": <password_reset.done>}`.
+   - Il testo `password_reset.done` diventa: it "Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato via email.", en "Password updated. To sign in, enter the code we emailed you.".
+   - L'utente resta guest.
+   - Il codice va solo all'utente del link (attivo). Le challenge pendenti cancellate dal reset vengono cancellate **prima** di crearne una nuova.
+3. **Backend: conferma.** `password` ha anche la regola `confirmed`, e il campo `password_confirmation` è obbligatorio.
+4. **Test backend:**
+   - Dopo il reset c'è una challenge in sessione per l'utente e `LoginCodeMail` è in coda.
+   - `/api/auth/two-factor` con quel codice completa il login (`UserResource`).
+   - Senza codice resta guest: `GET /api/auth/user` risponde `401`.
+   - Conferma diversa → `422 errors.password`, e il link resta valido.
+   - I test esistenti vanno aggiornati al nuovo contratto.
+5. **Frontend: reset.**
+   - Campo "Conferma password" (`autocomplete="new-password"`, `PasswordInput`, label associata, `aria-invalid`/`aria-describedby`).
+   - Controllo zod di corrispondenza con messaggio `validation.passwordMismatch` (it "Le due password non coincidono.", en "The passwords don't match."), mostrato sotto il campo di conferma.
+   - Invia `password_confirmation`.
+   - Se riesce va su `navigate('/login/verify', { replace: true, state: { email, passwordReset: true } })`.
+6. **Frontend: pagina del codice.**
+   - Se lo stato contiene `passwordReset: true`, mostra in alto un avviso non distruttivo: it "Password aggiornata. Per entrare inserisci il codice che ti abbiamo inviato.", en "Password updated. To sign in, enter the code we just sent you.".
+   - Il resto resta invariato: "Usa un altro account" riporta al login normale.
+7. **Frontend: pulizia.**
+   - La notice `password-reset` del login non è più usata: rimuovi chiavi, tipo e test relativi.
+   - Resta il precompilato dell'email dallo stato di navigazione, che serve ai link "Torna all'accesso".
+8. **E2E:**
+   - Il flusso diventa forgot → link → nuova password + conferma → pagina del codice con l'avviso → codice → "Ciao, Paolo".
+   - La verifica del link usato una seconda volta si fa in un **nuovo contesto** del browser (ospite), dove il link deve risultare "Link non valido".
+   - Compila la conferma ovunque si compila la nuova password.
