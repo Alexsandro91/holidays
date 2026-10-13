@@ -14,6 +14,8 @@ final class LogPwnedPasswordsRequest
 {
     private const HOST = 'api.pwnedpasswords.com';
 
+    private const CHANNEL = 'hibp';
+
     public function handle(ResponseReceived|ConnectionFailed $event): void
     {
         if (parse_url($event->request->url(), PHP_URL_HOST) !== self::HOST) {
@@ -21,7 +23,7 @@ final class LogPwnedPasswordsRequest
         }
 
         if ($event instanceof ConnectionFailed) {
-            Log::channel('hibp')->warning('HIBP unreachable, password check skipped');
+            Log::channel(self::CHANNEL)->warning('HIBP unreachable, password check skipped');
 
             return;
         }
@@ -29,9 +31,9 @@ final class LogPwnedPasswordsRequest
         $context = ['status' => $event->response->status()];
 
         if ($event->response->successful()) {
-            Log::channel('hibp')->info('HIBP range query', $context);
+            Log::channel(self::CHANNEL)->info('HIBP range query', $context);
         } else {
-            Log::channel('hibp')->warning('HIBP error, password check skipped', $context);
+            Log::channel(self::CHANNEL)->warning('HIBP error, password check skipped', $context);
         }
     }
 }

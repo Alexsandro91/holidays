@@ -10,6 +10,7 @@ use App\Mail\ResetPasswordMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Support\AuthSession;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\NotPwnedVerifier;
+use ReflectionProperty;
 use RuntimeException;
 use Tests\Concerns\CompletesLogin;
 use Tests\Fakes\FailingMailFake;
@@ -296,6 +299,42 @@ class ResetPasswordTest extends TestCase
         Log::shouldReceive('channel')->andReturnSelf()->byDefault();
 
         $this->postJson('/api/auth/reset-password', $this->payload($user, $token))->assertOk();
+    }
+
+    public function test_a_hibp_error_is_logged_as_a_warning_and_the_password_is_accepted(): void
+    {
+        config(['auth.password_uncompromised' => true]);
+        Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 500)]);
+        $user = User::factory()->create();
+        $token = $this->requestToken($user);
+        Log::shouldReceive('channel')->with('hibp')->once()->andReturnSelf();
+        Log::shouldReceive('warning')->once()->with('HIBP error, password check skipped', ['status' => 500]);
+        Log::shouldReceive('channel')->andReturnSelf()->byDefault();
+
+        // Fail-open di Laravel: HIBP fuori servizio non blocca il reset, ma resta traccia nel log
+        $this->postJson('/api/auth/reset-password', $this->payload($user, $token))->assertOk();
+    }
+
+    public function test_an_unreachable_hibp_is_logged_as_a_warning(): void
+    {
+        config(['auth.password_uncompromised' => true]);
+        Http::fake(['api.pwnedpasswords.com/*' => Http::failedConnection()]);
+        Exceptions::fake();
+        $user = User::factory()->create();
+        $token = $this->requestToken($user);
+        Log::shouldReceive('channel')->with('hibp')->once()->andReturnSelf();
+        Log::shouldReceive('warning')->once()->with('HIBP unreachable, password check skipped');
+        Log::shouldReceive('channel')->andReturnSelf()->byDefault();
+
+        $this->postJson('/api/auth/reset-password', $this->payload($user, $token))->assertOk();
+    }
+
+    public function test_the_hibp_check_gives_up_after_five_seconds(): void
+    {
+        $verifier = app(UncompromisedVerifier::class);
+
+        $this->assertInstanceOf(NotPwnedVerifier::class, $verifier);
+        $this->assertSame(5, (new ReflectionProperty(NotPwnedVerifier::class, 'timeout'))->getValue($verifier));
     }
 
     public function test_missing_or_malformed_fields_are_rejected(): void

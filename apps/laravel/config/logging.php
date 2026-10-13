@@ -52,11 +52,12 @@ return [
 
     'channels' => [
 
-        // Chiamate a Have I Been Pwned (controllo password trafugate): mai l'hash, solo esito e durata
+        // Chiamate a Have I Been Pwned (controllo password trafugate): solo lo status HTTP o la mancata risposta,
+        // mai l'hash né la password. Livello proprio: i warning (controllo saltato) restano anche con LOG_LEVEL=error
         'hibp' => [
             'driver' => 'daily',
             'path' => storage_path('logs/hibp.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
+            'level' => env('LOG_HIBP_LEVEL', 'info'),
             'days' => 30,
             'replace_placeholders' => true,
         ],
