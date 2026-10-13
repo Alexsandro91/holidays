@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 interface PageHeadingProps {
   title: string
@@ -6,11 +7,13 @@ interface PageHeadingProps {
   icon?: ReactNode
   /** id del paragrafo di descrizione, per collegarlo a un campo con aria-describedby */
   descriptionId?: string
+  /** Classi aggiuntive (es. `mb-0` quando lo spazio sotto lo dà l'intestazione che lo contiene) */
+  className?: string
 }
 
 /** Titolo di pagina: `#page-title` riceve il focus a ogni cambio di pagina (vedi RouteAnnouncer). */
-const PageHeading = ({ title, description, icon, descriptionId }: PageHeadingProps) => (
-  <div className="mb-7 grid gap-2">
+const PageHeading = ({ title, description, icon, descriptionId, className }: PageHeadingProps) => (
+  <div className={cn('mb-7 grid gap-2', className)}>
     {icon && (
       <span className="mb-2 inline-flex size-11 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground">{icon}</span>
     )}

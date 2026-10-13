@@ -16,53 +16,59 @@ const AdministratorsPage = () => {
   const { t } = useTranslation()
   const administrators = useAdministrators()
   const [revoking, setRevoking] = useState<ManagedUser | null>(null)
-  const onlyYou = administrators.data !== undefined && administrators.data.length === 1 && administrators.data[0]?.is_current_user === true
+  // Contano solo gli admin attivi: uno disattivato non può subentrare
+  const activeAdmins = administrators.data?.filter((admin) => admin.status === 'active')
+  const onlyYou = activeAdmins !== undefined && activeAdmins.length === 1 && activeAdmins[0]?.is_current_user === true
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeading title={t('administrators.title')} description={t('administrators.subtitle')} />
+      {/* Lo spazio sotto è dell'intestazione: resta uguale anche quando il pulsante va a capo */}
+      <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+        <PageHeading title={t('administrators.title')} description={t('administrators.subtitle')} className="mb-0" />
         <GrantAdminDialog />
       </div>
-      {onlyYou && (
-        <Alert>
-          <AlertDescription>{t('administrators.onlyYou')}</AlertDescription>
-        </Alert>
-      )}
-      {administrators.isPending ? (
-        <div className="grid gap-2" role="status" aria-busy="true" aria-label={t('common.loading')}>
-          {[0, 1, 2].map((row) => (
-            <Skeleton key={row} className="h-16 w-full" />
-          ))}
-        </div>
-      ) : administrators.isError ? (
-        <div role="alert" className="grid justify-items-start gap-3 rounded-lg border p-6">
-          <p>{t('administrators.loadError')}</p>
-          <Button variant="outline" onClick={() => void administrators.refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
-      ) : (
-        <ul className="grid gap-2">
-          {administrators.data.map((admin) => (
-            <li key={admin.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
-              <div className="min-w-0">
-                <p className="font-medium break-words">{admin.name}</p>
-                <p className="text-sm break-all text-muted-foreground">{admin.email}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge user={admin} />
-                {admin.is_current_user && <Badge variant="outline">{t('users.you')}</Badge>}
-                {!admin.is_current_user && (
-                  <Button variant="outline" aria-label={t('administrators.revokeFor', { name: admin.name })} {...{ [REVOKE_TRIGGER_ATTRIBUTE]: admin.id }} onClick={() => setRevoking(admin)}>
-                    {t('administrators.revoke')}
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Avviso e lista con il loro spazio: l'avviso non si attacca alla lista */}
+      <div className="grid gap-4">
+        {onlyYou && (
+          <Alert>
+            <AlertDescription>{t('administrators.onlyYou')}</AlertDescription>
+          </Alert>
+        )}
+        {administrators.isPending ? (
+          <div className="grid gap-2" role="status" aria-busy="true" aria-label={t('common.loading')}>
+            {[0, 1, 2].map((row) => (
+              <Skeleton key={row} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : administrators.isError ? (
+          <div role="alert" className="grid justify-items-start gap-3 rounded-lg border p-6">
+            <p>{t('administrators.loadError')}</p>
+            <Button variant="outline" onClick={() => void administrators.refetch()}>
+              {t('common.retry')}
+            </Button>
+          </div>
+        ) : (
+          <ul className="grid gap-2">
+            {administrators.data.map((admin) => (
+              <li key={admin.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{admin.name}</p>
+                  <p className="text-sm break-all text-muted-foreground">{admin.email}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge user={admin} />
+                  {admin.is_current_user && <Badge variant="outline">{t('users.you')}</Badge>}
+                  {!admin.is_current_user && (
+                    <Button variant="outline" aria-label={t('administrators.revokeFor', { name: admin.name })} {...{ [REVOKE_TRIGGER_ATTRIBUTE]: admin.id }} onClick={() => setRevoking(admin)}>
+                      {t('administrators.revoke')}
+                    </Button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <RevokeAdminDialog user={revoking} onClose={() => setRevoking(null)} />
     </>
   )

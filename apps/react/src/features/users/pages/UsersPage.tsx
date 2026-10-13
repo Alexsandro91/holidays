@@ -54,8 +54,9 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeading title={t('users.title')} description={t('users.subtitle')} />
+      {/* Lo spazio sotto è dell'intestazione: resta uguale anche quando il pulsante va a capo */}
+      <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
+        <PageHeading title={t('users.title')} description={t('users.subtitle')} className="mb-0" />
         {headerAction}
       </div>
       <UserStatusTabs
