@@ -151,6 +151,25 @@ class ResetPasswordTest extends TestCase
             ->assertJsonPath('errors.token.0', self::INVALID_LINK);
     }
 
+    public function test_a_failing_login_code_mail_does_not_break_a_successful_reset(): void
+    {
+        $user = User::factory()->create();
+        $token = $this->requestToken($user);
+        Exceptions::fake();
+        FailingMailFake::install(LoginCodeMail::class);
+
+        $this->postJson('/api/auth/reset-password', $this->payload($user, $token))
+            ->assertOk()
+            ->assertExactJson(self::DONE);
+
+        // Password cambiata, challenge e chiave di sessione già pronte: il codice si chiede dalla pagina del codice
+        $this->assertTrue(Hash::check(self::NEW_PASSWORD, (string) $user->fresh()?->password));
+        $this->assertSame(LoginChallenge::query()->sole()->id, session(AuthSession::CHALLENGE_ID));
+        $this->assertGuest();
+        Exceptions::assertReported(RuntimeException::class);
+        Mail::assertNotQueued(LoginCodeMail::class);
+    }
+
     public function test_the_next_login_still_asks_for_the_code(): void
     {
         $user = User::factory()->create();

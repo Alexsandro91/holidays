@@ -30,15 +30,26 @@ final class LoginChallengeService
     /**
      * Avvia il passo del codice per un utente già verificato (password giusta o reset riuscito):
      * nuova challenge, sessione rigenerata con l'ID della challenge, codice via email. La sessione resta da ospite.
+     *
+     * Con $reportMailFailure un errore di messa in coda dell'email è segnalato ma non rilanciato: serve al reset, dove
+     * la password è già cambiata e il link consumato (il codice si richiede dalla pagina del codice).
      */
-    public function beginFor(Request $request, User $user): void
+    public function beginFor(Request $request, User $user, bool $reportMailFailure = false): void
     {
         [$challenge, $code] = $this->start($user);
 
         $request->session()->regenerate();
         $request->session()->put(AuthSession::CHALLENGE_ID, $challenge->id);
 
-        Mail::to($user)->send(new LoginCodeMail($code, (string) $request->userAgent(), now()));
+        $send = fn () => Mail::to($user)->send(new LoginCodeMail($code, (string) $request->userAgent(), now()));
+
+        if ($reportMailFailure) {
+            rescue($send, report: true);
+
+            return;
+        }
+
+        $send();
     }
 
     /**

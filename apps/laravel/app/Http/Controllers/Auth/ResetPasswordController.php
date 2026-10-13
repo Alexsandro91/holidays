@@ -31,7 +31,8 @@ final class ResetPasswordController extends Controller
         }
 
         // Codice solo all'utente del link: le challenge in attesa sono già state cancellate dal reset
-        $challenges->beginFor($request, $user);
+        // Se la coda dell'email non risponde l'errore è solo segnalato: il reset è già riuscito e il link consumato
+        $challenges->beginFor($request, $user, reportMailFailure: true);
 
         return response()->json(['two_factor' => true, 'message' => Translate::text('password_reset.done')]);
     }
