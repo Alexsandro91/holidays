@@ -6,10 +6,14 @@ use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\ListUsersRequest;
+use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Resources\ManagedUserResource;
 use App\Models\User;
+use App\Services\InvitationService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Symfony\Component\HttpFoundation\Response;
 
 final class UserController extends Controller
 {
@@ -48,5 +52,18 @@ final class UserController extends Controller
             'invited' => (int) ($counts[UserStatus::Invited->value] ?? 0),
             'disabled' => (int) ($counts[UserStatus::Disabled->value] ?? 0),
         ]]]);
+    }
+
+    public function store(StoreUserRequest $request, InvitationService $invitations): JsonResponse
+    {
+        $user = $invitations->invite(
+            $request->string('name')->value(),
+            $request->string('email')->value(),
+            $request->enum('role', Role::class) ?? Role::Employee,
+            $this->actor($request),
+            $request,
+        );
+
+        return (new ManagedUserResource($user->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
     }
 }
