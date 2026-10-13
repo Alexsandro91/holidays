@@ -8,6 +8,7 @@ return [
     'not_disabled' => 'L’utente non è disattivato.',
     'last_admin' => 'Serve almeno un amministratore attivo: questa azione lo lascerebbe senza.',
     'no_longer_admin' => 'Non sei più amministratore.',
+    'state_changed' => 'La situazione dell’utente è cambiata nel frattempo. Ricarica la pagina e riprova.',
     'password_locked' => 'Troppi tentativi con la password. Riprova tra :minutes minuti.',
     'mail' => [
         'admin_change' => [

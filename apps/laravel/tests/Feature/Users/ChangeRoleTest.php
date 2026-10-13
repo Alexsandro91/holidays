@@ -5,7 +5,9 @@ namespace Tests\Feature\Users;
 use App\Enums\AuthEventType;
 use App\Enums\Role;
 use App\Models\User;
+use App\Services\UserManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
 class ChangeRoleTest extends TestCase
@@ -43,5 +45,20 @@ class ChangeRoleTest extends TestCase
         $this->actingAs(User::factory()->manager()->create())
             ->patchJson('/api/users/'.User::factory()->create()->id.'/role', ['role' => 'manager'])
             ->assertForbidden();
+    }
+
+    public function test_a_target_promoted_meanwhile_keeps_its_admin_role(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $stale = User::factory()->create();
+        User::query()->whereKey($stale->id)->update(['role' => 'admin']);
+
+        try {
+            app(UserManagementService::class)->changeRole($stale, Role::Employee, $admin, request());
+            $this->fail('Expected ConflictHttpException');
+        } catch (ConflictHttpException) {
+            $this->assertSame(Role::Admin, $stale->fresh()?->role);
+            $this->assertDatabaseMissing('auth_events', ['user_id' => $stale->id, 'event' => AuthEventType::RoleChanged->value]);
+        }
     }
 }

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Users;
 
 use App\Enums\AuthEventType;
+use App\Enums\UserStatus;
 use App\Mail\AdminChangeMail;
+use App\Models\AuthEvent;
 use App\Models\Invitation;
 use App\Models\LoginChallenge;
 use App\Models\User;
@@ -12,6 +14,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
 class UserStatusTest extends TestCase
@@ -125,13 +128,70 @@ class UserStatusTest extends TestCase
         $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertOk();
     }
 
-    public function test_the_actor_who_lost_admin_rights_cannot_leave_zero_admins(): void
+    public function test_a_stale_actor_is_refused_and_nothing_changes(): void
     {
         // Simula due revoche incrociate: l'attore è già stato declassato da un'altra richiesta
         $staleActor = User::factory()->admin()->create();
         User::query()->whereKey($staleActor->id)->update(['role' => 'employee']);
+        $target = User::factory()->create();
 
-        $this->expectException(AuthorizationException::class);
-        app(UserManagementService::class)->disable($this->admin, $staleActor, request());
+        try {
+            app(UserManagementService::class)->disable($target, $staleActor, request(), false);
+            $this->fail('Expected AuthorizationException');
+        } catch (AuthorizationException) {
+            $this->assertSame(UserStatus::Active, $target->fresh()?->status);
+            $this->assertDatabaseMissing('auth_events', ['user_id' => $target->id, 'event' => AuthEventType::UserDisabled->value]);
+        }
+    }
+
+    public function test_a_target_promoted_meanwhile_is_not_disabled_with_the_non_admin_path(): void
+    {
+        $stale = User::factory()->create();
+        User::query()->whereKey($stale->id)->update(['role' => 'admin']);
+
+        try {
+            app(UserManagementService::class)->disable($stale, $this->admin, request(), false);
+            $this->fail('Expected ConflictHttpException');
+        } catch (ConflictHttpException) {
+            $this->assertSame(UserStatus::Active, $stale->fresh()?->status);
+            $this->assertDatabaseMissing('auth_events', ['user_id' => $stale->id, 'event' => AuthEventType::UserDisabled->value]);
+        }
+    }
+
+    public function test_a_second_disable_on_the_same_stale_instance_conflicts(): void
+    {
+        $stale = User::factory()->create();
+        $service = app(UserManagementService::class);
+
+        $service->disable($stale, $this->admin, request(), false);
+
+        $this->expectException(ConflictHttpException::class);
+        try {
+            $service->disable($stale, $this->admin, request(), false);
+        } finally {
+            $this->assertSame(1, AuthEvent::query()->where('user_id', $stale->id)->where('event', AuthEventType::UserDisabled->value)->count());
+        }
+    }
+
+    public function test_a_manager_hitting_an_admin_never_burns_the_password_counter(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $otherAdmin = User::factory()->admin()->create();
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $this->actingAs($manager)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'sbagliata'])->assertForbidden();
+        }
+
+        $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertOk();
+    }
+
+    public function test_a_wrong_password_on_enabling_an_admin_is_rejected(): void
+    {
+        $disabledAdmin = User::factory()->admin()->disabled()->create();
+
+        $this->actingAs($this->admin)->postJson("/api/users/{$disabledAdmin->id}/enable", ['current_password' => 'sbagliata'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+        $this->assertSame(UserStatus::Disabled, $disabledAdmin->fresh()?->status);
     }
 }

@@ -13,8 +13,8 @@ final class UserRoleController extends Controller
 {
     public function __invoke(ChangeRoleRequest $request, User $user, UserManagementService $users): ManagedUserResource
     {
-        $users->changeRole($user, $request->enum('role', Role::class) ?? Role::Employee, $this->actor($request), $request);
+        $updated = $users->changeRole($user, Role::from($request->validated('role')), $this->actor($request), $request);
 
-        return new ManagedUserResource($user->refresh()->load('invitation'));
+        return new ManagedUserResource($updated->load('invitation'));
     }
 }

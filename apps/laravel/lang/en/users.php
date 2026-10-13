@@ -8,6 +8,7 @@ return [
     'not_disabled' => 'This user is not disabled.',
     'last_admin' => 'At least one active admin is required: this action would leave none.',
     'no_longer_admin' => 'You are no longer an admin.',
+    'state_changed' => 'This user changed in the meantime. Reload the page and try again.',
     'password_locked' => 'Too many password attempts. Try again in :minutes minutes.',
     'mail' => [
         'admin_change' => [

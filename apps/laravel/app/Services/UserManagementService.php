@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
  * Ruoli e stato degli utenti. Le azioni sugli admin bloccano le righe degli admin attivi:
@@ -26,47 +27,98 @@ final class UserManagementService
 {
     public function __construct(private readonly AuthEventLogger $events) {}
 
-    public function changeRole(User $target, Role $role, User $actor, Request $request): void
+    public function changeRole(User $target, Role $role, User $actor, Request $request): User
     {
-        DB::transaction(function () use ($target, $role, $actor, $request): void {
-            $target->forceFill(['role' => $role])->save();
-            $this->events->log(AuthEventType::RoleChanged, $request, $target, $actor);
+        return DB::transaction(function () use ($target, $role, $actor, $request): User {
+            $fresh = $this->lockTarget($target, $actor);
+
+            // Un admin non cambia ruolo da qui: nel frattempo può essere stato promosso
+            if ($fresh->isAdmin()) {
+                throw new ConflictHttpException(Translate::text('users.state_changed'));
+            }
+
+            $fresh->forceFill(['role' => $role])->save();
+            $this->events->log(AuthEventType::RoleChanged, $request, $fresh, $actor);
+
+            return $fresh;
         });
     }
 
-    public function disable(User $target, User $actor, Request $request): void
+    /**
+     * @param  bool  $expectAdmin  se il bersaglio era un admin quando la richiesta è stata validata (decide la password)
+     */
+    public function disable(User $target, User $actor, Request $request, bool $expectAdmin): User
     {
-        DB::transaction(function () use ($target, $actor, $request): void {
-            if ($target->isAdmin()) {
-                $this->ensureAnAdminRemains($target, $this->lockActiveAdmins($actor));
+        return DB::transaction(function () use ($target, $actor, $request, $expectAdmin): User {
+            $activeAdminIds = $this->lockActiveAdmins($actor);
+            $fresh = $this->lockFreshTarget($target, $expectAdmin);
+
+            if ($fresh->status !== UserStatus::Active) {
+                throw new ConflictHttpException(Translate::text('users.not_active'));
             }
 
-            $target->forceFill(['status' => UserStatus::Disabled])->save();
-            AuthSession::endAllFor($target);
-            LoginChallenge::query()->where('user_id', $target->id)->delete();
-            DB::table((string) config('auth.passwords.users.table'))->where('email', $target->email)->delete();
-            $this->events->log(AuthEventType::UserDisabled, $request, $target, $actor);
-
-            if ($target->isAdmin()) {
-                $this->notifyAdmins(AdminChange::Disabled, $target, $actor);
+            if ($fresh->isAdmin()) {
+                $this->ensureAnAdminRemains($fresh, $activeAdminIds);
             }
+
+            $fresh->forceFill(['status' => UserStatus::Disabled])->save();
+            AuthSession::endAllFor($fresh);
+            LoginChallenge::query()->where('user_id', $fresh->id)->delete();
+            DB::table((string) config('auth.passwords.users.table'))->where('email', $fresh->email)->delete();
+            $this->events->log(AuthEventType::UserDisabled, $request, $fresh, $actor);
+
+            if ($fresh->isAdmin()) {
+                $this->notifyAdmins(AdminChange::Disabled, $fresh, $actor);
+            }
+
+            return $fresh;
         });
     }
 
-    public function enable(User $target, User $actor, Request $request): void
+    /**
+     * @param  bool  $expectAdmin  se il bersaglio era un admin quando la richiesta è stata validata (decide la password)
+     */
+    public function enable(User $target, User $actor, Request $request, bool $expectAdmin): User
     {
-        DB::transaction(function () use ($target, $actor, $request): void {
-            if ($target->isAdmin()) {
-                $this->lockActiveAdmins($actor);
+        return DB::transaction(function () use ($target, $actor, $request, $expectAdmin): User {
+            $this->lockActiveAdmins($actor);
+            $fresh = $this->lockFreshTarget($target, $expectAdmin);
+
+            if ($fresh->status !== UserStatus::Disabled) {
+                throw new ConflictHttpException(Translate::text('users.not_disabled'));
             }
 
-            $target->forceFill(['status' => UserStatus::Active])->save();
-            $this->events->log(AuthEventType::UserEnabled, $request, $target, $actor);
+            $fresh->forceFill(['status' => UserStatus::Active])->save();
+            $this->events->log(AuthEventType::UserEnabled, $request, $fresh, $actor);
 
-            if ($target->isAdmin()) {
-                $this->notifyAdmins(AdminChange::Enabled, $target, $actor);
+            if ($fresh->isAdmin()) {
+                $this->notifyAdmins(AdminChange::Enabled, $fresh, $actor);
             }
+
+            return $fresh;
         });
+    }
+
+    /**
+     * Ordine dei blocchi: prima gli admin attivi (verifica anche chi agisce), poi il bersaglio riletto.
+     */
+    private function lockTarget(User $target, User $actor): User
+    {
+        $this->lockActiveAdmins($actor);
+
+        return User::query()->lockForUpdate()->findOrFail($target->id);
+    }
+
+    private function lockFreshTarget(User $target, bool $expectAdmin): User
+    {
+        $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
+
+        // La password è stata chiesta (o no) in base al ruolo letto prima del blocco
+        if ($fresh->isAdmin() !== $expectAdmin) {
+            throw new ConflictHttpException(Translate::text('users.state_changed'));
+        }
+
+        return $fresh;
     }
 
     /**
