@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use Illuminate\Support\Facades\Route;
@@ -35,4 +36,10 @@ Route::prefix('api/auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->middleware('auth:web')
         ->name('logout');
+});
+
+// Attivazione dell'invito: gruppo `web` perché l'attivazione avvia il passo del codice in sessione
+Route::prefix('api/invitations')->middleware(['guest:web', 'throttle:invitations'])->group(function (): void {
+    Route::get('/{token}', [InvitationController::class, 'show'])->name('invitations.show');
+    Route::post('/{token}/accept', [InvitationController::class, 'accept'])->name('invitations.accept');
 });

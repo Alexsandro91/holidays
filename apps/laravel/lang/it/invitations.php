@@ -3,6 +3,9 @@
 return [
     'resend_wait' => 'Attendi :seconds secondi prima di inviare di nuovo l’invito.',
     'not_invited' => 'Questo utente ha già attivato l’account: l’invito non c’è più.',
+    'invalid' => 'Questo invito non è valido o è già stato usato.',
+    'expired' => 'Questo invito è scaduto. Chiedi all’ufficio HR di inviartene uno nuovo.',
+    'accepted' => 'Account attivato. Per entrare inserisci il codice che ti abbiamo inviato via email.',
     'mail' => [
         'subject' => 'Sei stato invitato su Holidays',
         'heading' => 'Benvenuto, :name',

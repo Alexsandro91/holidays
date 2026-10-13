@@ -95,6 +95,33 @@ final class InvitationService
         });
     }
 
+    /**
+     * Attiva l'account dell'invitato. Null se un'altra richiesta ha già usato l'invito (riga bloccata).
+     */
+    public function accept(Invitation $invitation, #[\SensitiveParameter] string $password, Request $request): ?User
+    {
+        return DB::transaction(function () use ($invitation, $password, $request): ?User {
+            $locked = Invitation::query()->with('user')->lockForUpdate()->find($invitation->id);
+            $user = $locked?->user;
+
+            if ($locked === null || $locked->isAccepted() || $user === null || $user->status !== UserStatus::Invited) {
+                return null;
+            }
+
+            $user->forceFill([
+                'password' => $password,
+                'status' => UserStatus::Active,
+                'email_verified_at' => now(),
+                'privacy_notice_version' => (string) config('app.privacy_notice_version'),
+                'privacy_notice_acknowledged_at' => now(),
+            ])->save();
+            $locked->forceFill(['accepted_at' => now()])->save();
+            $this->events->log(AuthEventType::InvitationAccepted, $request, $user);
+
+            return $user;
+        });
+    }
+
     public function findByToken(#[\SensitiveParameter] string $token): ?Invitation
     {
         return Invitation::query()->with('user')->where('token_hash', self::hashToken($token))->first();

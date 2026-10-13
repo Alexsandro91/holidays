@@ -3,6 +3,9 @@
 return [
     'resend_wait' => 'Wait :seconds seconds before sending the invitation again.',
     'not_invited' => 'This user has already activated the account: there is no invitation any more.',
+    'invalid' => 'This invitation is invalid or has already been used.',
+    'expired' => 'This invitation has expired. Ask HR to send you a new one.',
+    'accepted' => 'Account activated. To sign in, enter the code we emailed you.',
     'mail' => [
         'subject' => 'You’re invited to Holidays',
         'heading' => 'Welcome, :name',
