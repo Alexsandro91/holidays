@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
@@ -15,6 +16,10 @@ Route::prefix('api/auth')->group(function (): void {
         Route::post('/login', [AuthenticatedSessionController::class, 'store'])
             ->middleware('throttle:login')
             ->name('login.store');
+
+        Route::post('/forgot-password', ForgotPasswordController::class)
+            ->middleware('throttle:forgot-password')
+            ->name('password.email');
 
         Route::middleware('throttle:two-factor')->group(function (): void {
             Route::post('/two-factor', [TwoFactorChallengeController::class, 'store'])->name('auth.two-factor');

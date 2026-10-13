@@ -21,16 +21,14 @@ class FortifyServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        RateLimiter::for('login', function (Request $request): array {
-            // Input non stringa (es. email[]=…) trattato come vuoto: niente errori di conversione
-            $rawEmail = $request->input('email');
-            $email = is_string($rawEmail) ? Str::lower(trim($rawEmail)) : '';
+        RateLimiter::for('login', fn (Request $request): array => [
+            Limit::perMinute(5)->by('login:'.self::normalizedEmail($request).'|'.$request->ip()),
+            Limit::perMinute(20)->by('login-ip:'.$request->ip()),
+        ]);
 
-            return [
-                Limit::perMinute(5)->by('login:'.$email.'|'.$request->ip()),
-                Limit::perMinute(20)->by('login-ip:'.$request->ip()),
-            ];
-        });
+        // Richiesta del link di recupero: 3 ogni 15 minuti per email + IP
+        RateLimiter::for('forgot-password', fn (Request $request): Limit => Limit::perMinutes(15, 3)
+            ->by('forgot-password:'.self::normalizedEmail($request).'|'.$request->ip()));
 
         // Endpoint del codice: 10 richieste al minuto per IP
         RateLimiter::for('two-factor', fn (Request $request): Limit => Limit::perMinute(10)->by('two-factor:'.$request->ip()));
@@ -40,5 +38,15 @@ class FortifyServiceProvider extends ServiceProvider
             CanonicalizeUsername::class,
             StartEmailLoginChallenge::class,
         ]);
+    }
+
+    /**
+     * Email per le chiavi dei limiti. Input non stringa (es. email[]=…) trattato come vuoto: niente errori di conversione.
+     */
+    private static function normalizedEmail(Request $request): string
+    {
+        $email = $request->input('email');
+
+        return is_string($email) ? Str::lower(trim($email)) : '';
     }
 }
