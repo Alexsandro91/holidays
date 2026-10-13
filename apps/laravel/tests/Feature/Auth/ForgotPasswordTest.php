@@ -134,4 +134,16 @@ class ForgotPasswordTest extends TestCase
         $this->travel(15)->minutes();
         $this->postJson('/api/auth/forgot-password', ['email' => 'giulia@example.test'])->assertAccepted();
     }
+
+    public function test_requests_are_limited_per_ip_even_with_different_emails(): void
+    {
+        Mail::fake();
+
+        for ($attempt = 1; $attempt <= 20; $attempt++) {
+            $this->postJson('/api/auth/forgot-password', ['email' => "utente{$attempt}@example.test"])->assertAccepted();
+        }
+
+        $this->postJson('/api/auth/forgot-password', ['email' => 'altro@example.test'])
+            ->assertTooManyRequests();
+    }
 }
