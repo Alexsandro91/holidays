@@ -159,8 +159,8 @@ return [
     |
     */
 
-    // Nessuna feature Fortify attiva: il secondo fattore via email è nostro,
-    // il reset password arriva nella fase 2, TOTP e passkey nel sotto-progetto 2.
+    // Nessuna feature Fortify attiva e rotte registrate a mano (routes/web.php, Fortify::ignoreRoutes):
+    // il secondo fattore via email e il recupero password sono nostri, TOTP e passkey nel sotto-progetto 2.
     'features' => [],
 
 ];

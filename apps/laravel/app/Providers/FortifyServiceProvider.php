@@ -13,6 +13,12 @@ use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Rotte registrate a mano in routes/web.php: solo quelle usate dalla SPA, ognuna col suo limite
+        Fortify::ignoreRoutes();
+    }
+
     public function boot(): void
     {
         RateLimiter::for('login', function (Request $request): array {
