@@ -165,6 +165,34 @@
       "back": "Back"
     }
   },
+  "administrators": {
+    "title": "Administrators",
+    "subtitle": "Who can manage users and settings. Every change is emailed to all administrators.",
+    "add": "Add admin",
+    "revoke": "Revoke",
+    "revokeFor": "Revoke {{name}}",
+    "onlyYou": "You are the only administrator. Add another one before giving up the role: at least one administrator is always required.",
+    "loadError": "Administrators couldn’t be loaded.",
+    "grant": {
+      "title": "Add an administrator",
+      "description": "Pick an active user. They and every other administrator will get an email.",
+      "search": "Search an active user",
+      "noResults": "No active users found.",
+      "candidates": "Active users",
+      "password": "Your password",
+      "submit": "Make administrator",
+      "pickUser": "Pick a user.",
+      "done": "{{name}} is now an administrator."
+    },
+    "revokeDialog": {
+      "title": "Revoke {{name}}’s administrator role?",
+      "description": "They’ll lose access to administration right away. Every administrator will get an email.",
+      "newRole": "New role",
+      "password": "Your password",
+      "submit": "Revoke {{name}}",
+      "done": "{{name}} is no longer an administrator."
+    }
+  },
   "titles": {
     "users": "Users",
     "administrators": "Administrators",

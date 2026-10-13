@@ -165,6 +165,34 @@
       "back": "Indietro"
     }
   },
+  "administrators": {
+    "title": "Amministratori",
+    "subtitle": "Chi può gestire utenti e impostazioni. Ogni modifica viene comunicata via email a tutti gli amministratori.",
+    "add": "Aggiungi admin",
+    "revoke": "Revoca",
+    "revokeFor": "Revoca {{name}}",
+    "onlyYou": "Sei l’unico amministratore. Aggiungine un altro prima di lasciare il ruolo: serve sempre almeno un amministratore.",
+    "loadError": "Non è stato possibile caricare gli amministratori.",
+    "grant": {
+      "title": "Aggiungi un amministratore",
+      "description": "Scegli un utente attivo. Riceverà un’email, come tutti gli altri amministratori.",
+      "search": "Cerca un utente attivo",
+      "noResults": "Nessun utente attivo trovato.",
+      "candidates": "Utenti attivi",
+      "password": "La tua password",
+      "submit": "Rendi amministratore",
+      "pickUser": "Scegli un utente.",
+      "done": "{{name}} ora è amministratore."
+    },
+    "revokeDialog": {
+      "title": "Revocare il ruolo di amministratore a {{name}}?",
+      "description": "Perderà subito l’accesso all’amministrazione. Tutti gli amministratori riceveranno un’email.",
+      "newRole": "Nuovo ruolo",
+      "password": "La tua password",
+      "submit": "Revoca {{name}}",
+      "done": "{{name}} non è più amministratore."
+    }
+  },
   "titles": {
     "users": "Utenti",
     "administrators": "Amministratori",
