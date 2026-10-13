@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { needsPassword } from '@/features/users/actions'
 import { useCancelInvitation, useDisableUser, useEnableUser, useResendInvitation, type ManagedUser } from '@/features/users/api'
-import { focusUserActionsTrigger } from '@/features/users/focusReturn'
+import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import { isApiError } from '@/lib/api'
 
 type ConfirmAction = 'resend' | 'cancel' | 'disable' | 'enable'
@@ -138,7 +138,7 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
       <AlertDialogContent
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          focusUserActionsTrigger(shown?.user.id ?? null)
+          focusTrigger(USER_TRIGGER_ATTRIBUTE, shown?.user.id ?? null)
         }}
       >
         {shown && <ConfirmBody key={`${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}

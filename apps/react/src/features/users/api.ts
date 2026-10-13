@@ -71,7 +71,8 @@ const useAdminMutation = <TInput>(mutationFn: (input: TInput) => Promise<unknown
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
+    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
   })
 }
 

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useRevokeAdmin } from '@/features/administrators/api'
-import { focusRevokeTrigger } from '@/features/administrators/focusReturn'
+import { focusTrigger, REVOKE_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import type { ManagedRole, ManagedUser } from '@/features/users/api'
 import { isApiError } from '@/lib/api'
 
@@ -139,7 +139,7 @@ const RevokeAdminDialog = ({ user, onClose }: RevokeAdminDialogProps) => {
       <AlertDialogContent
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          focusRevokeTrigger(shown?.id ?? null)
+          focusTrigger(REVOKE_TRIGGER_ATTRIBUTE, shown?.id ?? null)
         }}
       >
         {shown && <RevokeBody key={shown.id} user={shown} onClose={onClose} onBusyChange={setBusy} />}

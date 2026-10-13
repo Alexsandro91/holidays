@@ -29,7 +29,8 @@ export const useGrantAdmin = () => {
   return useMutation({
     mutationFn: ({ userId, currentPassword }: GrantAdminInput) =>
       requestData('POST', '/api/administrators', resourceSchema, { user_id: userId, current_password: currentPassword }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
+    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
   })
 }
 
@@ -38,6 +39,7 @@ export const useRevokeAdmin = () => {
   return useMutation({
     mutationFn: ({ id, role, currentPassword }: RevokeAdminInput) =>
       requestData('DELETE', `/api/administrators/${id}`, resourceSchema, { role, current_password: currentPassword }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
+    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
   })
 }

@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAdministrators } from '@/features/administrators/api'
 import GrantAdminDialog from '@/features/administrators/components/GrantAdminDialog'
 import RevokeAdminDialog from '@/features/administrators/components/RevokeAdminDialog'
-import { REVOKE_TRIGGER_ATTRIBUTE } from '@/features/administrators/focusReturn'
+import { REVOKE_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import StatusBadge from '@/features/users/components/StatusBadge'
 import type { ManagedUser } from '@/features/users/api'
 

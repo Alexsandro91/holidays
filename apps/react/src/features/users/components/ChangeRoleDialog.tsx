@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field, FieldLabel } from '@/components/ui/field'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useChangeRole, type ManagedRole, type ManagedUser } from '@/features/users/api'
-import { focusUserActionsTrigger } from '@/features/users/focusReturn'
+import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import { isApiError } from '@/lib/api'
 
 interface ChangeRoleDialogProps {
@@ -83,7 +83,7 @@ const ChangeRoleDialog = ({ user, onClose }: ChangeRoleDialogProps) => {
         aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          focusUserActionsTrigger(shown?.id ?? null)
+          focusTrigger(USER_TRIGGER_ATTRIBUTE, shown?.id ?? null)
         }}
       >
         <DialogHeader>

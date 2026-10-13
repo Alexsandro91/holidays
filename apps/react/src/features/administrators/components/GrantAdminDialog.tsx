@@ -23,10 +23,11 @@ interface GrantValues {
 
 interface GrantBodyProps {
   onDone: () => void
+  onBusyChange: (busy: boolean) => void
 }
 
 /** Il corpo si monta a ogni apertura: ricerca, scelta e password ripartono da zero. */
-const GrantBody = ({ onDone }: GrantBodyProps) => {
+const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
   const { t } = useTranslation()
   const grant = useGrantAdmin()
   const form = useForm<GrantValues>({ defaultValues: { userId: '', currentPassword: '' } })
@@ -41,6 +42,9 @@ const GrantBody = ({ onDone }: GrantBodyProps) => {
   const candidates = useManagedUsers({ status: 'active', search, page: 1 })
   const people = (candidates.data?.data ?? []).filter((person) => person.role !== 'admin')
 
+  // Se la scelta non è più tra i candidati (nuova ricerca) si azzera, così il nome non va perso
+  if (userId !== '' && candidates.data !== undefined && !people.some((person) => String(person.id) === userId)) setUserId('')
+
   // Ricerca aggiornata 300 ms dopo l'ultima battuta
   useEffect(() => {
     if (draft === search) return
@@ -50,12 +54,9 @@ const GrantBody = ({ onDone }: GrantBodyProps) => {
 
   const submit = async ({ currentPassword }: GrantValues) => {
     if (submitting.current) return
-    if (userId === '') {
-      form.setError('userId', { message: t('administrators.grant.pickUser') })
-      return
-    }
     submitting.current = true
     setNotice(null)
+    onBusyChange(true)
     const person = people.find((item) => String(item.id) === userId)
     try {
       await grant.mutateAsync({ userId: Number(userId), currentPassword })
@@ -76,10 +77,19 @@ const GrantBody = ({ onDone }: GrantBodyProps) => {
       }
     } finally {
       submitting.current = false
+      onBusyChange(false)
     }
   }
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    // La scelta dell'utente non è nel form: l'errore compare insieme a quello della password
+    const missingUser = userId === ''
+    if (missingUser) form.setError('userId', { message: t('administrators.grant.pickUser') })
+    return form.handleSubmit(
+      (values) => (missingUser ? undefined : submit(values)),
+      () => undefined,
+    )(event)
+  }
 
   return (
     <form onSubmit={onSubmit} noValidate>
@@ -151,9 +161,11 @@ const GrantBody = ({ onDone }: GrantBodyProps) => {
 const GrantAdminDialog = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  // Durante l'invio il dialog non si chiude (Escape, clic fuori): un errore non va perso
+  const [busy, setBusy] = useState(false)
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => (next || !busy) && setOpen(next)}>
       <DialogTrigger asChild>
         <Button>
           <ShieldPlus aria-hidden="true" />
@@ -165,7 +177,7 @@ const GrantAdminDialog = () => {
           <DialogTitle>{t('administrators.grant.title')}</DialogTitle>
           <DialogDescription>{t('administrators.grant.description')}</DialogDescription>
         </DialogHeader>
-        <GrantBody onDone={() => setOpen(false)} />
+        <GrantBody onDone={() => setOpen(false)} onBusyChange={setBusy} />
       </DialogContent>
     </Dialog>
   )

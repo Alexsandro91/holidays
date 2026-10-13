@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { availableActions, type UserAction } from '@/features/users/actions'
 import type { ManagedUser } from '@/features/users/api'
-import { USER_TRIGGER_ATTRIBUTE } from '@/features/users/focusReturn'
+import { USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
 interface UserActionsMenuProps {
   user: ManagedUser
@@ -27,7 +27,7 @@ const UserActionsMenu = ({ user, onSelect }: UserActionsMenuProps) => {
           <Ellipsis aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
-      {/* Scegliendo una voce si apre un dialog e il focus lo gestisce lui (vedi focusReturn);
+      {/* Scegliendo una voce si apre un dialog e il focus lo gestisce lui (vedi lib/focusTrigger);
           chiudendo il menu senza scelta (Escape, clic fuori) il focus torna al trigger come di default */}
       <DropdownMenuContent
         align="end"
