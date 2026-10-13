@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invitations\AcceptInvitationRequest;
+use App\Http\Resources\InvitationResource;
 use App\Models\Invitation;
 use App\Services\InvitationService;
 use App\Services\LoginChallengeService;
@@ -15,7 +16,7 @@ final class InvitationController extends Controller
 {
     public function __construct(private readonly InvitationService $invitations) {}
 
-    public function show(string $token): JsonResponse
+    public function show(#[\SensitiveParameter] string $token): InvitationResource|JsonResponse
     {
         $invitation = $this->invitations->findByToken($token);
         $problem = $this->problem($invitation);
@@ -24,17 +25,13 @@ final class InvitationController extends Controller
             return $problem ?? $this->notFound();
         }
 
-        return response()->json(['data' => [
-            'name' => $invitation->user->name,
-            'email' => $invitation->user->email,
-            'expires_at' => $invitation->expires_at->toIso8601String(),
-        ]]);
+        return new InvitationResource($invitation);
     }
 
     /**
      * Come dopo il reset (spec §6.3): l'attivazione non apre la sessione, parte il passo del codice.
      */
-    public function accept(AcceptInvitationRequest $request, string $token, LoginChallengeService $challenges): JsonResponse
+    public function accept(AcceptInvitationRequest $request, #[\SensitiveParameter] string $token, LoginChallengeService $challenges): JsonResponse
     {
         $invitation = $this->invitations->findByToken($token);
         $problem = $this->problem($invitation);

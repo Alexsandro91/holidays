@@ -62,6 +62,15 @@ class AcceptInvitationTest extends TestCase
             ->assertJsonStructure(['data' => ['name', 'email', 'expires_at']]);
     }
 
+    public function test_shows_only_name_email_and_expiry(): void
+    {
+        $token = $this->invite();
+
+        $this->getJson("/api/invitations/{$token}")
+            ->assertOk()
+            ->assertExactJsonStructure(['data' => ['name', 'email', 'expires_at']]);
+    }
+
     public function test_unknown_and_expired_links(): void
     {
         $token = $this->invite();
