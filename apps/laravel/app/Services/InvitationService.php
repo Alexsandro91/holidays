@@ -8,10 +8,13 @@ use App\Enums\UserStatus;
 use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Support\Translate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\GoneHttpException;
 
 /**
  * Inviti: account creati solo dall'admin, attivati dall'invitato con il link (spec §6.1).
@@ -62,7 +65,11 @@ final class InvitationService
             'last_sent_at' => now(),
         ]);
 
-        DB::afterCommit(fn () => Mail::to($user)->send(new InvitationMail($user->name, $token, $inviter?->name, $expiresAt)));
+        // Una coda non raggiungibile non annulla l'invito: l'errore è segnalato e l'admin può reinviare
+        DB::afterCommit(fn () => rescue(
+            fn () => Mail::to($user)->send(new InvitationMail($user->name, $token, $inviter?->name, $expiresAt)),
+            report: true,
+        ));
     }
 
     public function secondsUntilResend(User $user): int
@@ -79,8 +86,9 @@ final class InvitationService
     public function resend(User $user, User $actor, Request $request): void
     {
         DB::transaction(function () use ($user, $actor, $request): void {
-            $this->send($user, $actor);
-            $this->events->log(AuthEventType::InvitationSent, $request, $user, $actor);
+            $fresh = $this->lockPendingInvitation($user);
+            $this->send($fresh, $actor);
+            $this->events->log(AuthEventType::InvitationSent, $request, $fresh, $actor);
         });
     }
 
@@ -90,22 +98,28 @@ final class InvitationService
     public function cancel(User $user, User $actor, Request $request): void
     {
         DB::transaction(function () use ($user, $actor, $request): void {
-            $user->delete();
+            $this->lockPendingInvitation($user)->delete();
             $this->events->log(AuthEventType::InvitationCancelled, $request, null, $actor);
         });
     }
 
     /**
-     * Attiva l'account dell'invitato. Null se un'altra richiesta ha già usato l'invito (riga bloccata).
+     * Attiva l'account dell'invitato. Null se nel frattempo il link è stato usato, sostituito da un reinvio
+     * o annullato; GoneHttpException (410) se è scaduto. Lo stato si rilegge sulle righe bloccate.
      */
     public function accept(Invitation $invitation, #[\SensitiveParameter] string $password, Request $request): ?User
     {
         return DB::transaction(function () use ($invitation, $password, $request): ?User {
-            $locked = Invitation::query()->with('user')->lockForUpdate()->find($invitation->id);
-            $user = $locked?->user;
+            // Stesso ordine di blocco di annullamento e reinvio: prima l'invito, poi l'utente
+            $locked = Invitation::query()->where('token_hash', $invitation->token_hash)->lockForUpdate()->first();
+            $user = $locked === null ? null : User::query()->lockForUpdate()->find($locked->user_id);
 
             if ($locked === null || $locked->isAccepted() || $user === null || $user->status !== UserStatus::Invited) {
                 return null;
+            }
+
+            if ($locked->isExpired()) {
+                throw new GoneHttpException(Translate::text('invitations.expired'));
             }
 
             $user->forceFill([
@@ -120,6 +134,22 @@ final class InvitationService
 
             return $user;
         });
+    }
+
+    /**
+     * Blocca l'invito e poi l'utente (stesso ordine di accept(), niente deadlock) e verifica che l'invito
+     * sia ancora in attesa: il controllo del controller è fatto su un'istanza non bloccata.
+     */
+    private function lockPendingInvitation(User $user): User
+    {
+        $invitation = Invitation::query()->where('user_id', $user->id)->lockForUpdate()->first();
+        $fresh = User::query()->lockForUpdate()->find($user->id);
+
+        if ($fresh === null || $fresh->status !== UserStatus::Invited || $invitation?->isAccepted() === true) {
+            throw new ConflictHttpException(Translate::text('invitations.not_invited'));
+        }
+
+        return $fresh;
     }
 
     public function findByToken(#[\SensitiveParameter] string $token): ?Invitation
