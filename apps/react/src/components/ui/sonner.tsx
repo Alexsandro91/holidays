@@ -10,6 +10,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       position="top-right"
+      // Sotto la barra in alto (64 px): il toast non copre lingua e tema
+      offset={{ top: 76, right: 24 }}
+      mobileOffset={{ top: 72, right: 16, left: 16 }}
       richColors
       icons={{
         success: (
