@@ -253,7 +253,7 @@ test('managers see Users without admins and do not see Administrators', async ()
     }
     // Gli admin non sono nella sezione Utenti (si gestiscono solo in Amministratori), neppure cercandoli per email
     await page.goto(`/users?email=${encodeURIComponent('admin@holidays.test')}`)
-    await expect(page.getByRole('main').getByText('Nessun utente trovato.')).toBeVisible()
+    await expect(page.getByRole('tabpanel').getByText('Nessun utente trovato.')).toBeVisible()
     // Su sé stesso può solo modificare nome e cognome
     await (await rowFor('manager@holidays.test')).getByRole('button', { name: 'Azioni per Marco Bianchi' }).click()
     await expect(page.getByRole('menuitem')).toHaveText(['Modifica'])
