@@ -100,7 +100,10 @@
   "errors": {
     "generic": "Something went wrong. Please try again shortly.",
     "network": "Can’t reach the server. Check your connection and try again.",
-    "serverTitle": "Service unavailable"
+    "serverTitle": "Service unavailable",
+    "pageTitle": "Page unavailable",
+    "page": "We couldn’t open this page. Reload to try again: if Holidays has been updated in the meantime, reloading gets the new version.",
+    "reload": "Reload the page"
   },
   "nav": {
     "main": "Main navigation",

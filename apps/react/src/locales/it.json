@@ -100,7 +100,10 @@
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova tra poco.",
     "network": "Impossibile contattare il server. Controlla la connessione e riprova.",
-    "serverTitle": "Servizio non raggiungibile"
+    "serverTitle": "Servizio non raggiungibile",
+    "pageTitle": "Pagina non disponibile",
+    "page": "Non è stato possibile aprire la pagina. Ricarica per riprovare: se nel frattempo Holidays è stato aggiornato, la ricarica scarica la versione nuova.",
+    "reload": "Ricarica la pagina"
   },
   "nav": {
     "main": "Navigazione principale",
