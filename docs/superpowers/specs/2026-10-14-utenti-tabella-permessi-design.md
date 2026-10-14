@@ -100,3 +100,66 @@ Comportamento dopo l'invio:
   - l'admin invita un nuovo admin;
   - filtri e ordinamento della tabella.
 - **Controlli finali:** axe in chiaro e scuro e schermo a 360 px.
+
+## 7. Aggiornamento del 14/10/2026 (seconda richiesta dell'utente)
+
+### 7.1 Nome e cognome separati
+- **Database:** `users` passa da `name` a `first_name` e `last_name`, con una migration nuova (non si modificano quelle
+  esistenti). Nessuna migration è ancora in produzione.
+  - I dati esistenti si dividono al primo spazio: la prima parola è il nome, il resto il cognome. Se c'è una sola
+    parola, il cognome resta vuoto.
+  - Il nome completo per la visualizzazione e le email è un accessor `name` ("Nome Cognome"), così i template non
+    cambiano.
+- **API:**
+  - le risorse utente espongono `first_name`, `last_name` e `name` (completo);
+  - invito, invito admin e modifica ricevono `first_name` e `last_name`, entrambi obbligatori per i nuovi dati, con le
+    stesse regole di oggi su `name`;
+  - `app:create-admin {first_name} {last_name} {email}`.
+
+### 7.2 Ricerca generale e filtri
+- **`filter[search]`:** il testo si divide in parole. Ogni parola deve comparire in nome, cognome o email (AND tra le
+  parole, OR tra i campi). "Mario Rossi", "Rossi Mario" e "rossi@" funzionano tutti.
+- **Filtri per campo:** `filter[first_name]`, `filter[last_name]` e `filter[email]` sostituiscono `filter[name]`.
+  `filter[role]` e `filter[status]` restano.
+- **`sort`:** `first_name`, `last_name`, `email`, `role` e `status`, con `-` per l'ordine decrescente. Il default è
+  `last_name` con spareggio `first_name`, poi `id`.
+- **Conteggi:** rispettano ricerca, nome, cognome, email e ruolo.
+- **Interfaccia:**
+  - la ricerca generale è sempre visibile;
+  - il pulsante "Filtri" (`aria-expanded`, numero dei filtri attivi) apre il pannello con Nome, Cognome, Email, Ruolo
+    e "Azzera filtri". Il pannello si apre da solo se l'URL ha filtri attivi;
+  - le tab di stato restano visibili;
+  - colonne su desktop: Nome, Cognome, Email (ordinabili), Ruolo, Stato, Dettagli e azioni.
+
+### 7.3 Modifica utente
+- **Endpoint:** `PATCH /api/users/{user}` con `first_name`, `last_name` ed `email` facoltativa.
+  - L'email si può cambiare solo per gli utenti `invited`: si aggiorna, si rigenera il link d'invito con l'invio al
+    nuovo indirizzo e il vecchio link smette di valere.
+  - Per gli altri stati un'email diversa da quella attuale dà 422 sul campo, con un testo che spiega il motivo.
+  - Email unica.
+- **Permesso `update`:** l'admin su chiunque, sé stesso compreso; il responsabile su chi non è admin, sé stesso
+  compreso. Flag `can.update` per riga.
+- **Log:** evento `user_updated` con l'attore e i nomi dei campi cambiati, mai i valori.
+- **Interfaccia:**
+  - voce "Modifica" nel menu della riga, con un dialog su nome, cognome ed email;
+  - per chi non è invitato l'email è in sola lettura, con la spiegazione;
+  - stesse protezioni dei dialog esistenti: anti doppio invio, 422, 429, focus di ritorno.
+
+### 7.4 Colori
+- **Voce attiva del menu:** usa il colore primario del tema (teal), con sfondo tinta primaria, testo e barra laterale
+  primari.
+- **Badge di stato con colore di significato:**
+  - Attivo: verde/teal;
+  - Invitato: ambra;
+  - Disattivato: grigio.
+  - I colori sono token CSS per il chiaro e lo scuro, sempre con il testo.
+- Contrasto AA verificato per tutti questi elementi in tutti e due i temi.
+
+### 7.5 Decisioni dalle review
+- **Due inviti con la stessa email in contemporanea:** 422 su `email`, non 500 (anche per l'invito admin e la
+  modifica).
+- **Admin solo invitato:**
+  - non si "revoca": si annulla l'invito;
+  - la revoca risponde 409 se l'admin non è attivo;
+  - l'interfaccia mostra solo Reinvia, Modifica e Annulla.
+- **Admin declassato mentre agisce su un altro admin:** riceve 403, come il responsabile.
