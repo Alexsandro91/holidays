@@ -35,6 +35,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { isAlreadySignedOut, useCurrentUser, useLogout } from '@/features/auth/api'
+import { useChangeAccountLocale, useSyncAccountLocale } from '@/features/profile/useAccountLocale'
 import { APP_NAME } from '@/lib/appName'
 import { initials } from '@/lib/initials'
 import { useRouteTitleKey } from '@/lib/routeTitle'
@@ -44,6 +45,8 @@ const AppShell = () => {
   const { data: user } = useCurrentUser()
   const logout = useLogout()
   const titleKey = useRouteTitleKey()
+  const changeLocale = useChangeAccountLocale()
+  useSyncAccountLocale(user?.locale)
 
   // ProtectedRoute garantisce l'utente: questo ramo copre solo l'istante del logout
   if (!user) return null
@@ -146,7 +149,7 @@ const AppShell = () => {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-1 h-5" />
           <p className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground">{titleKey ? t(titleKey) : ''}</p>
-          <LanguageMenu />
+          <LanguageMenu onChange={changeLocale} />
           <ThemeMenu />
         </header>
         {/* Senza larghezza massima: le tabelle usano tutto lo spazio, le pagine di solo testo hanno la loro (es. HomePage) */}

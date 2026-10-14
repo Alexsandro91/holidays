@@ -13,7 +13,8 @@
     "themeDark": "Dark",
     "themeSystem": "System",
     "currentLanguage": "Language: {{language}}",
-    "currentTheme": "Theme: {{theme}}"
+    "currentTheme": "Theme: {{theme}}",
+    "localeSaveError": "The language was not saved to your account. Please try again."
   },
   "brand": {
     "tagline": "Your team’s time off, at a glance.",

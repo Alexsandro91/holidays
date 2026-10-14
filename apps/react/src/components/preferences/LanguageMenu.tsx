@@ -22,7 +22,12 @@ const LANGUAGES: LanguageOption[] = [
   { value: 'en', label: 'English' },
 ]
 
-const LanguageMenu = () => {
+interface LanguageMenuProps {
+  /** Cambio di lingua da collegati (salvata sull'account); da ospite basta il browser */
+  onChange?: (locale: Locale) => void
+}
+
+const LanguageMenu = ({ onChange = (locale) => void setLocale(locale) }: LanguageMenuProps) => {
   const { t, i18n } = useTranslation()
   const current = LANGUAGES.find((language) => language.value === i18n.language) ?? LANGUAGES[0]
 
@@ -39,7 +44,7 @@ const LanguageMenu = () => {
         <DropdownMenuRadioGroup
           value={current.value}
           onValueChange={(value) => {
-            if (isLocale(value)) void setLocale(value)
+            if (isLocale(value)) onChange(value)
           }}
         >
           {LANGUAGES.map((language) => (

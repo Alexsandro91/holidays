@@ -13,7 +13,8 @@
     "themeDark": "Scuro",
     "themeSystem": "Sistema",
     "currentLanguage": "Lingua: {{language}}",
-    "currentTheme": "Tema: {{theme}}"
+    "currentTheme": "Tema: {{theme}}",
+    "localeSaveError": "La lingua non è stata salvata sull’account. Riprova."
   },
   "brand": {
     "tagline": "Le ferie del team, in chiaro.",
