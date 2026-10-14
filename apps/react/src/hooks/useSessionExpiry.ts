@@ -25,6 +25,11 @@ const nextExpiry = (lastActivity: number | null, session: SessionLimits | undefi
   return { kind: 'absolute', deadline: session.absoluteDeadline }
 }
 
+interface SessionExpiryOptions {
+  /** Rinnovo ("Resta collegato") in attesa del server: la scadenza locale aspetta l'esito */
+  renewing?: boolean
+}
+
 export interface SessionExpiry {
   /** Avviso visibile */
   open: boolean
@@ -41,7 +46,7 @@ export interface SessionExpiry {
  * attività o scadenza, a ogni scatto e al risveglio della pagina. Alla scadenza la sessione si chiude come per un 401
  * `session_expired`, senza chiamare il server.
  */
-export const useSessionExpiry = (session: SessionLimits | undefined): SessionExpiry => {
+export const useSessionExpiry = (session: SessionLimits | undefined, { renewing = false }: SessionExpiryOptions = {}): SessionExpiry => {
   const queryClient = useQueryClient()
   const lastActivity = useSyncExternalStore(subscribeActivity, readLastActivity)
   const expiry = nextExpiry(lastActivity, session)
@@ -53,7 +58,8 @@ export const useSessionExpiry = (session: SessionLimits | undefined): SessionExp
 
   const stage = deadline === null ? 'none' : now >= deadline ? 'expired' : now >= deadline - SESSION_WARNING_MS ? 'warning' : 'active'
   const dismissed = kind === 'absolute' && deadline !== null && dismissedDeadline !== null && Math.abs(deadline - dismissedDeadline) < SAME_DEADLINE_MS
-  const open = stage === 'warning' && !dismissed
+  // A zero con un rinnovo in corso l'avviso resta aperto (con l'attesa sul pulsante) finché arriva l'esito
+  const open = (stage === 'warning' || (stage === 'expired' && renewing)) && !dismissed
 
   // Timer unico verso il prossimo passaggio: apertura dell'avviso, poi scadenza. Si riarma a ogni aggiornamento di
   // `now`: se scatta prima del bersaglio (orologio di sistema corretto all'indietro, deriva dei timer) riparte da solo
@@ -89,9 +95,11 @@ export const useSessionExpiry = (session: SessionLimits | undefined): SessionExp
     return () => window.clearInterval(id)
   }, [open])
 
+  // Con un rinnovo in corso decide la risposta: se riesce la scadenza si sposta, se è un 401 vale la fine sessione
+  // normale delle route protette, se fallisce per la rete la scadenza locale scatta appena il rinnovo finisce
   useEffect(() => {
-    if (stage === 'expired') expireSession(queryClient)
-  }, [stage, queryClient])
+    if (stage === 'expired' && !renewing) expireSession(queryClient)
+  }, [stage, renewing, queryClient])
 
   const dismiss = useCallback(() => setDismissedDeadline(deadline), [deadline])
 

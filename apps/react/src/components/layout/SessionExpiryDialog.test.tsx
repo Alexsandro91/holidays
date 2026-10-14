@@ -53,7 +53,22 @@ describe('SessionExpiryDialog', () => {
     // Conto alla rovescia in minuti e secondi, nascosto ai lettori di schermo (non si annuncia ogni secondo)
     const countdown = within(dialog).getByText(/^[0-2]:[0-5]\d$/)
     expect(countdown.closest('[aria-hidden="true"]')).not.toBeNull()
+    await advance(200)
     expect(within(dialog).getByText('La sessione scade tra meno di 2 minuti.')).toHaveAttribute('aria-live', 'polite')
+  })
+
+  it('mounts the live region empty and fills it right after opening, so that it is announced', async () => {
+    signedIn()
+    await openHome()
+
+    await advance(118 * MINUTE + 1000)
+    const dialog = screen.getByRole('alertdialog')
+    const live = dialog.querySelector('[aria-live="polite"]')
+    expect(live).not.toBeNull()
+    expect(live).toBeEmptyDOMElement()
+
+    await advance(200)
+    expect(live).toHaveTextContent('La sessione scade tra meno di 2 minuti.')
   })
 
   it('announces only once more, thirty seconds before the end', async () => {
@@ -62,9 +77,10 @@ describe('SessionExpiryDialog', () => {
 
     await advance(118 * MINUTE + 1000)
     const dialog = await screen.findByRole('alertdialog')
+    await advance(200)
     const live = within(dialog).getByText('La sessione scade tra meno di 2 minuti.')
 
-    await advance(80_000)
+    await advance(79_800)
     expect(live).toHaveTextContent('La sessione scade tra meno di 2 minuti.')
     await advance(10_000)
     expect(live).toHaveTextContent('Mancano 30 secondi alla scadenza della sessione.')
@@ -85,6 +101,75 @@ describe('SessionExpiryDialog', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
+  it('does not expire while "Stay signed in" is still waiting for the server', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let reads = 0
+    server.use(
+      http.get('/api/auth/user', async () => {
+        reads += 1
+        // Rete lenta: la rilettura del rinnovo risponde solo quando il test lo decide
+        if (reads > 1) await gate
+        return HttpResponse.json(currentUserResponse(adminUser))
+      }),
+    )
+    const { user, router } = await openHome()
+
+    await advance(119 * MINUTE + 58_000)
+    await user.click(await screen.findByRole('button', { name: 'Resta collegato' }))
+    await advance(5000)
+    // Le notifiche di TanStack Query partono con un setTimeout: si lascia scorrere ancora un attimo
+    await advance(100)
+    // Il conto è arrivato a zero, ma l'esito del rinnovo decide: niente fine sessione locale nel frattempo
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
+
+    act(release)
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(router.state.location.pathname).toBe('/')
+    expect(screen.getByRole('heading', { level: 1, name: 'Ciao, Giulia' })).toBeInTheDocument()
+  })
+
+  it('ends the session normally when the renewal answers 401', async () => {
+    let reads = 0
+    server.use(
+      http.get('/api/auth/user', () => {
+        reads += 1
+        return reads === 1
+          ? HttpResponse.json(currentUserResponse(adminUser))
+          : HttpResponse.json({ message: 'Sessione scaduta.', meta: { reason: 'session_expired' } }, { status: 401 })
+      }),
+    )
+    const { user, router } = await openHome()
+
+    await advance(118 * MINUTE + 1000)
+    await user.click(await screen.findByRole('button', { name: 'Resta collegato' }))
+
+    expect(await screen.findByText('Sessione scaduta. Accedi di nuovo.')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+    expect(new URLSearchParams(router.state.location.search).get('reason')).toBe('expired')
+  })
+
+  it('keeps the warning open with an error when the renewal cannot reach the server', async () => {
+    let reads = 0
+    server.use(
+      http.get('/api/auth/user', () => {
+        reads += 1
+        return reads === 1 ? HttpResponse.json(currentUserResponse(adminUser)) : HttpResponse.error()
+      }),
+    )
+    const { user } = await openHome()
+
+    await advance(118 * MINUTE + 1000)
+    await user.click(await screen.findByRole('button', { name: 'Resta collegato' }))
+
+    expect(await screen.findByText('Impossibile contattare il server. Controlla la connessione e riprova.')).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  })
+
   it('signs out with "Sign out"', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
@@ -95,6 +180,25 @@ describe('SessionExpiryDialog', () => {
 
     expect(await screen.findByText('Sei uscito. A presto.')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/login')
+  })
+
+  it('sends a single sign-out on a double click of "Sign out"', async () => {
+    signedIn()
+    let logouts = 0
+    server.use(
+      http.post('/api/auth/logout', () => {
+        logouts += 1
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { user } = await openHome()
+
+    await advance(118 * MINUTE + 1000)
+    await user.dblClick(await screen.findByRole('button', { name: 'Esci' }))
+
+    expect(await screen.findByText('Sei uscito. A presto.')).toBeInTheDocument()
+    await advance(200)
+    expect(logouts).toBe(1)
   })
 
   it('closes by itself when another tab renews the session', async () => {

@@ -126,6 +126,8 @@ const readJson = async (response: Response): Promise<unknown> => {
   }
 }
 
+const LOGOUT_PATH = '/api/auth/logout'
+
 /** Richiesta all'API Laravel: restituisce il JSON (null se vuoto) o lancia `ApiError`. */
 export const request = async (method: HttpMethod, path: string, body?: unknown): Promise<unknown> => {
   if (method !== 'GET' && !readCookie('XSRF-TOKEN')) await refreshCsrfCookie()
@@ -139,8 +141,9 @@ export const request = async (method: HttpMethod, path: string, body?: unknown):
 
   const payload = await readJson(response)
   if (response.ok) {
-    // Ogni risposta riuscita rinnova la sessione per inattività: l'avviso di scadenza riparte da qui
-    recordActivity()
+    // Ogni risposta riuscita con la sessione la rinnova per inattività: l'avviso di scadenza riparte da qui. Il logout
+    // no: la sessione non c'è più e le altre schede non devono spostare la loro scadenza
+    if (path !== LOGOUT_PATH) recordActivity()
     return payload
   }
 

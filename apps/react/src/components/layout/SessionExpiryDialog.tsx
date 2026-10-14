@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import SessionExpiryAnnouncement from '@/components/layout/SessionExpiryAnnouncement'
 import { Button } from '@/components/ui/button'
 import { isAlreadySignedOut, useLogout, useRefreshCurrentUser, type SessionLimits } from '@/features/auth/api'
 import { useSessionExpiry } from '@/hooks/useSessionExpiry'
@@ -31,12 +32,13 @@ interface SessionExpiryDialogProps {
  */
 const SessionExpiryDialog = ({ session }: SessionExpiryDialogProps) => {
   const { t } = useTranslation()
-  const { open, kind, secondsLeft, dismiss } = useSessionExpiry(session)
+  const [renewing, setRenewing] = useState(false)
+  const { open, kind, secondsLeft, dismiss } = useSessionExpiry(session, { renewing })
   const refreshCurrentUser = useRefreshCurrentUser()
   const logout = useLogout()
-  const [renewing, setRenewing] = useState(false)
-  // Evita richieste doppie (doppio click, Invio ripetuto): letto solo nei gestori di evento
+  // Evitano richieste doppie (doppio click, Invio ripetuto): letti solo nei gestori di evento
   const renewal = useRef(false)
+  const signingOut = useRef(false)
 
   // Rilegge l'utente: la richiesta rinnova la sessione e la risposta aggiorna l'ultima attività, che chiude l'avviso
   const staySignedIn = async () => {
@@ -54,12 +56,19 @@ const SessionExpiryDialog = ({ session }: SessionExpiryDialogProps) => {
     }
   }
 
-  const signOut = () =>
+  const signOut = () => {
+    if (signingOut.current) return
+    signingOut.current = true
     logout.mutate(undefined, {
       onError: (error) => {
         if (!isAlreadySignedOut(error)) toast.error(t('account.logoutError'))
       },
+      // Uscita fallita (es. rete): si può riprovare
+      onSettled: () => {
+        signingOut.current = false
+      },
     })
+  }
 
   return (
     <AlertDialog
@@ -81,9 +90,9 @@ const SessionExpiryDialog = ({ session }: SessionExpiryDialogProps) => {
           <span className="text-sm text-muted-foreground">{t('sessionExpiry.timeLeft')}</span>
           <span className="text-3xl font-semibold tabular-nums">{formatCountdown(secondsLeft)}</span>
         </div>
-        <p className="sr-only" aria-live="polite" aria-atomic="true">
-          {secondsLeft <= LAST_ANNOUNCEMENT_SECONDS ? t('sessionExpiry.announce30') : t('sessionExpiry.announceOpen')}
-        </p>
+        <SessionExpiryAnnouncement
+          message={secondsLeft <= LAST_ANNOUNCEMENT_SECONDS ? t('sessionExpiry.announce30') : t('sessionExpiry.announceOpen')}
+        />
         <AlertDialogFooter>
           {kind === 'idle' && (
             <Button type="button" variant="outline" onClick={signOut} aria-disabled={logout.isPending || undefined}>

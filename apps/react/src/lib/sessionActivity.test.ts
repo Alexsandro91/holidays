@@ -25,6 +25,15 @@ describe('session activity', () => {
     expect(window.localStorage.getItem(ACTIVITY_STORAGE_KEY)).toBe(String(recorded))
   })
 
+  it('does not count the sign-out as activity: other tabs must not move their deadline', async () => {
+    document.cookie = 'XSRF-TOKEN=x; path=/'
+    server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+
+    await request('POST', '/api/auth/logout')
+
+    expect(readLastActivity()).toBeNull()
+  })
+
   it('hears the activity of other tabs through the storage event', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeActivity(listener)
