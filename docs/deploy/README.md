@@ -13,6 +13,22 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
   - `/invitation/*` (pagina dell'invito);
   - `/api/invitations/*` (le chiamate della pagina dell'invito portano il token nel percorso).
 
+- Header `Content-Security-Policy` su tutte le pagine della SPA (una riga sola):
+
+  ```
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-n/psEl/11gdD2U8t7eb56eCJRGOMplCZzuupMahdT2w='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  ```
+
+  - L'hash autorizza l'unico script inline, quello del tema in `apps/react/index.html` (applica il tema scuro prima del
+    primo paint). È lo SHA-256 in base64 del contenuto esatto tra `<script>` e `</script>`, identico in
+    `dist/index.html` dopo `npm run build`. Se lo script cambia (anche solo un commento o uno spazio) l'hash va
+    ricalcolato: il test `src/lib/csp.test.ts` fallisce finché questo README non è aggiornato.
+  - `style-src 'unsafe-inline'` serve: Sonner (toast), il blocco dello scroll dei dialog Radix e next-themes
+    inseriscono elementi `<style>` a runtime. Gli stili impostati da JavaScript (`element.style`) non dipendono dalla CSP.
+  - Font e bundle sono serviti dalla stessa origine (`default-src 'self'`); le API stanno sulla stessa origine della SPA
+    (`connect-src 'self'`). Se le API vengono servite da un'altra origine, aggiungerla a `connect-src`.
+  - Prima di attivarla si può provare con `Content-Security-Policy-Report-Only` e controllare la console del browser.
+
 ## Proxy e load balancer
 - Le richieste `DELETE` devono arrivare a Laravel con il corpo: la revoca di un amministratore
   (`DELETE /api/administrators/{id}`) manda nel corpo il nuovo ruolo e la password di conferma. Alcuni proxy e WAF

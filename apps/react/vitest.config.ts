@@ -7,6 +7,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
+  // Il test della CSP (src/lib/csp.test.ts) legge l'header documentato in docs/deploy, fuori dal progetto
+  server: {
+    fs: { allow: [import.meta.dirname, path.resolve(import.meta.dirname, '../../docs/deploy')] },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
