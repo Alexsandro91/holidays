@@ -691,6 +691,64 @@ describe('AdministratorsPage', () => {
     expect(screen.queryByRole('button', { name: 'Disattiva Anna Admin' })).not.toBeInTheDocument()
   })
 
+  it('sends a password reset link to another admin with your password and returns the focus to the button', async () => {
+    admins()
+    let body: unknown = null
+    server.use(
+      http.post('/api/users/3/password-reset', async ({ request }) => {
+        body = await request.json()
+        return new HttpResponse(null, { status: 202 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const trigger = await screen.findByRole('button', { name: 'Reset password di Bruno Admin' })
+    expect(trigger).toHaveTextContent('Reset password')
+    await user.click(trigger)
+    const dialog = await screen.findByRole('alertdialog', { name: 'Inviare il link per reimpostare la password a Bruno Admin?' })
+    expect(within(dialog).getByText(/Riceverà un’email a marco@holidays\.test con un link valido 60 minuti/)).toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invia il link' }))
+
+    expect(await screen.findByText('Link inviato a marco@holidays.test.')).toBeInTheDocument()
+    expect(body).toEqual({ current_password: 'password' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('shows a wrong password under the field when sending a password reset to an admin', async () => {
+    admins()
+    server.use(
+      http.post('/api/users/3/password-reset', () => HttpResponse.json({ message: 'Errore', errors: { current_password: ['La password non è corretta.'] } }, { status: 422 })),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Reset password di Bruno Admin' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'sbagliata')
+    await user.click(within(dialog).getByRole('button', { name: 'Invia il link' }))
+
+    expect(await within(dialog).findByText('La password non è corretta.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('La tua password')).toHaveFocus()
+  })
+
+  it('offers the password reset only on other active admins the server allows, in a neutral color', async () => {
+    admins([
+      me,
+      bruno,
+      managedUser({ id: 4, name: 'Carla Admin', role: 'admin', status: 'disabled', status_label: 'Disattivato' }),
+      managedUser({ id: 5, name: 'Dario Admin', role: 'admin', can: { ...NO_ACTIONS, update: true } }),
+      managedUser({ id: 6, name: 'Elsa Admin', role: 'admin', status: 'invited', status_label: 'Invitato' }),
+    ])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    const reset = await screen.findByRole('button', { name: 'Reset password di Bruno Admin' })
+    // Colore neutro: niente tinte di significato come Modifica, Revoca o Disattiva
+    expect(reset.className).not.toMatch(/text-(primary-soft|status-|danger-soft)/)
+    for (const name of ['Anna Admin', 'Carla Admin', 'Dario Admin', 'Elsa Admin']) {
+      expect(screen.queryByRole('button', { name: `Reset password di ${name}` })).not.toBeInTheDocument()
+    }
+  })
+
   it('returns the focus to "Annulla invito" when its dialog is closed without cancelling', async () => {
     admins([me, managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato' })])
     const { user } = renderRoutes(routes, ['/admin/administrators'])
@@ -791,7 +849,7 @@ describe('AdministratorsPage', () => {
       return within(row).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
     }
     await screen.findByText('Bruno Admin')
-    expect(labels('Bruno Admin')).toEqual(['Modifica Bruno Admin', 'Revoca Bruno Admin', 'Disattiva Bruno Admin'])
+    expect(labels('Bruno Admin')).toEqual(['Modifica Bruno Admin', 'Reset password di Bruno Admin', 'Revoca Bruno Admin', 'Disattiva Bruno Admin'])
     expect(labels('Carla Admin')).toEqual(['Modifica Carla Admin', 'Riattiva Carla Admin'])
   })
 

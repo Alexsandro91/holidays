@@ -18,12 +18,12 @@ import { INVITATION_TRIGGER_ATTRIBUTE, REVOKE_TRIGGER_ATTRIBUTE } from '@/lib/fo
 /** Valore dell'attributo di focus di un pulsante di riga: uno per azione, così il focus torna su quello giusto */
 const invitationTriggerKey = (user: ManagedUser, action: string): string => `${user.id}-${action}`
 
-type ConfirmedAction = 'resend' | 'cancel' | 'disable' | 'enable'
+type ConfirmedAction = 'resend' | 'cancel' | 'passwordReset' | 'disable' | 'enable'
 
 /**
  * Colore di significato dei pulsanti di riga (token in index.css, contrasto AA nei due temi): modifica nel primario,
  * revoca in ambra (toglie il ruolo, l'account resta), disattiva e annulla invito in rosso (bloccano o cancellano),
- * riattiva in verde. Reinvia resta neutro. Il testo dice sempre l'azione: il colore non è l'unico segnale
+ * riattiva in verde. Reinvia e Reset password restano neutri. Il testo dice sempre l'azione: il colore non è l'unico segnale
  */
 const TONE = {
   edit: 'text-primary-soft-foreground hover:bg-primary-soft hover:text-primary-soft-foreground',
@@ -130,6 +130,17 @@ const AdministratorsPage = () => {
                       // lascia il ruolo: l'admin resta in questa pagina e si può riattivare (spec §7.6)
                       <>
                         {editButton}
+                        {/* Solo il link all'email della persona, con la password di chi agisce (spec fase 4 §6) */}
+                        {!admin.is_current_user && admin.can.send_password_reset && (
+                          <Button
+                            variant="outline"
+                            aria-label={t('administrators.passwordResetFor', { name: admin.name })}
+                            {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'passwordReset') }}
+                            onClick={() => setConfirming({ user: admin, action: 'passwordReset' })}
+                          >
+                            {t('administrators.passwordReset')}
+                          </Button>
+                        )}
                         {!admin.is_current_user && (
                           <Button
                             variant="outline"

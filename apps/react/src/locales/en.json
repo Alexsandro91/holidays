@@ -237,6 +237,8 @@
     "title": "Administrators",
     "subtitle": "Who can manage users and settings. Every change is emailed to all administrators.",
     "add": "Add admin",
+    "passwordReset": "Reset password",
+    "passwordResetFor": "Reset password for {{name}}",
     "revoke": "Revoke",
     "revokeFor": "Revoke {{name}}",
     "resend": "Resend invitation",
