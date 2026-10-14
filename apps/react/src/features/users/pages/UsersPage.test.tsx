@@ -50,7 +50,7 @@ const respondWithPages = (onRequest: (url: URL) => void = () => undefined, { tot
 const columnHeader = (name: string): HTMLElement => {
   const header = within(screen.getByRole('table'))
     .getAllByRole('columnheader')
-    .find((cell) => cell.textContent?.includes(name))
+    .find((cell) => cell.textContent === name)
   if (!header) throw new Error(`Intestazione ${name} mancante`)
   return header
 }
@@ -65,8 +65,11 @@ describe('UsersPage', () => {
     renderRoutes(routes, ['/users'])
 
     const table = await screen.findByRole('table')
-    expect(within(table).getByText('Marco Bianchi')).toBeInTheDocument()
-    expect(within(table).getByText('marco@holidays.test')).toBeInTheDocument()
+    const row = within(table).getAllByRole('row').find((item) => item.textContent?.includes('marco@holidays.test'))
+    if (!row) throw new Error('Riga di Marco mancante')
+    // Nome e cognome in colonne separate
+    expect(within(row).getAllByRole('cell')[0]).toHaveTextContent('Marco')
+    expect(within(row).getAllByRole('cell')[1]).toHaveTextContent('Bianchi')
     expect(within(table).getAllByText('Attivo').length).toBeGreaterThan(0)
     expect(within(table).getByText('Tu')).toBeInTheDocument()
   })
@@ -78,10 +81,10 @@ describe('UsersPage', () => {
 
     await screen.findByRole('table')
     const last = urls.at(-1)
-    expect(last?.searchParams.get('sort')).toBe('name')
+    expect(last?.searchParams.get('sort')).toBe('last_name')
     expect(last?.searchParams.get('per_page')).toBe('25')
     expect(last?.searchParams.has('page')).toBe(false)
-    expect(last?.searchParams.has('search')).toBe(false)
+    expect(last?.searchParams.has('filter[search]')).toBe(false)
   })
 
   it('shows the counts on the status tabs and filters through the URL', async () => {
@@ -108,39 +111,46 @@ describe('UsersPage', () => {
     expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
 
-  it('reads filters, sort and page from the URL and maps them on the API filters', async () => {
+  it('reads search, filters, sort and page from the URL and maps them on the API filters', async () => {
     const urls: URL[] = []
     respondWith((url) => urls.push(url))
-    renderRoutes(routes, ['/users?name=ros&email=%40acme&role=manager&status=disabled&sort=-email&page=2&per_page=10'])
+    renderRoutes(routes, ['/users?search=rossi%20mario&first_name=ma&last_name=ro&email=%40acme&role=manager&status=disabled&sort=-email&page=2&per_page=10'])
 
     await screen.findByRole('table')
     const last = urls.at(-1)
-    expect(last?.searchParams.get('filter[name]')).toBe('ros')
+    expect(last?.searchParams.get('filter[search]')).toBe('rossi mario')
+    expect(last?.searchParams.get('filter[first_name]')).toBe('ma')
+    expect(last?.searchParams.get('filter[last_name]')).toBe('ro')
     expect(last?.searchParams.get('filter[email]')).toBe('@acme')
     expect(last?.searchParams.get('filter[role]')).toBe('manager')
     expect(last?.searchParams.get('filter[status]')).toBe('disabled')
     expect(last?.searchParams.get('sort')).toBe('-email')
     expect(last?.searchParams.get('page')).toBe('2')
     expect(last?.searchParams.get('per_page')).toBe('10')
-    expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue('ros')
+    expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue('rossi mario')
+    // Filtri del pannello nell'URL: il pannello è già aperto
+    expect(screen.getByRole('button', { name: /Filtri/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue('ma')
+    expect(screen.getByRole('searchbox', { name: 'Cognome' })).toHaveValue('ro')
     expect(screen.getByRole('searchbox', { name: 'Email' })).toHaveValue('@acme')
     expect(screen.getByRole('combobox', { name: 'Ruolo' })).toHaveTextContent('Responsabile')
   })
 
-  it('ignores unknown values in the URL', async () => {
+  it('ignores unknown values in the URL and cuts texts over 100 characters', async () => {
     const urls: URL[] = []
     respondWith((url) => urls.push(url))
-    renderRoutes(routes, ['/users?role=boss&status=x&sort=age&per_page=1000'])
+    renderRoutes(routes, [`/users?role=boss&status=x&sort=age&per_page=1000&search=${'a'.repeat(150)}`])
 
     await screen.findByRole('table')
     const last = urls.at(-1)
     expect(last?.searchParams.has('filter[role]')).toBe(false)
     expect(last?.searchParams.has('filter[status]')).toBe(false)
-    expect(last?.searchParams.get('sort')).toBe('name')
+    expect(last?.searchParams.get('sort')).toBe('last_name')
     expect(last?.searchParams.get('per_page')).toBe('25')
+    expect(last?.searchParams.get('filter[search]')).toHaveLength(100)
   })
 
-  it('debounces the name filter, replaces the history entry and goes back to page one', async () => {
+  it('keeps the general search always visible and debounces it, replacing the history entry, back to page one', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const urls: URL[] = []
     respondWith((url) => urls.push(url))
@@ -148,16 +158,60 @@ describe('UsersPage', () => {
       advanceTimers: vi.advanceTimersByTime,
     })
 
-    await user.type(await screen.findByRole('searchbox', { name: 'Nome' }), 'mar')
+    const search = await screen.findByRole('searchbox', { name: 'Cerca' })
+    expect(search).toHaveAttribute('placeholder', 'Nome, cognome o email')
+    await user.type(search, 'rossi mario')
     expect(router.state.location.search).toBe('?page=3')
     vi.advanceTimersByTime(300)
 
-    await vi.waitFor(() => expect(router.state.location.search).toBe('?name=mar'))
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?search=rossi+mario'))
     expect(router.state.historyAction).toBe('REPLACE')
-    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[name]')).toBe('mar'))
+    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[search]')).toBe('rossi mario'))
   })
 
-  it('debounces the email filter', async () => {
+  it('hides the panel filters behind "Filtri" and shows how many are active', async () => {
+    respondWith()
+    const { user } = renderRoutes(routes, ['/users'])
+
+    const toggle = await screen.findByRole('button', { name: 'Filtri' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('searchbox', { name: 'Nome' })).not.toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(document.getElementById(toggle.getAttribute('aria-controls') ?? '')).toBeVisible()
+    expect(screen.getByRole('searchbox', { name: 'Nome' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Cognome' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Email' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Ruolo' })).toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('counts the active panel filters on the toggle', async () => {
+    respondWith()
+    renderRoutes(routes, ['/users?first_name=ma&role=manager&search=x&status=active'])
+
+    expect(await screen.findByRole('button', { name: 'Filtri: 2 filtri attivi' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('opens the panel by itself when the URL gets panel filters', async () => {
+    respondWith()
+    const { router } = renderRoutes(routes, ['/users'])
+
+    const toggle = await screen.findByRole('button', { name: 'Filtri' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await act(() => router.navigate('/users?role=manager'))
+
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: /Filtri/ })).toHaveAttribute('aria-expanded', 'true'))
+  })
+
+  it.each([
+    ['Nome', 'first_name', 'filter[first_name]'],
+    ['Cognome', 'last_name', 'filter[last_name]'],
+    ['Email', 'email', 'filter[email]'],
+  ])('debounces the %s filter of the panel', async (label, key, apiKey) => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const urls: URL[] = []
     respondWith((url) => urls.push(url))
@@ -165,11 +219,12 @@ describe('UsersPage', () => {
       advanceTimers: vi.advanceTimersByTime,
     })
 
-    await user.type(await screen.findByRole('searchbox', { name: 'Email' }), 'acme')
+    await user.click(await screen.findByRole('button', { name: 'Filtri' }))
+    await user.type(screen.getByRole('searchbox', { name: label }), 'ros')
     vi.advanceTimersByTime(300)
 
-    await vi.waitFor(() => expect(router.state.location.search).toBe('?email=acme'))
-    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[email]')).toBe('acme'))
+    await vi.waitFor(() => expect(router.state.location.search).toBe(`?${key}=ros`))
+    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get(apiKey)).toBe('ros'))
   })
 
   it('filters by role with the select', async () => {
@@ -177,38 +232,60 @@ describe('UsersPage', () => {
     respondWith((url) => urls.push(url))
     const { user, router } = renderRoutes(routes, ['/users?page=2'])
 
-    await user.click(await screen.findByRole('combobox', { name: 'Ruolo' }))
+    await user.click(await screen.findByRole('button', { name: 'Filtri' }))
+    await user.click(screen.getByRole('combobox', { name: 'Ruolo' }))
     await user.click(await screen.findByRole('option', { name: 'Responsabile' }))
 
     expect(router.state.location.search).toBe('?role=manager')
     await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[role]')).toBe('manager'))
   })
 
-  it('clears every filter but keeps the sort', async () => {
+  it('clears search, filters and status but keeps the sort, moving the focus to the search', async () => {
     respondWith()
-    const { user, router } = renderRoutes(routes, ['/users?name=ma&email=acme&role=manager&status=active&sort=-email&page=2'])
+    const { user, router } = renderRoutes(routes, ['/users?search=x&first_name=ma&last_name=ro&email=acme&role=manager&status=active&sort=-email&page=2'])
 
     await user.click(await screen.findByRole('button', { name: 'Azzera filtri' }))
 
     expect(router.state.location.search).toBe('?sort=-email')
+    expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue('')
     expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue('')
     expect(screen.getByRole('searchbox', { name: 'Email' })).toHaveValue('')
+    expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveFocus()
+  })
+
+  it('drops the text still in debounce when "Azzera filtri" is pressed', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    respondWith()
+    const { user, router } = renderRoutes(routes, ['/users?role=manager'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Nome' }), 'ro')
+    await user.click(screen.getByRole('button', { name: 'Azzera filtri' }))
+    vi.advanceTimersByTime(300)
+
+    await vi.waitFor(() => expect(router.state.location.search).toBe(''))
+    expect(screen.getByRole('searchbox', { name: 'Nome', hidden: true })).toHaveValue('')
+    vi.advanceTimersByTime(300)
+    expect(router.state.location.search).toBe('')
   })
 
   it('offers "Azzera filtri" only when a filter is active', async () => {
     respondWith()
-    renderRoutes(routes, ['/users?sort=-email'])
+    const { user } = renderRoutes(routes, ['/users?sort=-email'])
 
-    await screen.findByRole('table')
+    await user.click(await screen.findByRole('button', { name: 'Filtri' }))
     expect(screen.queryByRole('button', { name: 'Azzera filtri' })).not.toBeInTheDocument()
   })
 
-  it('sorts by name by default and marks the sorted header with aria-sort', async () => {
+  it('sorts by last name by default and marks the sorted header with aria-sort', async () => {
     respondWith()
     renderRoutes(routes, ['/users'])
 
     await screen.findByRole('table')
-    expect(columnHeader('Nome')).toHaveAttribute('aria-sort', 'ascending')
+    expect(columnHeader('Cognome')).toHaveAttribute('aria-sort', 'ascending')
+    expect(within(columnHeader('Nome')).getByRole('button', { name: 'Nome' })).toBeInTheDocument()
+    expect(columnHeader('Nome')).not.toHaveAttribute('aria-sort')
     expect(columnHeader('Email')).not.toHaveAttribute('aria-sort')
     expect(within(columnHeader('Ruolo')).getByRole('button', { name: 'Ruolo' })).toBeInTheDocument()
     expect(within(columnHeader('Dettagli')).queryByRole('button')).not.toBeInTheDocument()
@@ -223,7 +300,7 @@ describe('UsersPage', () => {
     await user.click(within(columnHeader('Email')).getByRole('button', { name: 'Email' }))
     expect(router.state.location.search).toBe('?sort=email')
     await vi.waitFor(() => expect(columnHeader('Email')).toHaveAttribute('aria-sort', 'ascending'))
-    expect(columnHeader('Nome')).not.toHaveAttribute('aria-sort')
+    expect(columnHeader('Cognome')).not.toHaveAttribute('aria-sort')
 
     await user.click(within(columnHeader('Email')).getByRole('button', { name: 'Email' }))
     expect(router.state.location.search).toBe('?sort=-email')
@@ -248,7 +325,7 @@ describe('UsersPage', () => {
 
     const navigation = await screen.findByRole('navigation', { name: 'Pagine' })
     expect(await within(navigation).findByText('Pagina 2 di 3')).toBeInTheDocument()
-    expect(screen.getByText('60 utenti')).toBeInTheDocument()
+    expect(screen.getAllByText('60 utenti').length).toBeGreaterThan(0)
 
     await user.click(within(navigation).getByRole('button', { name: 'Ultima pagina' }))
     expect(router.state.location.search).toBe('?page=3')
@@ -289,22 +366,76 @@ describe('UsersPage', () => {
     const { user, router } = renderRoutes(routes, ['/users'], {
       advanceTimers: vi.advanceTimersByTime,
     })
-    await router.navigate('/users?status=active')
+    await act(() => router.navigate('/users?status=active'))
 
-    await user.type(await screen.findByRole('searchbox', { name: 'Nome' }), 'mar')
+    await user.type(await screen.findByRole('searchbox', { name: 'Cerca' }), 'mar')
     vi.advanceTimersByTime(300)
-    await vi.waitFor(() => expect(router.state.location.search).toBe('?name=mar&status=active'))
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?search=mar&status=active'))
     // la vista segue l'URL: attendo che la ricerca sia davvero partita
-    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[name]')).toBe('mar'))
+    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[search]')).toBe('mar'))
 
     await act(() => router.navigate(-1))
     await vi.waitFor(() => expect(router.state.location.search).toBe(''))
-    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue(''))
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue(''))
     vi.advanceTimersByTime(300)
     expect(router.state.location.search).toBe('')
 
     await act(() => router.navigate(1))
-    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue('mar'))
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue('mar'))
+  })
+
+  it('drops the text still in debounce when going back', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    respondWith()
+    const { user, router } = renderRoutes(routes, ['/users'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
+    await act(() => router.navigate('/users?status=active'))
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Cerca' }), 'ma')
+    await act(() => router.navigate(-1))
+    vi.advanceTimersByTime(300)
+
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue(''))
+    expect(router.state.location.search).toBe('')
+  })
+
+  it('takes the page from the URL: two quick clicks on "next" reach page 3 even before the data arrive', async () => {
+    server.use(
+      http.get('/api/users', async ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? '1')
+        if (page > 1) await delay(500)
+        return HttpResponse.json({
+          data: [managedUser({ id: 100 + page, name: `Persona ${page}` })],
+          links: {},
+          meta: { current_page: page, last_page: 3, per_page: 25, total: 60, counts: { all: 60, active: 60, invited: 0, disabled: 0 } },
+        })
+      }),
+    )
+    const { user, router } = renderRoutes(routes, ['/users'])
+
+    const navigation = await screen.findByRole('navigation', { name: 'Pagine' })
+    await user.click(within(navigation).getByRole('button', { name: 'Pagina successiva' }))
+    await user.click(within(navigation).getByRole('button', { name: 'Pagina successiva' }))
+
+    expect(router.state.location.search).toBe('?page=3')
+    expect(within(navigation).getByText('Pagina 3 di 3')).toBeInTheDocument()
+  })
+
+  it('announces the result in a live region, also when nothing is found', async () => {
+    respondWith(() => undefined, [])
+    renderRoutes(routes, ['/users?search=zzz'])
+
+    await screen.findByText('Nessun utente trovato.', { selector: 'p:not([role])' })
+    expect(screen.getByRole('status')).toHaveTextContent('Nessun utente trovato.')
+  })
+
+  it('announces how many users the view has', async () => {
+    respondWithPages()
+    renderRoutes(routes, ['/users'])
+
+    await screen.findByRole('table')
+    expect(screen.getByRole('status')).toHaveTextContent('60 utenti')
   })
 
   it('goes back to the last page when the page is out of range', async () => {
@@ -329,13 +460,12 @@ describe('UsersPage', () => {
     expect(router.state.historyAction).toBe('REPLACE')
   })
 
-  it('shows an empty state with a way to clear the filters', async () => {
+  it('shows an empty state with a way to show every user', async () => {
     respondWith(() => undefined, [])
-    const { user, router } = renderRoutes(routes, ['/users?status=disabled&name=zzz'])
+    const { user, router } = renderRoutes(routes, ['/users?status=disabled&search=zzz'])
 
-    expect(await screen.findByText('Nessun utente trovato.')).toBeInTheDocument()
-    const clear = screen.getAllByRole('button', { name: 'Azzera filtri' })
-    await user.click(clear[clear.length - 1])
+    expect(await screen.findByText('Nessun utente trovato.', { selector: 'p:not([role])' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mostra tutti gli utenti' }))
     expect(router.state.location.search).toBe('')
   })
 
@@ -376,7 +506,7 @@ describe('UsersPage', () => {
 
   it('has no accessibility violations', async () => {
     respondWithPages()
-    const { container } = renderRoutes(routes, ['/users?name=per&page=2'])
+    const { container } = renderRoutes(routes, ['/users?first_name=per&page=2'])
 
     await screen.findByRole('table')
     await screen.findByText('Pagina 2 di 3')

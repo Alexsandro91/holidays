@@ -34,13 +34,14 @@ describe('UsersAdminPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
 
     expect(await within(dialog).findByText('L’email è già in uso.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Email aziendale')).toHaveFocus()
-    expect(body).toEqual({ name: 'Sara Colombo', email: 'sara@holidays.test', role: 'employee' })
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', role: 'employee' })
   })
 
   it('closes the invite dialog and refreshes the list on success', async () => {
@@ -56,7 +57,8 @@ describe('UsersAdminPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
 
@@ -78,7 +80,8 @@ describe('UsersAdminPage', () => {
     const { user } = renderRoutes(routes, ['/users'])
     const invite = async (email: string) => {
       const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
-      await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+      await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
       await user.type(within(dialog).getByLabelText('Email aziendale'), email)
       await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
       return dialog
@@ -126,7 +129,7 @@ describe('UsersAdminPage', () => {
     renderRoutes(routes, ['/users'])
 
     const table = await screen.findByRole('table')
-    expect(within(table).getByText('Bruno Admin')).toBeInTheDocument()
+    expect(within(table).getByText('Bruno')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Azioni per Bruno Admin' })).not.toBeInTheDocument()
     expect(within(table).getByRole('button', { name: 'Azioni per Marco Bianchi' })).toBeInTheDocument()
   })
@@ -289,7 +292,8 @@ describe('UsersAdminPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
     await user.keyboard('{Escape}')

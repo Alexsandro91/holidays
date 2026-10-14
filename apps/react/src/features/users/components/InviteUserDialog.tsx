@@ -17,7 +17,8 @@ import { isApiError } from '@/lib/api'
 
 const createInviteSchema = (t: TFunction) =>
   z.object({
-    name: z.string().trim().min(1, t('validation.nameRequired')),
+    firstName: z.string().trim().min(1, t('validation.firstNameRequired')),
+    lastName: z.string().trim().min(1, t('validation.lastNameRequired')),
     email: emailField(t),
     role: z.enum(['employee', 'manager']),
   })
@@ -25,6 +26,8 @@ const createInviteSchema = (t: TFunction) =>
 type InviteValues = z.infer<ReturnType<typeof createInviteSchema>>
 
 const ROLES: InviteValues['role'][] = ['employee', 'manager']
+
+const FIELDS: (keyof InviteValues)[] = ['firstName', 'lastName', 'email', 'role']
 
 const isRole = (value: string): value is InviteValues['role'] => value === 'employee' || value === 'manager'
 
@@ -37,7 +40,7 @@ const InviteUserDialog = () => {
   // non si riapre: durante l'animazione di chiusura il form è ancora nel DOM
   const submitting = useRef(false)
   const schema = useMemo(() => createInviteSchema(t), [t])
-  const form = useForm<InviteValues>({ resolver: zodResolver(schema), defaultValues: { name: '', email: '', role: 'employee' } })
+  const form = useForm<InviteValues>({ resolver: zodResolver(schema), defaultValues: { firstName: '', lastName: '', email: '', role: 'employee' } })
   const { errors } = form.formState
 
   const submit = async (values: InviteValues) => {
@@ -48,14 +51,18 @@ const InviteUserDialog = () => {
     } catch (error) {
       submitting.current = false
       if (isApiError(error, 'validation')) {
-        const name = error.fieldErrors.name?.[0]
-        const email = error.fieldErrors.email?.[0]
-        const role = error.fieldErrors.role?.[0]
-        if (name) form.setError('name', { message: name })
-        if (email) form.setError('email', { message: email })
-        if (role) form.setError('role', { message: role })
+        const messages: Record<keyof InviteValues, string | undefined> = {
+          firstName: error.fieldErrors.first_name?.[0],
+          lastName: error.fieldErrors.last_name?.[0],
+          email: error.fieldErrors.email?.[0],
+          role: error.fieldErrors.role?.[0],
+        }
+        FIELDS.forEach((field) => {
+          const message = messages[field]
+          if (message) form.setError(field, { message })
+        })
         // Il focus va al primo campo con errore, nell'ordine in cui compaiono
-        const first = name ? 'name' : email ? 'email' : role ? 'role' : null
+        const first = FIELDS.find((field) => messages[field] !== undefined)
         if (first) form.setFocus(first)
         else toast.error(error.message)
         return
@@ -96,17 +103,31 @@ const InviteUserDialog = () => {
         </DialogHeader>
         <form onSubmit={onSubmit} noValidate>
           <FieldGroup>
-            <Field data-invalid={errors.name ? true : undefined}>
-              <FieldLabel htmlFor="invite-name">{t('users.inviteDialog.name')}</FieldLabel>
-              <Input
-                id="invite-name"
-                autoComplete="name"
-                aria-invalid={errors.name ? true : undefined}
-                aria-describedby={errors.name ? 'invite-name-error' : undefined}
-                {...form.register('name')}
-              />
-              <FieldError id="invite-name-error">{errors.name?.message}</FieldError>
-            </Field>
+            {/* Nome e cognome affiancati da sm in su: sono i dati di un'altra persona, niente autocompletamento */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field data-invalid={errors.firstName ? true : undefined}>
+                <FieldLabel htmlFor="invite-first-name">{t('users.inviteDialog.firstName')}</FieldLabel>
+                <Input
+                  id="invite-first-name"
+                  autoComplete="off"
+                  aria-invalid={errors.firstName ? true : undefined}
+                  aria-describedby={errors.firstName ? 'invite-first-name-error' : undefined}
+                  {...form.register('firstName')}
+                />
+                <FieldError id="invite-first-name-error">{errors.firstName?.message}</FieldError>
+              </Field>
+              <Field data-invalid={errors.lastName ? true : undefined}>
+                <FieldLabel htmlFor="invite-last-name">{t('users.inviteDialog.lastName')}</FieldLabel>
+                <Input
+                  id="invite-last-name"
+                  autoComplete="off"
+                  aria-invalid={errors.lastName ? true : undefined}
+                  aria-describedby={errors.lastName ? 'invite-last-name-error' : undefined}
+                  {...form.register('lastName')}
+                />
+                <FieldError id="invite-last-name-error">{errors.lastName?.message}</FieldError>
+              </Field>
+            </div>
             <Field data-invalid={errors.email ? true : undefined}>
               <FieldLabel htmlFor="invite-email">{t('users.inviteDialog.email')}</FieldLabel>
               <Input

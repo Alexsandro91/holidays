@@ -16,9 +16,9 @@ const RoleFilter = ({ value, onChange }: RoleFilterProps) => {
   const { t } = useTranslation()
   return (
     <div className="grid gap-2">
-      <Label id="users-filter-role-label">{t('users.filters.role')}</Label>
+      <Label id="users-filter-role-label" htmlFor="users-filter-role">{t('users.filters.role')}</Label>
       <Select value={value} onValueChange={(next) => isRoleFilter(next) && onChange(next)}>
-        <SelectTrigger aria-labelledby="users-filter-role-label" className="w-full">
+        <SelectTrigger id="users-filter-role" aria-labelledby="users-filter-role-label" className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper">

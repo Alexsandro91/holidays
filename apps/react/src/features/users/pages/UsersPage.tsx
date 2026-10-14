@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router'
 import PageHeading from '@/components/layout/PageHeading'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,7 +9,7 @@ import UsersFilters from '@/features/users/components/UsersFilters'
 import UsersSortSelect from '@/features/users/components/UsersSortSelect'
 import UsersTable from '@/features/users/components/UsersTable'
 import UserStatusTabs from '@/features/users/components/UserStatusTabs'
-import { useUserListParams } from '@/features/users/useUserListParams'
+import { CLEARED_FILTERS, hasAnyFilter, useUserListParams } from '@/features/users/useUserListParams'
 
 interface UsersPageProps {
   /** Pulsante "Invita utente" */
@@ -21,6 +22,7 @@ interface UsersPageProps {
 const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
   const { t } = useTranslation()
   const { params, setParams } = useUserListParams()
+  const location = useLocation()
   const users = useManagedUsers(params)
 
   // Pagina oltre l'ultima (es. dopo una disattivazione): si torna all'ultima disponibile
@@ -30,13 +32,16 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
     if (currentPage !== undefined && lastPage !== undefined && lastPage >= 1 && currentPage > lastPage) setParams({ page: lastPage }, { replace: true })
   }, [currentPage, lastPage, setParams])
 
-  const filtered = params.name !== '' || params.email !== '' || params.role !== 'all' || params.status !== 'all'
+  const filtered = hasAnyFilter(params)
 
   const clearFilters = () => {
-    setParams({ name: '', email: '', role: 'all', status: 'all', page: 1 })
-    // Il pulsante sparisce senza filtri: il focus va al primo filtro invece di perdersi sul body
-    document.getElementById('users-filter-name')?.focus()
+    setParams(CLEARED_FILTERS)
+    // Il pulsante sparisce senza filtri: il focus va alla ricerca, sempre visibile, invece di perdersi sul body
+    document.getElementById('users-search')?.focus()
   }
+
+  // Esito della vista per chi usa uno screen reader: annunciato quando arrivano i dati nuovi, non con quelli precedenti
+  const result = users.data === undefined || users.isPlaceholderData ? '' : users.data.meta.total === 0 ? t('users.empty') : t('users.pagination.total', { count: users.data.meta.total })
 
   return (
     <>
@@ -45,7 +50,11 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
         <PageHeading title={t('users.title')} description={t('users.subtitle')} className="mb-0" />
         {headerAction}
       </div>
-      <UsersFilters params={params} setParams={setParams} onClear={clearFilters} />
+      <UsersFilters params={params} setParams={setParams} onClear={clearFilters} syncKey={location.key} />
+      {/* Live region stabile: montata sempre, fuori dai rami di caricamento, errore e lista vuota */}
+      <p role="status" className="sr-only">
+        {result}
+      </p>
       <UserStatusTabs
         value={params.status}
         counts={users.data?.meta.counts}
@@ -69,16 +78,17 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
         ) : users.data.data.length === 0 ? (
           <div className="grid justify-items-start gap-3 rounded-lg border p-6">
             <p>{t('users.empty')}</p>
+            {/* Nome diverso da "Azzera filtri" del pannello: due pulsanti uguali confonderebbero */}
             {filtered && (
               <Button variant="outline" onClick={clearFilters}>
-                {t('users.clearFilters')}
+                {t('users.showAll')}
               </Button>
             )}
           </div>
         ) : (
           // Durante il caricamento della vista nuova restano i dati precedenti (keepPreviousData)
           <div aria-busy={users.isPlaceholderData || undefined}>
-            <UsersTable list={users.data} sort={params.sort} perPage={params.perPage} onChange={setParams} renderActions={renderActions} />
+            <UsersTable list={users.data} sort={params.sort} page={params.page} perPage={params.perPage} onChange={setParams} renderActions={renderActions} />
           </div>
         )}
       </UserStatusTabs>

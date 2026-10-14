@@ -5,6 +5,9 @@ import { adminQueryKey } from '@/lib/queryKeys'
 
 export const managedUserSchema = z.object({
   id: z.number(),
+  first_name: z.string(),
+  last_name: z.string(),
+  // Nome completo ("Nome Cognome") per la visualizzazione
   name: z.string(),
   email: z.string(),
   role: z.enum(['employee', 'manager', 'admin']),
@@ -29,8 +32,8 @@ export type UserRole = ManagedUser['role']
 export type UserStatus = ManagedUser['status']
 export type UserStatusFilter = 'all' | UserStatus
 export type UserRoleFilter = 'all' | UserRole
-export type UserSortField = 'name' | 'email' | 'role' | 'status'
-/** Campo di ordinamento, con il prefisso `-` per l'ordine decrescente (contratto API, spec §3) */
+export type UserSortField = 'last_name' | 'first_name' | 'email' | 'role' | 'status'
+/** Campo di ordinamento, con il prefisso `-` per l'ordine decrescente (contratto API, spec §7.2) */
 export type UserSort = UserSortField | `-${UserSortField}`
 export type UserPerPage = 10 | 25 | 50
 
@@ -38,7 +41,10 @@ export const USER_PER_PAGE_OPTIONS: UserPerPage[] = [10, 25, 50]
 
 /** Stato completo della lista: filtri, ordinamento e pagina (nell'URL, vedi useUserListParams). */
 export interface UserListParams {
-  name: string
+  /** Ricerca generale: ogni parola in nome, cognome o email */
+  search: string
+  firstName: string
+  lastName: string
   email: string
   role: UserRoleFilter
   status: UserStatusFilter
@@ -47,7 +53,17 @@ export interface UserListParams {
   perPage: UserPerPage
 }
 
-export const DEFAULT_USER_LIST_PARAMS: UserListParams = { name: '', email: '', role: 'all', status: 'all', sort: 'name', page: 1, perPage: 25 }
+export const DEFAULT_USER_LIST_PARAMS: UserListParams = {
+  search: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  role: 'all',
+  status: 'all',
+  sort: 'last_name',
+  page: 1,
+  perPage: 25,
+}
 
 const userListSchema = z.object({
   data: z.array(managedUserSchema),
@@ -65,11 +81,18 @@ export type UserList = z.infer<typeof userListSchema>
 // Chiave tipizzata con un'annotazione: `as const` è vietato dalle regole di progetto
 export const usersQueryKey = (params: UserListParams): readonly ['admin', 'users', UserListParams] => [adminQueryKey[0], 'users', params]
 
-/** Parametri dell'API: `filter[...]`, `sort`, `page` e `per_page` (spec §3). I testi vuoti non si inviano. */
-const toQueryString = ({ name, email, role, status, sort, page, perPage }: UserListParams): string => {
+/** Parametri dell'API: `filter[...]`, `sort`, `page` e `per_page` (spec §3 e §7.2). I testi vuoti non si inviano. */
+const toQueryString = ({ search, firstName, lastName, email, role, status, sort, page, perPage }: UserListParams): string => {
   const query = new URLSearchParams()
-  if (name.trim() !== '') query.set('filter[name]', name.trim())
-  if (email.trim() !== '') query.set('filter[email]', email.trim())
+  const texts: [string, string][] = [
+    ['filter[search]', search],
+    ['filter[first_name]', firstName],
+    ['filter[last_name]', lastName],
+    ['filter[email]', email],
+  ]
+  texts.forEach(([key, value]) => {
+    if (value.trim() !== '') query.set(key, value.trim())
+  })
   if (role !== 'all') query.set('filter[role]', role)
   if (status !== 'all') query.set('filter[status]', status)
   query.set('sort', sort)
@@ -87,7 +110,8 @@ export const useManagedUsers = (params: UserListParams) =>
 export type ManagedRole = 'employee' | 'manager'
 
 export interface InviteUserInput {
-  name: string
+  firstName: string
+  lastName: string
   email: string
   role: ManagedRole
 }
@@ -106,7 +130,10 @@ const useAdminMutation = <TInput>(mutationFn: (input: TInput) => Promise<unknown
   })
 }
 
-export const useInviteUser = () => useAdminMutation((input: InviteUserInput) => requestData('POST', '/api/users', userResourceSchema, input))
+export const useInviteUser = () =>
+  useAdminMutation(({ firstName, lastName, email, role }: InviteUserInput) =>
+    requestData('POST', '/api/users', userResourceSchema, { first_name: firstName, last_name: lastName, email, role }),
+  )
 
 export const useResendInvitation = () => useAdminMutation((id: number) => request('POST', `/api/users/${id}/invitation`))
 

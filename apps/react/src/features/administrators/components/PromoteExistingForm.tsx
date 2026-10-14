@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useGrantAdmin } from '@/features/administrators/api'
 import { DEFAULT_USER_LIST_PARAMS, useManagedUsers } from '@/features/users/api'
+import { MAX_TEXT_FILTER } from '@/features/users/useUserListParams'
 import { isApiError } from '@/lib/api'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -40,9 +41,8 @@ const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps)
   // Evita il doppio invio: letto solo nei gestori di evento. Dopo la promozione riuscita resta attivo fino allo
   // smontaggio: durante l'animazione di chiusura il form è ancora nel DOM (il corpo si rimonta a ogni apertura)
   const submitting = useRef(false)
-  // Con una "@" si cerca per email, altrimenti per nome (l'API filtra i due campi separatamente, spec §3)
-  const byEmail = search.includes('@')
-  const candidates = useManagedUsers({ ...DEFAULT_USER_LIST_PARAMS, status: 'active', name: byEmail ? '' : search, email: byEmail ? search : '', perPage: 50 })
+  // Ricerca generale: nome, cognome o email, anche "nome cognome" o "cognome nome" (spec §7.2)
+  const candidates = useManagedUsers({ ...DEFAULT_USER_LIST_PARAMS, status: 'active', search, perPage: 50 })
   const people = (candidates.data?.data ?? []).filter((person) => person.role !== 'admin')
 
   // Se la scelta non è più tra i candidati (nuova ricerca) si azzera, così il nome non va perso
@@ -106,6 +106,7 @@ const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps)
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             type="search"
+            maxLength={MAX_TEXT_FILTER}
             aria-label={t('administrators.grant.search')}
             placeholder={t('administrators.grant.search')}
             value={draft}
@@ -122,6 +123,14 @@ const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps)
             <p role="status" className="text-sm text-muted-foreground">
               {t('common.loading')}
             </p>
+          ) : candidates.isError ? (
+            // Un errore non è "nessun risultato": si dice e si offre di riprovare
+            <div role="alert" className="grid justify-items-start gap-2 text-sm">
+              <p>{t('users.loadError')}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void candidates.refetch()}>
+                {t('common.retry')}
+              </Button>
+            </div>
           ) : people.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('administrators.grant.noResults')}</p>
           ) : (

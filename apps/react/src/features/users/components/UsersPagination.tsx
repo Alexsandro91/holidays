@@ -23,11 +23,11 @@ const UsersPagination = ({ table, page, lastPage, total }: UsersPaginationProps)
       <p className="text-sm text-muted-foreground">{t('users.pagination.total', { count: total })}</p>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex items-center gap-2">
-          <Label id="users-per-page-label" className="font-normal text-muted-foreground">
+          <Label id="users-per-page-label" htmlFor="users-per-page" className="font-normal text-muted-foreground">
             {t('users.pagination.perPage')}
           </Label>
           <Select value={pageSize} onValueChange={(value) => table.setPageSize(Number(value))}>
-            <SelectTrigger aria-labelledby="users-per-page-label" className="w-20">
+            <SelectTrigger id="users-per-page" aria-labelledby="users-per-page-label" className="w-20">
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">

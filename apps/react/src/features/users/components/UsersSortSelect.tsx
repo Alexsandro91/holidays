@@ -19,9 +19,9 @@ const UsersSortSelect = ({ value, onChange, className }: UsersSortSelectProps) =
   const { t } = useTranslation()
   return (
     <div className={cn('grid gap-2', className)}>
-      <Label id="users-sort-label">{t('users.sort.label')}</Label>
+      <Label id="users-sort-label" htmlFor="users-sort">{t('users.sort.label')}</Label>
       <Select value={value} onValueChange={(next) => isUserSort(next) && onChange(next)}>
-        <SelectTrigger aria-labelledby="users-sort-label" className="w-full">
+        <SelectTrigger id="users-sort" aria-labelledby="users-sort-label" className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper">

@@ -15,6 +15,8 @@ import { usersColumnHelper, usersTableFeatures } from '@/features/users/usersTab
 interface UsersTableProps {
   list: UserList
   sort: UserSort
+  /** Pagina dell'URL, non della risposta: con i dati precedenti ancora a schermo i clic ravvicinati non si perdono */
+  page: number
   perPage: UserPerPage
   onChange: (next: Partial<UserListParams>) => void
   /** null per le righe senza azioni: nella scheda mobile non resta un contenitore vuoto */
@@ -30,24 +32,28 @@ const toAriaSort = (sorted: false | 'asc' | 'desc'): 'ascending' | 'descending' 
  * Data Table degli utenti (TanStack Table, ordinamento e paginazione manuali: li fa il server).
  * Tabella su desktop, schede su mobile: le due viste sono entrambe nel DOM e si alternano via CSS.
  */
-const UsersTable = ({ list, sort, perPage, onChange, renderActions }: UsersTableProps) => {
+const UsersTable = ({ list, sort, page, perPage, onChange, renderActions }: UsersTableProps) => {
   const { t } = useTranslation()
   const sorting = useMemo(() => toSorting(sort), [sort])
-  const pagination: PaginationState = useMemo(() => ({ pageIndex: list.meta.current_page - 1, pageSize: perPage }), [list.meta.current_page, perPage])
+  const pagination: PaginationState = useMemo(() => ({ pageIndex: page - 1, pageSize: perPage }), [page, perPage])
 
   const details = useInvitationDetail()
 
   const columns = useMemo(
     () =>
       usersColumnHelper.columns([
-        usersColumnHelper.accessor('name', {
-          header: ({ column }) => <SortableHeader label={t('users.columns.name')} column={column} />,
+        usersColumnHelper.accessor('first_name', {
+          header: ({ column }) => <SortableHeader label={t('users.columns.firstName')} column={column} />,
           cell: ({ row }) => (
             <span className="flex flex-wrap items-center gap-2 font-semibold">
-              {row.original.name}
+              {row.original.first_name}
               {row.original.is_current_user && <Badge variant="outline">{t('users.you')}</Badge>}
             </span>
           ),
+        }),
+        usersColumnHelper.accessor('last_name', {
+          header: ({ column }) => <SortableHeader label={t('users.columns.lastName')} column={column} />,
+          cell: ({ row }) => <span className="font-semibold">{row.original.last_name}</span>,
         }),
         usersColumnHelper.accessor('email', {
           header: ({ column }) => <SortableHeader label={t('users.columns.email')} column={column} />,
@@ -159,7 +165,7 @@ const UsersTable = ({ list, sort, perPage, onChange, renderActions }: UsersTable
           )
         })}
       </ul>
-      <UsersPagination table={table} page={list.meta.current_page} lastPage={list.meta.last_page} total={list.meta.total} />
+      <UsersPagination table={table} page={page} lastPage={list.meta.last_page} total={list.meta.total} />
     </>
   )
 }

@@ -37,7 +37,8 @@ export const useGrantAdmin = () => {
 }
 
 export interface InviteAdminInput {
-  name: string
+  firstName: string
+  lastName: string
   email: string
   currentPassword: string
 }
@@ -46,8 +47,13 @@ export interface InviteAdminInput {
 export const useInviteAdmin = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, email, currentPassword }: InviteAdminInput) =>
-      requestData('POST', '/api/administrators/invitations', resourceSchema, { name, email, current_password: currentPassword }),
+    mutationFn: ({ firstName, lastName, email, currentPassword }: InviteAdminInput) =>
+      requestData('POST', '/api/administrators/invitations', resourceSchema, {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        current_password: currentPassword,
+      }),
     // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
     gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato

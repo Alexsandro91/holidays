@@ -337,7 +337,7 @@ describe('AdministratorsPage', () => {
     admins()
     server.use(
       http.get('/api/users', ({ request }) => {
-        const search = new URL(request.url).searchParams.get('filter[name]')
+        const search = new URL(request.url).searchParams.get('filter[search]')
         return HttpResponse.json(userListResponse(search ? [managedUser({ id: 8, name: 'Laura Verdi' })] : [managedUser({ id: 7, name: 'Marco Bianchi' })]))
       }),
     )
@@ -355,7 +355,7 @@ describe('AdministratorsPage', () => {
     expect(await within(dialog).findByText('Scegli un utente.')).toBeInTheDocument()
   })
 
-  it('searches the candidates by email when the text contains @', async () => {
+  it('searches the candidates with the general search (first name, last name or email)', async () => {
     admins()
     const urls: URL[] = []
     server.use(
@@ -368,11 +368,25 @@ describe('AdministratorsPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
     const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
-    await user.type(within(dialog).getByRole('searchbox', { name: 'Cerca un utente attivo' }), 'marco@')
+    const search = within(dialog).getByRole('searchbox', { name: 'Cerca un utente attivo' })
+    expect(search).toHaveAttribute('maxLength', '100')
+    await user.type(search, 'bianchi marco')
 
-    await waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[email]')).toBe('marco@'))
-    expect(urls.at(-1)?.searchParams.has('filter[name]')).toBe(false)
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[search]')).toBe('bianchi marco'))
     expect(urls.at(-1)?.searchParams.get('filter[status]')).toBe('active')
+  })
+
+  it('shows a load error of the candidates instead of "no results"', async () => {
+    admins()
+    server.use(http.get('/api/users', () => HttpResponse.json({ message: 'x' }, { status: 422 })))
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+
+    expect(await within(dialog).findByText('Non è stato possibile caricare gli utenti.')).toBeInTheDocument()
+    expect(within(dialog).queryByText('Nessun utente attivo trovato.')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Riprova' })).toBeInTheDocument()
   })
 
   const openNewPerson = async (user: ReturnType<typeof renderRoutes>['user']) => {
@@ -397,13 +411,14 @@ describe('AdministratorsPage', () => {
 
     const dialog = await openNewPerson(user)
     expect(within(dialog).queryByRole('searchbox')).not.toBeInTheDocument()
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
 
     expect(await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')).toBeInTheDocument()
-    expect(body).toEqual({ name: 'Sara Colombo', email: 'sara@holidays.test', current_password: 'password' })
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', current_password: 'password' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
@@ -423,10 +438,11 @@ describe('AdministratorsPage', () => {
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'non-valida')
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
 
-    expect(await within(dialog).findByText('Inserisci nome e cognome.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Inserisci il nome.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Inserisci il cognome.')).toBeInTheDocument()
     expect(within(dialog).getByText('Inserisci un indirizzo email valido, ad esempio nome@azienda.it.')).toBeInTheDocument()
     expect(within(dialog).getByText('Inserisci la password.')).toBeInTheDocument()
-    expect(within(dialog).getByLabelText('Nome e cognome')).toHaveFocus()
+    expect(within(dialog).getByLabelText('Nome')).toHaveFocus()
     expect(posted).toBe(false)
   })
 
@@ -441,7 +457,8 @@ describe('AdministratorsPage', () => {
     const { user } = renderRoutes(routes, ['/admin/administrators'])
 
     const dialog = await openNewPerson(user)
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.type(within(dialog).getByLabelText('La tua password'), 'sbagliata')
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
@@ -464,7 +481,8 @@ describe('AdministratorsPage', () => {
     const { user } = renderRoutes(routes, ['/admin/administrators'])
 
     const dialog = await openNewPerson(user)
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
@@ -492,7 +510,8 @@ describe('AdministratorsPage', () => {
     const { user } = renderRoutes(routes, ['/admin/administrators'])
 
     const dialog = await openNewPerson(user)
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
@@ -516,7 +535,8 @@ describe('AdministratorsPage', () => {
     const { user } = renderRoutes(routes, ['/admin/administrators'])
 
     const dialog = await openNewPerson(user)
-    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
