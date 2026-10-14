@@ -67,17 +67,27 @@ final class UserManagementService
      * Nome, cognome ed email (spec del 14/10, §7.3). L'email cambia solo per un invitato: nuovo link al nuovo
      * indirizzo e il vecchio smette di valere. L'evento `user_updated` elenca i campi cambiati, mai i valori.
      *
+     * Un altro admin come destinatario richiede la password di chi agisce (verificata dalla request) e il cambio
+     * della sua email avvisa gli altri admin attivi, come le altre azioni sugli admin.
+     *
      * @param  string|null  $email  nuova email, null se non cambia
+     * @param  bool  $passwordConfirmed  se la request ha verificato la password di chi agisce
      */
-    public function update(User $target, string $firstName, string $lastName, ?string $email, User $actor, Request $request): User
+    public function update(User $target, string $firstName, string $lastName, ?string $email, User $actor, Request $request, bool $passwordConfirmed = false): User
     {
-        return $this->rejectingDuplicateEmail((string) $email, fn (): User => DB::transaction(function () use ($target, $firstName, $lastName, $email, $actor, $request): User {
+        return $this->rejectingDuplicateEmail((string) $email, fn (): User => DB::transaction(function () use ($target, $firstName, $lastName, $email, $actor, $request, $passwordConfirmed): User {
             $this->lockActiveAdminIds();
             $freshActor = $this->lockUserManager($actor);
             // Invito prima dell'utente, come in accettazione, reinvio e annullamento: niente deadlock
             Invitation::query()->where('user_id', $target->id)->lockForUpdate()->first();
             $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
             $this->ensureStillAllowed('update', $actor, $freshActor, $fresh);
+            $targetIsAnotherAdmin = $fresh->isAdmin() && ! $fresh->is($actor);
+
+            // Diventato admin dopo la validazione: la password non è stata chiesta
+            if ($targetIsAnotherAdmin && ! $passwordConfirmed) {
+                throw new ConflictHttpException(Translate::text('users.state_changed'));
+            }
 
             $changeEmail = $email !== null && $email !== $fresh->email;
 
@@ -103,6 +113,11 @@ final class UserManagementService
             if ($changeEmail) {
                 $this->invitations->send($fresh, $actor);
                 $this->events->log(AuthEventType::InvitationSent, $request, $fresh, $actor);
+
+                // Il link d'invito di un admin ora va a un altro indirizzo: gli altri admin lo devono sapere
+                if ($fresh->isAdmin()) {
+                    $this->notifyAdmins(AdminChange::EmailChanged, $fresh, $actor, notifyTarget: false);
+                }
             }
 
             return $fresh;

@@ -102,6 +102,7 @@ final class UserController extends Controller
             $request->newEmail(),
             $this->actor($request),
             $request,
+            passwordConfirmed: $request->targetIsAnotherAdmin(),
         );
 
         return new ManagedUserResource($updated->load('invitation'));

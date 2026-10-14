@@ -9,4 +9,5 @@ enum AdminChange: string
     case Disabled = 'disabled';
     case Enabled = 'enabled';
     case Invited = 'invited';
+    case EmailChanged = 'email_changed';
 }

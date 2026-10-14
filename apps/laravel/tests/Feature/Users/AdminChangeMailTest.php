@@ -35,4 +35,18 @@ class AdminChangeMailTest extends TestCase
         $mail->assertHasSubject('Holidays: nuovo amministratore invitato');
         $mail->assertSeeInText('Anna Admin ha invitato Nora Neri come amministratore');
     }
+
+    public function test_tells_who_changed_the_email_of_an_invited_admin(): void
+    {
+        app()->setLocale('it');
+        $mail = new AdminChangeMail(AdminChange::EmailChanged, 'Anna Admin', 'Nora Neri', now());
+
+        $mail->assertHasSubject('Holidays: email di un amministratore invitato modificata');
+        $mail->assertSeeInText('Anna Admin ha cambiato l’email dell’amministratore invitato Nora Neri');
+
+        app()->setLocale('en');
+        $mail = new AdminChangeMail(AdminChange::EmailChanged, 'Anna Admin', 'Nora Neri', now());
+        $mail->assertHasSubject('Holidays: email of an invited admin changed');
+        $mail->assertSeeInText('Anna Admin changed the email of the invited admin Nora Neri');
+    }
 }

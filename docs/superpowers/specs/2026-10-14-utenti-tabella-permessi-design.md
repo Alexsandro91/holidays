@@ -140,6 +140,17 @@ Comportamento dopo l'invio:
 - **Permesso `update`:** l'admin su chiunque, sé stesso compreso; il responsabile su chi non è admin, sé stesso
   compreso. Flag `can.update` per riga.
 - **Log:** evento `user_updated` con l'attore e i nomi dei campi cambiati, mai i valori.
+- **Admin come destinatario** (parità con promozione, invito e revoca):
+  - se il destinatario, riletto sotto blocco, è un admin diverso da chi agisce, serve `current_password` con lo stesso
+    blocco della fase 3 (5 errori in 15 minuti, eventi `admin_password_failed` e `admin_password_locked`); senza, 422
+    su `current_password`;
+  - se il destinatario diventa admin tra la richiesta e il blocco e la password non è stata chiesta: 409
+    `users.state_changed`;
+  - se cambia l'email di un admin (invitato): email di avviso a tutti gli altri admin attivi dopo il commit, mai a chi
+    agisce, oltre all'evento `user_updated`;
+  - nessuna password per modificare sé stessi (solo nome e cognome: la propria email non è da invitato, quindi non
+    cambia) né per i destinatari non admin;
+  - il contratto della risorsa non cambia: il frontend chiede la password se `role === 'admin'` e `!is_current_user`.
 - **Interfaccia:**
   - voce "Modifica" nel menu della riga, con un dialog su nome, cognome ed email;
   - per chi non è invitato l'email è in sola lettura, con la spiegazione;

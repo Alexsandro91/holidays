@@ -24,6 +24,7 @@ return [
                 'disabled' => 'Holidays: amministratore disattivato',
                 'enabled' => 'Holidays: amministratore riattivato',
                 'invited' => 'Holidays: nuovo amministratore invitato',
+                'email_changed' => 'Holidays: email di un amministratore invitato modificata',
             ],
             'body' => [
                 'granted' => ':actor ha reso amministratore :target il :date.',
@@ -31,6 +32,7 @@ return [
                 'disabled' => ':actor ha disattivato l’amministratore :target il :date.',
                 'enabled' => ':actor ha riattivato l’amministratore :target il :date.',
                 'invited' => ':actor ha invitato :target come amministratore il :date. L’account sarà attivo quando :target accetterà l’invito.',
+                'email_changed' => ':actor ha cambiato l’email dell’amministratore invitato :target il :date: il nuovo link d’invito è partito verso il nuovo indirizzo.',
             ],
             'unexpected' => 'Se non era previsto, avvisa subito il responsabile IT.',
         ],

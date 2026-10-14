@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Users;
 
 use App\Enums\UserStatus;
+use App\Http\Requests\Concerns\ConfirmsCurrentPassword;
 use App\Http\Requests\Concerns\ValidatesInvitee;
 use App\Models\User;
 use App\Support\Translate;
@@ -12,11 +13,12 @@ use Illuminate\Validation\Validator;
 
 /**
  * Modifica di nome, cognome ed email (spec del 14/10, §7.3). L'email cambia solo per chi è ancora invitato:
- * dopo l'attivazione è l'indirizzo con cui la persona accede.
+ * dopo l'attivazione è l'indirizzo con cui la persona accede. Modificare un altro admin chiede la password di chi
+ * agisce, con lo stesso blocco delle altre azioni sugli admin; sé stessi e chi non è admin no.
  */
 class UpdateUserRequest extends FormRequest
 {
-    use ValidatesInvitee;
+    use ConfirmsCurrentPassword, ValidatesInvitee;
 
     public function authorize(): bool
     {
@@ -26,6 +28,10 @@ class UpdateUserRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->normalizeInvitee();
+
+        if ($this->targetIsAnotherAdmin()) {
+            $this->ensurePasswordNotLockedOut();
+        }
     }
 
     /**
@@ -35,7 +41,21 @@ class UpdateUserRequest extends FormRequest
     {
         $rules = $this->inviteeRules($this->target()->id);
 
-        return [...$rules, 'email' => ['sometimes', ...$rules['email']]];
+        return [
+            ...$rules,
+            'email' => ['sometimes', ...$rules['email']],
+            ...($this->targetIsAnotherAdmin() ? ['current_password' => $this->currentPasswordRules()] : []),
+        ];
+    }
+
+    /**
+     * Se il destinatario era un altro admin quando la richiesta è stata validata (la password è stata chiesta).
+     */
+    public function targetIsAnotherAdmin(): bool
+    {
+        $target = $this->target();
+
+        return $target->isAdmin() && $target->id !== $this->user()?->getAuthIdentifier();
     }
 
     /**

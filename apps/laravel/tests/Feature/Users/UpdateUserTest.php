@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Users;
 
+use App\Enums\AdminChange;
 use App\Enums\AuthEventType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
+use App\Mail\AdminChangeMail;
 use App\Mail\InvitationMail;
 use App\Models\AuthEvent;
 use App\Models\Invitation;
@@ -102,7 +104,8 @@ class UpdateUserTest extends TestCase
         $actor = User::factory()->create(['role' => $actorRole]);
         $subject = $target === 'self' ? $actor : User::factory()->create(['role' => $target]);
 
-        $this->actingAs($actor)->patchJson("/api/users/{$subject->id}", $this->payload())->assertStatus($expected);
+        // La password serve solo su un altro admin: inviarla agli altri destinatari non cambia nulla
+        $this->actingAs($actor)->patchJson("/api/users/{$subject->id}", $this->payload(['current_password' => 'password']))->assertStatus($expected);
 
         $this->assertSame($expected === 200 ? 'Colombo' : $subject->last_name, $subject->fresh()?->last_name);
     }
@@ -223,6 +226,102 @@ class UpdateUserTest extends TestCase
             $this->assertSame('sara@example.test', $invited->fresh()?->email);
             $this->assertSame(UserStatus::Invited, $invited->fresh()?->status);
             Mail::assertNothingQueued();
+        }
+    }
+
+    public function test_editing_another_admin_needs_the_password(): void
+    {
+        $otherAdmin = User::factory()->admin()->create(['first_name' => 'Bruno', 'last_name' => 'Admin']);
+
+        $this->actingAs($this->admin)->patchJson("/api/users/{$otherAdmin->id}", $this->payload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+        $this->actingAs($this->admin)->patchJson("/api/users/{$otherAdmin->id}", $this->payload(['current_password' => 'sbagliata']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+        $this->assertSame('Admin', $otherAdmin->fresh()?->last_name);
+        $this->assertDatabaseHas('auth_events', ['user_id' => $this->admin->id, 'event' => AuthEventType::AdminPasswordFailed->value]);
+
+        $this->actingAs($this->admin)->patchJson("/api/users/{$otherAdmin->id}", $this->payload(['current_password' => 'password']))
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Sara Colombo');
+        // Rinominare un admin attivo non avvisa nessuno: l'avviso è per il cambio di email
+        Mail::assertNothingQueued();
+    }
+
+    public function test_five_wrong_passwords_lock_the_edit_of_an_admin_and_the_other_admin_actions(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->actingAs($this->admin)->patchJson("/api/users/{$otherAdmin->id}", $this->payload(['current_password' => 'sbagliata']))->assertUnprocessable();
+        }
+
+        $this->actingAs($this->admin)->patchJson("/api/users/{$otherAdmin->id}", $this->payload(['current_password' => 'password']))
+            ->assertTooManyRequests()
+            ->assertHeader('Retry-After');
+        $this->actingAs($this->admin)->postJson('/api/administrators', ['user_id' => $employee->id, 'current_password' => 'password'])
+            ->assertTooManyRequests();
+        // Chi non è admin si modifica senza password, anche durante il blocco
+        $this->actingAs($this->admin)->patchJson("/api/users/{$employee->id}", $this->payload())->assertOk();
+    }
+
+    public function test_successful_edits_of_an_admin_do_not_use_up_password_attempts(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $this->actingAs($this->admin)->patchJson("/api/users/{$otherAdmin->id}", $this->payload(['last_name' => "Colombo {$attempt}", 'current_password' => 'password']))->assertOk();
+        }
+    }
+
+    public function test_an_admin_edits_themselves_without_the_password(): void
+    {
+        $this->actingAs($this->admin)->patchJson("/api/users/{$this->admin->id}", $this->payload())
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Sara Colombo');
+        Mail::assertNothingQueued();
+    }
+
+    public function test_changing_the_email_of_an_invited_admin_warns_the_other_active_admins(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+        $disabledAdmin = User::factory()->admin()->disabled()->create();
+        $invitedAdmin = User::factory()->admin()->invited()->create(['first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'nora@example.test']);
+
+        $this->actingAs($this->admin)->patchJson("/api/users/{$invitedAdmin->id}", ['first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'altra@example.test'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+        $this->assertSame('nora@example.test', $invitedAdmin->fresh()?->email);
+
+        $this->actingAs($this->admin)->patchJson("/api/users/{$invitedAdmin->id}", ['first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'altra@example.test', 'current_password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('data.email', 'altra@example.test');
+
+        Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('altra@example.test'));
+        Mail::assertQueued(AdminChangeMail::class, fn (AdminChangeMail $mail): bool => $mail->hasTo($otherAdmin->email)
+            && $mail->change === AdminChange::EmailChanged
+            && $mail->targetName === 'Nora Neri');
+        Mail::assertQueued(AdminChangeMail::class, 1);
+        foreach ([$this->admin->email, $disabledAdmin->email, 'nora@example.test', 'altra@example.test'] as $notTold) {
+            Mail::assertNotQueued(AdminChangeMail::class, fn (AdminChangeMail $mail): bool => $mail->hasTo($notTold));
+        }
+        $this->assertSame(['email'], $this->changedFields($invitedAdmin));
+    }
+
+    public function test_a_target_promoted_after_the_request_without_password_conflicts(): void
+    {
+        $stale = User::factory()->create(['last_name' => 'Rossi']);
+        User::query()->whereKey($stale->id)->update(['role' => Role::Admin->value]);
+
+        try {
+            app(UserManagementService::class)->update($stale, 'Sara', 'Colombo', null, $this->admin, Request::create('/'), passwordConfirmed: false);
+            $this->fail('Expected ConflictHttpException');
+        } catch (ConflictHttpException $exception) {
+            $this->assertSame(__('users.state_changed'), $exception->getMessage());
+            $this->assertSame('Rossi', $stale->fresh()?->last_name);
+            $this->assertDatabaseCount('auth_events', 0);
         }
     }
 }

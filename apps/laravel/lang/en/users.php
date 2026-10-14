@@ -24,6 +24,7 @@ return [
                 'disabled' => 'Holidays: admin disabled',
                 'enabled' => 'Holidays: admin enabled again',
                 'invited' => 'Holidays: new admin invited',
+                'email_changed' => 'Holidays: email of an invited admin changed',
             ],
             'body' => [
                 'granted' => ':actor made :target an admin on :date.',
@@ -31,6 +32,7 @@ return [
                 'disabled' => ':actor disabled the admin :target on :date.',
                 'enabled' => ':actor enabled the admin :target again on :date.',
                 'invited' => ':actor invited :target as an admin on :date. The account will be active once :target accepts the invitation.',
+                'email_changed' => ':actor changed the email of the invited admin :target on :date: the new invitation link went to the new address.',
             ],
             'unexpected' => 'If this was not expected, tell the IT manager right away.',
         ],
