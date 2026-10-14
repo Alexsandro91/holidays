@@ -8,6 +8,7 @@ import StatusBadge from '@/features/users/components/StatusBadge'
 
 interface UsersTableProps {
   users: ManagedUser[]
+  /** null per le righe senza azioni: nella scheda mobile non resta un contenitore vuoto */
   renderActions?: (user: ManagedUser) => ReactNode
 }
 
@@ -18,7 +19,9 @@ const UsersTable = ({ users, renderActions }: UsersTableProps) => {
   const [now] = useState(() => Date.now())
 
   const details = (user: ManagedUser): string => {
-    if (user.status !== 'invited' || user.invitation_expires_at === null) return ''
+    if (user.status !== 'invited') return ''
+    // Invito senza scadenza: cancellato dalla pulizia degli inviti scaduti da oltre 30 giorni, va reinviato
+    if (user.invitation_expires_at === null) return t('users.inviteExpired')
     const expires = new Date(user.invitation_expires_at)
     if (expires.getTime() <= now) return t('users.inviteExpired')
     return t('users.inviteExpires', { date: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(expires) })
@@ -68,17 +71,22 @@ const UsersTable = ({ users, renderActions }: UsersTableProps) => {
         </Table>
       </div>
       <ul className="grid gap-3 md:hidden">
-        {users.map((user) => (
-          <li key={user.id} className="grid gap-3 rounded-lg border p-4">
-            {person(user)}
-            <div className="flex flex-wrap items-center gap-2">
-              <RoleBadge user={user} />
-              <StatusBadge user={user} />
-            </div>
-            {details(user) !== '' && <p className="text-sm text-muted-foreground">{details(user)}</p>}
-            {renderActions && <div className="flex justify-end">{renderActions(user)}</div>}
-          </li>
-        ))}
+        {users.map((user) => {
+          const detail = details(user)
+          const actions = renderActions?.(user)
+          return (
+            <li key={user.id} className="grid gap-3 rounded-lg border p-4">
+              {person(user)}
+              <div className="flex flex-wrap items-center gap-2">
+                <RoleBadge user={user} />
+                <StatusBadge user={user} />
+              </div>
+              {/* Dettagli e azioni solo se ci sono: nella griglia un contenitore vuoto lascerebbe uno spazio */}
+              {detail !== '' && <p className="text-sm text-muted-foreground">{detail}</p>}
+              {actions != null && <div className="flex justify-end">{actions}</div>}
+            </li>
+          )
+        })}
       </ul>
     </>
   )

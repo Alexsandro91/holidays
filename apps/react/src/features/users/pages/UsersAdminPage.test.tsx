@@ -110,6 +110,29 @@ describe('UsersAdminPage', () => {
     expect(screen.queryByRole('menuitem', { name: 'Disattiva' })).not.toBeInTheDocument()
   })
 
+  it('offers to resend an invitation without expiry', async () => {
+    listing([managedUser({ status: 'invited', status_label: 'Invitato', invitation_expires_at: null, name: 'Luca Ferrari' })])
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Luca Ferrari')
+
+    expect(await screen.findByRole('menuitem', { name: 'Reinvia invito' })).toBeInTheDocument()
+  })
+
+  it('leaves no empty space in the mobile card of a row without actions', async () => {
+    listing([managedUser({ id: 1, name: 'Anna Admin', is_current_user: true }), managedUser()])
+    renderRoutes(routes, ['/admin/users'])
+    await screen.findByRole('table')
+
+    const cards = screen.getAllByRole('listitem')
+    const mine = cards.find((item) => item.textContent?.includes('Anna Admin'))
+    const other = cards.find((item) => item.textContent?.includes('Marco Bianchi'))
+    // Nella griglia della scheda un contenitore vuoto aggiunge comunque uno spazio
+    expect(mine?.querySelectorAll(':scope > :empty')).toHaveLength(0)
+    expect(mine?.children).toHaveLength(2)
+    expect(other && within(other).getByRole('button', { name: 'Azioni per Marco Bianchi' })).toBeInTheDocument()
+  })
+
   it('disables an employee after an explicit confirmation', async () => {
     listing([managedUser()])
     let called = false

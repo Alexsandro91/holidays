@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ManagedUser } from '@/features/users/api'
-import type { UserAction } from '@/features/users/actions'
+import { availableActions, type UserAction } from '@/features/users/actions'
 import ChangeRoleDialog from '@/features/users/components/ChangeRoleDialog'
 import ConfirmUserActionDialog from '@/features/users/components/ConfirmUserActionDialog'
 import InviteUserDialog from '@/features/users/components/InviteUserDialog'
@@ -21,7 +21,10 @@ const UsersAdminPage = () => {
 
   return (
     <>
-      <UsersPage headerAction={<InviteUserDialog />} renderActions={(user) => <UserActionsMenu user={user} onSelect={(action) => onSelect(user, action)} />} />
+      <UsersPage
+        headerAction={<InviteUserDialog />}
+        renderActions={(user) => (availableActions(user).length > 0 ? <UserActionsMenu user={user} onSelect={(action) => onSelect(user, action)} /> : null)}
+      />
       <ConfirmUserActionDialog user={confirm?.user ?? null} action={confirm?.action ?? null} onClose={() => setConfirm(null)} />
       <ChangeRoleDialog user={roleTarget} onClose={() => setRoleTarget(null)} />
     </>

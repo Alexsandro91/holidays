@@ -176,6 +176,16 @@ describe('UsersPage', () => {
     expect(within(table).getByText(/Invito scade il/)).toBeInTheDocument()
   })
 
+  it('shows an invitation without expiry (removed by the cleanup) as expired, in the table and in the cards', async () => {
+    respondWith(() => undefined, [managedUser({ status: 'invited', status_label: 'Invitato', invitation_expires_at: null })])
+    renderRoutes(routes, ['/admin/users'])
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText('Invito scaduto')).toBeInTheDocument()
+    const card = screen.getAllByRole('listitem').find((item) => item.textContent?.includes('Marco Bianchi'))
+    expect(card).toHaveTextContent('Invito scaduto')
+  })
+
   it('has no accessibility violations', async () => {
     respondWith()
     const { container } = renderRoutes(routes, ['/admin/users'])
