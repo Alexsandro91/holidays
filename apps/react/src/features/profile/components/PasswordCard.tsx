@@ -33,12 +33,12 @@ const FIELDS: (keyof PasswordValues)[] = ['currentPassword', 'password', 'confir
 
 const EMPTY: PasswordValues = { currentPassword: '', password: '', confirmation: '' }
 
-/** Cambio della propria password: le altre sessioni si chiudono, questa resta aperta (spec fase 4 §2.3 e §3.2). */
 interface PasswordCardProps {
   /** Email dell'account, nel campo nascosto `username` per i gestori di password */
   email: string
 }
 
+/** Cambio della propria password: le altre sessioni si chiudono, questa resta aperta (spec fase 4 §2.3 e §3.2). */
 const PasswordCard = ({ email }: PasswordCardProps) => {
   const { t } = useTranslation()
   const change = useChangePassword()

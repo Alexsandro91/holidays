@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { currentUserResponseSchema, type User } from '@/features/auth/api'
 import { request, requestData } from '@/lib/api'
-import { toast } from 'sonner'
 import i18n, { type Locale } from '@/lib/i18n'
 import { userQueryKey } from '@/lib/queryKeys'
 
