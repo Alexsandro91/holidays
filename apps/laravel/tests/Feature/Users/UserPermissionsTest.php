@@ -124,13 +124,13 @@ class UserPermissionsTest extends TestCase
             ->assertJsonValidationErrors('role');
     }
 
-    public function test_a_manager_sees_every_user_including_admins(): void
+    public function test_a_manager_sees_every_user_except_admins(): void
     {
         $manager = User::factory()->manager()->create();
         User::factory()->admin()->create();
         User::factory()->create();
 
-        $this->actingAs($manager)->getJson('/api/users')->assertOk()->assertJsonCount(3, 'data');
+        $this->actingAs($manager)->getJson('/api/users')->assertOk()->assertJsonCount(2, 'data');
     }
 
     public function test_a_manager_on_a_target_promoted_meanwhile_gets_a_conflict(): void

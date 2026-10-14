@@ -26,7 +26,7 @@ final class UserController extends Controller
      * @var array<string, list<string>>
      */
     private const RANKS = [
-        'role' => [Role::Employee->value, Role::Manager->value, Role::Admin->value],
+        'role' => [Role::Employee->value, Role::Manager->value],
         'status' => [UserStatus::Active->value, UserStatus::Invited->value, UserStatus::Disabled->value],
     ];
 
@@ -47,8 +47,10 @@ final class UserController extends Controller
         $role = $request->enum('filter.role', Role::class);
         $status = $request->enum('filter.status', UserStatus::class);
 
+        // Gli admin non sono mai in questa lista (si gestiscono dalla pagina Amministratori), né nei conteggi.
         // Ricerca, filtri per campo e ruolo valgono anche per i conteggi delle schede; lo stato filtra solo la lista
         $base = User::query()
+            ->where('role', '!=', Role::Admin)
             ->when($role !== null, fn (Builder $query) => $query->where('role', $role));
 
         // Ogni parola deve comparire in nome, cognome o email: "Mario Rossi" e "Rossi Mario" trovano la stessa persona

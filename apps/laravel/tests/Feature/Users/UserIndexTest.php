@@ -24,10 +24,10 @@ class UserIndexTest extends TestCase
 
     public function test_lists_users_with_exactly_the_managed_fields(): void
     {
-        $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
+        $manager = User::factory()->manager()->create(['first_name' => 'Anna', 'last_name' => 'Aldi']);
         User::factory()->create(['first_name' => 'Bruno', 'last_name' => 'Bianchi', 'last_login_at' => now()]);
 
-        $response = $this->actingAs($admin)->getJson('/api/users')->assertOk();
+        $response = $this->actingAs($manager)->getJson('/api/users')->assertOk();
 
         $response->assertJsonCount(2, 'data');
         $this->assertSame(
@@ -35,8 +35,8 @@ class UserIndexTest extends TestCase
             array_keys($response->json('data.0')),
         );
         $response->assertJsonPath('data.0.first_name', 'Anna')
-            ->assertJsonPath('data.0.last_name', 'Admin')
-            ->assertJsonPath('data.0.name', 'Anna Admin');
+            ->assertJsonPath('data.0.last_name', 'Aldi')
+            ->assertJsonPath('data.0.name', 'Anna Aldi');
         // Limite di finalità (spec §7.3): niente ultimo accesso nella gestione utenti
         $response->assertJsonMissingPath('data.1.last_login_at');
         $response->assertJsonPath('data.0.is_current_user', true);
@@ -46,16 +46,13 @@ class UserIndexTest extends TestCase
     public function test_each_row_says_what_the_viewer_may_do(): void
     {
         $manager = User::factory()->manager()->create(['last_name' => 'A']);
-        User::factory()->admin()->create(['last_name' => 'B']);
         User::factory()->create(['last_name' => 'C']);
         $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true, 'update' => true];
-        $none = array_map(fn (): bool => false, $all);
 
         $this->actingAs($manager)->getJson('/api/users')
             ->assertOk()
             ->assertJsonPath('data.0.can', [...$all, 'change_role' => false, 'disable' => false])
-            ->assertJsonPath('data.1.can', $none)
-            ->assertJsonPath('data.2.can', $all);
+            ->assertJsonPath('data.1.can', $all);
     }
 
     public function test_an_admin_may_act_on_other_admins_except_changing_their_role(): void
@@ -63,10 +60,43 @@ class UserIndexTest extends TestCase
         $admin = User::factory()->admin()->create(['last_name' => 'A']);
         User::factory()->admin()->create(['last_name' => 'B']);
 
-        $this->actingAs($admin)->getJson('/api/users')
+        // Gli admin non sono più nella lista utenti: i loro permessi si leggono dalla pagina Amministratori
+        $this->actingAs($admin)->getJson('/api/administrators')
             ->assertOk()
             ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true, 'update' => true])
             ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true, 'update' => true]);
+    }
+
+    public function test_admins_never_appear_in_the_list_nor_in_the_counts(): void
+    {
+        $admin = User::factory()->admin()->create(['last_name' => 'Attivo']);
+        User::factory()->admin()->invited()->create(['last_name' => 'Invitato']);
+        User::factory()->admin()->disabled()->create(['last_name' => 'Disattivo']);
+        $employee = User::factory()->create(['last_name' => 'Dipendente']);
+        $manager = User::factory()->manager()->create(['last_name' => 'Responsabile']);
+
+        foreach ([$admin, $manager] as $actor) {
+            $response = $this->actingAs($actor)->getJson('/api/users')->assertOk();
+
+            $ids = array_column($response->json('data'), 'id');
+            sort($ids);
+            $this->assertSame([$employee->id, $manager->id], $ids);
+            $response->assertJsonPath('meta.counts', ['all' => 2, 'active' => 2, 'invited' => 0, 'disabled' => 0]);
+
+            $this->actingAs($actor)->getJson('/api/users?filter[status]=disabled')->assertOk()->assertJsonCount(0, 'data');
+            $this->actingAs($actor)->getJson('/api/users?filter[search]=Attivo')->assertOk()->assertJsonCount(0, 'data');
+        }
+    }
+
+    public function test_the_role_filter_does_not_accept_admin(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->getJson('/api/users?filter[role]=admin')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter.role');
+        $this->actingAs($admin)->getJson('/api/users?filter[role]=manager')->assertOk();
+        $this->actingAs($admin)->getJson('/api/users?filter[role]=employee')->assertOk();
     }
 
     public function test_the_permissions_of_a_row_need_no_query(): void
@@ -95,8 +125,8 @@ class UserIndexTest extends TestCase
 
         $response = $this->actingAs($admin)->getJson('/api/users?filter[status]=active')->assertOk();
 
-        $response->assertJsonCount(3, 'data');
-        $response->assertJsonPath('meta.counts', ['all' => 5, 'active' => 3, 'invited' => 1, 'disabled' => 1]);
+        $response->assertJsonCount(2, 'data');
+        $response->assertJsonPath('meta.counts', ['all' => 4, 'active' => 2, 'invited' => 1, 'disabled' => 1]);
     }
 
     private function createSearchFixture(): User
@@ -207,6 +237,7 @@ class UserIndexTest extends TestCase
     {
         $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
         User::factory()->create(['first_name' => 'Marco', 'last_name' => 'Rossi']);
+        User::factory()->create(['first_name' => 'Luca', 'last_name' => 'Verdi']);
 
         $this->actingAs($admin)->getJson('/api/users?search=rossi')->assertOk()->assertJsonCount(2, 'data');
         $this->actingAs($admin)->getJson('/api/users?filter[name]=rossi')->assertOk()->assertJsonCount(2, 'data');
@@ -224,8 +255,8 @@ class UserIndexTest extends TestCase
             'cognome decrescente' => ['-last_name', ['Dario', 'Elena', 'Anna', 'Carla', 'Bruno']],
             'email' => ['email', ['Bruno', 'Carla', 'Anna', 'Dario', 'Elena']],
             'email decrescente' => ['-email', ['Elena', 'Dario', 'Anna', 'Carla', 'Bruno']],
-            // Gerarchia (dipendente, responsabile, admin), non ordine alfabetico; spareggio per id crescente
-            'ruolo' => ['role', ['Bruno', 'Carla', 'Elena', 'Anna', 'Dario']],
+            // Gerarchia (dipendente, responsabile), non ordine alfabetico; spareggio per id crescente
+            'ruolo' => ['role', ['Bruno', 'Carla', 'Elena', 'Dario', 'Anna']],
             'ruolo decrescente' => ['-role', ['Dario', 'Anna', 'Bruno', 'Carla', 'Elena']],
             // Attivo, invitato, disattivato
             'stato' => ['status', ['Dario', 'Anna', 'Elena', 'Bruno', 'Carla']],
@@ -239,7 +270,8 @@ class UserIndexTest extends TestCase
     #[DataProvider('sorts')]
     public function test_sorts_by_every_column_in_both_directions(string $sort, array $expected): void
     {
-        $admin = User::factory()->admin()->create(['first_name' => 'Dario', 'last_name' => 'Esposito', 'email' => 'd@example.test']);
+        $admin = User::factory()->admin()->create();
+        User::factory()->manager()->create(['first_name' => 'Dario', 'last_name' => 'Esposito', 'email' => 'd@example.test']);
         User::factory()->manager()->create(['first_name' => 'Anna', 'last_name' => 'Conti', 'email' => 'c@example.test']);
         User::factory()->invited()->create(['first_name' => 'Bruno', 'last_name' => 'Arena', 'email' => 'a@example.test']);
         User::factory()->disabled()->create(['first_name' => 'Carla', 'last_name' => 'Bruni', 'email' => 'b@example.test']);
@@ -252,20 +284,21 @@ class UserIndexTest extends TestCase
 
     public function test_sorts_by_last_name_then_first_name_then_id_by_default(): void
     {
-        $admin = User::factory()->admin()->create(['first_name' => 'Zeno', 'last_name' => 'Bianchi']);
+        $admin = User::factory()->admin()->create();
+        $zeno = User::factory()->create(['first_name' => 'Zeno', 'last_name' => 'Bianchi']);
         $mario = User::factory()->create(['first_name' => 'Mario', 'last_name' => 'Rossi']);
         $firstAnna = User::factory()->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
         $secondAnna = User::factory()->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
 
         $response = $this->actingAs($admin)->getJson('/api/users')->assertOk();
 
-        $this->assertSame([$admin->id, $firstAnna->id, $secondAnna->id, $mario->id], array_column($response->json('data'), 'id'));
+        $this->assertSame([$zeno->id, $firstAnna->id, $secondAnna->id, $mario->id], array_column($response->json('data'), 'id'));
     }
 
     public function test_the_page_size_can_be_ten_or_fifty(): void
     {
         $admin = User::factory()->admin()->create();
-        User::factory()->count(54)->create();
+        User::factory()->count(55)->create();
 
         $this->actingAs($admin)->getJson('/api/users?per_page=10&page=3')
             ->assertOk()
@@ -331,7 +364,7 @@ class UserIndexTest extends TestCase
     public function test_paginates_by_twenty_five_by_default(): void
     {
         $admin = User::factory()->admin()->create();
-        User::factory()->count(30)->create();
+        User::factory()->count(31)->create();
 
         $this->actingAs($admin)->getJson('/api/users?page=2')
             ->assertOk()

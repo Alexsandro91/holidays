@@ -36,7 +36,7 @@ class ListUsersRequest extends FormRequest
             'filter.first_name' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
             'filter.last_name' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
             'filter.email' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
-            'filter.role' => ['sometimes', 'nullable', Rule::enum(Role::class)],
+            'filter.role' => ['sometimes', 'nullable', Rule::enum(Role::class)->only([Role::Employee, Role::Manager])],
             'filter.status' => ['sometimes', 'nullable', Rule::enum(UserStatus::class)],
             'sort' => ['sometimes', 'nullable', Rule::enum(UserSort::class)],
             'page' => ['sometimes', 'integer', 'min:1'],
