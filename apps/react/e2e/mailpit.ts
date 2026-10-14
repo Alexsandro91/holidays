@@ -37,6 +37,9 @@ export const waitForResetLink = (email: string, timeoutMs = 20_000): Promise<str
 export const waitForInvitationLink = (email: string, timeoutMs = 20_000): Promise<string> =>
   waitForMatch(email, /https?:\/\/[^/\s]+(\/invitation\/[A-Za-z0-9]+)/, timeoutMs)
 
+/** Attende un'email per `email` il cui testo contiene `pattern` (con un gruppo) e restituisce il testo catturato. */
+export const waitForText = (email: string, pattern: RegExp, timeoutMs = 20_000): Promise<string> => waitForMatch(email, pattern, timeoutMs)
+
 /** Attende un'email per `email` con l'oggetto indicato (es. l'avviso agli admin). */
 export const waitForSubject = async (email: string, subject: RegExp, timeoutMs = 20_000): Promise<void> => {
   const deadline = Date.now() + timeoutMs

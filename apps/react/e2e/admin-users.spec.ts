@@ -2,7 +2,7 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { z } from 'zod'
 import { signIn } from './auth.ts'
-import { clearInbox, waitForInvitationLink, waitForLoginCode, waitForSubject } from './mailpit.ts'
+import { clearInbox, waitForInvitationLink, waitForLoginCode, waitForResetLink, waitForSubject, waitForText } from './mailpit.ts'
 
 const ADMIN = 'admin@holidays.test'
 const MANAGER = 'manager@holidays.test'
@@ -158,6 +158,25 @@ test('disabling a user signs them out on the next request', async () => {
   await newUserPage.reload()
   await expect(newUserPage).toHaveURL(/\/login\?redirect=%2F$/)
   await expect(newUserPage.getByRole('heading', { name: 'Accedi' })).toBeVisible()
+})
+
+test('an admin sends a password reset link to an employee from the users table', async () => {
+  // Casella vuota: l'email letta è quella di questo invio. La password di employee resta valida (spec fase 4 §6)
+  await clearInbox()
+  await admin.goto(`/users?email=${encodeURIComponent(EMPLOYEE)}`)
+  const row = admin.getByRole('table').getByRole('row').filter({ hasText: EMPLOYEE })
+  await row.getByRole('button', { name: 'Azioni per Sara Colombo' }).click()
+  await admin.getByRole('menuitem', { name: 'Invia reset password' }).click()
+  const dialog = admin.getByRole('alertdialog', { name: 'Inviare il link per reimpostare la password a Sara Colombo?' })
+  await expect(dialog.getByText(`Riceverà un’email a ${EMPLOYEE} con un link valido 60 minuti.`, { exact: false })).toBeVisible()
+  // Dipendente: nessuna password di chi agisce
+  await expect(dialog.getByLabel('La tua password')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Invia il link' }).click()
+  await expect(admin.getByText(`Link inviato a ${EMPLOYEE}.`)).toBeVisible()
+
+  // Arriva all'indirizzo della persona, con il link e la riga sul reset richiesto da altri
+  expect(await waitForResetLink(EMPLOYEE)).toMatch(/^\/reset-password\//)
+  expect(await waitForText(EMPLOYEE, /(richiesto\s+da\s+un\s+amministratore)/)).toMatch(/richiesto/)
 })
 
 test('admin pages have no WCAG violations in light and dark mode', async () => {
