@@ -11,7 +11,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useGrantAdmin } from '@/features/administrators/api'
-import { useManagedUsers } from '@/features/users/api'
+import { DEFAULT_USER_LIST_PARAMS, useManagedUsers } from '@/features/users/api'
 import { isApiError } from '@/lib/api'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -40,7 +40,9 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
   // Evita il doppio invio: letto solo nei gestori di evento. Dopo la promozione riuscita resta attivo fino allo
   // smontaggio: durante l'animazione di chiusura il form è ancora nel DOM (il corpo si rimonta a ogni apertura)
   const submitting = useRef(false)
-  const candidates = useManagedUsers({ status: 'active', search, page: 1 })
+  // Con una "@" si cerca per email, altrimenti per nome (l'API filtra i due campi separatamente, spec §3)
+  const byEmail = search.includes('@')
+  const candidates = useManagedUsers({ ...DEFAULT_USER_LIST_PARAMS, status: 'active', name: byEmail ? '' : search, email: byEmail ? search : '', perPage: 50 })
   const people = (candidates.data?.data ?? []).filter((person) => person.role !== 'admin')
 
   // Se la scelta non è più tra i candidati (nuova ricerca) si azzera, così il nome non va perso

@@ -7,7 +7,7 @@ interface UserStatusTabsProps {
   value: UserStatusFilter
   counts: UserList['meta']['counts'] | undefined
   onChange: (status: UserStatusFilter) => void
-  /** Controlli accanto alle schede (ricerca) */
+  /** Controlli accanto alle schede (l'ordinamento della vista a schede) */
   toolbar?: ReactNode
   /** Risultati: finiscono nel pannello della scheda attiva */
   children: ReactNode
@@ -17,7 +17,7 @@ const FILTERS: UserStatusFilter[] = ['all', 'active', 'invited', 'disabled']
 
 const isFilter = (value: string): value is UserStatusFilter => FILTERS.some((filter) => filter === value)
 
-/** Schede per stato con il conteggio (calcolato con la ricerca corrente). */
+/** Schede per stato con il conteggio (calcolato con i filtri di nome, email e ruolo correnti). */
 const UserStatusTabs = ({ value, counts, onChange, toolbar, children }: UserStatusTabsProps) => {
   const { t } = useTranslation()
   return (

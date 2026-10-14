@@ -337,7 +337,7 @@ describe('AdministratorsPage', () => {
     admins()
     server.use(
       http.get('/api/users', ({ request }) => {
-        const search = new URL(request.url).searchParams.get('search')
+        const search = new URL(request.url).searchParams.get('filter[name]')
         return HttpResponse.json(userListResponse(search ? [managedUser({ id: 8, name: 'Laura Verdi' })] : [managedUser({ id: 7, name: 'Marco Bianchi' })]))
       }),
     )
