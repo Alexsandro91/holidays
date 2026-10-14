@@ -1,6 +1,5 @@
 import { lazy } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
-import AppShell from '@/components/layout/AppShell'
 import AuthLayout from '@/components/layout/AuthLayout'
 import RootLayout from '@/components/layout/RootLayout'
 import RouteErrorState from '@/components/layout/RouteErrorState'
@@ -9,11 +8,12 @@ import GuestRoute from '@/features/auth/GuestRoute'
 import LoginPage from '@/features/auth/pages/LoginPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
-import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
-// Caricate a richiesta (pagine admin e pagine poco usate): restano fuori dal bundle iniziale. Il fallback è il
-// Suspense di AppShell e AuthLayout
+// Caricate a richiesta: l'area riservata (layout con sidebar e home) e le pagine admin o poco usate restano fuori dal
+// bundle iniziale, che serve all'accesso. Il fallback è il Suspense di RootLayout, AppShell e AuthLayout
+const AppShell = lazy(() => import('@/components/layout/AppShell'))
+const HomePage = lazy(() => import('@/pages/HomePage'))
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'))
 const AcceptInvitationPage = lazy(() => import('@/features/invitations/pages/AcceptInvitationPage'))

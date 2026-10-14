@@ -14,6 +14,15 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: { '@': path.resolve(import.meta.dirname, './src') },
     },
+    build: {
+      rolldownOptions: {
+        output: {
+          // React e router in un chunk a parte: cambia solo quando si aggiornano le librerie, quindi resta in cache tra
+          // un deploy e l'altro, e il chunk dell'app resta sotto la soglia di avviso
+          codeSplitting: { groups: [{ name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|react-router)[\\/]/ }] },
+        },
+      },
+    },
     server: {
       port: Number(env.DEV_SERVER_PORT) || 5173,
       strictPort: true,

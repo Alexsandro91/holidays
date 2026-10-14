@@ -29,13 +29,34 @@ const RouteAnnouncer = () => {
   // Focus sull'h1: solo a guardia sbloccata, altrimenti l'h1 non esiste ancora (loader di GuestRoute/ProtectedRoute)
   useEffect(() => {
     if (isPending) return
-    const frame = window.requestAnimationFrame(() => {
+    let observer: MutationObserver | null = null
+    const focusTitle = (title: HTMLElement) => {
       // Se la pagina ha già portato il focus su un campo (es. il codice di verifica), non glielo togliamo
       const active = document.activeElement
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return
-      document.getElementById('page-title')?.focus({ preventScroll: true })
+      title.focus({ preventScroll: true })
+    }
+    const frame = window.requestAnimationFrame(() => {
+      const title = document.getElementById('page-title')
+      if (title) {
+        focusTitle(title)
+        return
+      }
+      // Pagina caricata a richiesta ancora in arrivo (fallback di Suspense): il focus va al titolo appena compare
+      observer = new MutationObserver(() => {
+        const appeared = document.getElementById('page-title')
+        if (!appeared) return
+        observer?.disconnect()
+        // Nel frattempo l'utente ha spostato il focus (es. con Tab): resta dov'è
+        if (document.activeElement !== document.body) return
+        focusTitle(appeared)
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
     })
-    return () => window.cancelAnimationFrame(frame)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer?.disconnect()
+    }
   }, [location.pathname, isPending])
 
   return (
