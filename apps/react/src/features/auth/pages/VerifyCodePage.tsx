@@ -98,7 +98,13 @@ const VerifyCodePage = () => {
     navigate(safeRedirect(redirect), { replace: true })
   }
 
+  // Invio in corso, conto alla rovescia o limite raggiunto: i pulsanti restano focalizzabili (aria-disabled), così il
+  // focus non finisce sul body quando un 429 li blocca
+  const submitBlocked = verify.isPending || lock.secondsLeft > 0
+  const resendDisabled = cooldown.secondsLeft > 0 || resendBlocked || resend.isPending
+
   const onResend = async () => {
+    if (resendDisabled) return
     setError(null)
     // Svuota la regione di stato: lo stesso messaggio ripetuto viene annunciato di nuovo
     setInfo(null)
@@ -193,7 +199,7 @@ const VerifyCodePage = () => {
           </InputOTP>
           <FieldError id="code-error">{error}</FieldError>
         </Field>
-        <Button type="submit" size="lg" className="w-full" disabled={verify.isPending || lock.secondsLeft > 0}>
+        <Button type="submit" size="lg" className="w-full" aria-disabled={submitBlocked || undefined}>
           {verify.isPending ? (
             <>
               <LoaderCircle className="animate-spin" aria-hidden="true" />
@@ -213,7 +219,7 @@ const VerifyCodePage = () => {
             variant="ghost"
             size="sm"
             className="tabular-nums"
-            disabled={cooldown.secondsLeft > 0 || resendBlocked || resend.isPending}
+            aria-disabled={resendDisabled || undefined}
             onClick={() => void onResend()}
           >
             <RotateCw aria-hidden="true" />

@@ -84,6 +84,10 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (submitting.current || locked) {
+      event.preventDefault()
+      return
+    }
     // La scelta dell'utente non è nel form: l'errore compare insieme a quello della password
     const missingUser = userId === ''
     if (missingUser) form.setError('userId', { message: t('administrators.grant.pickUser') })
@@ -161,7 +165,8 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
         )}
       </FieldGroup>
       <DialogFooter className="mt-4">
-        <Button type="submit" disabled={grant.isPending || locked}>
+        {/* aria-disabled: dopo un 429 il pulsante resta focalizzabile (il blocco è nel gestore dell'invio) */}
+        <Button type="submit" aria-disabled={grant.isPending || locked || undefined}>
           {grant.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
           {t('administrators.grant.submit')}
         </Button>

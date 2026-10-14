@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -89,7 +90,7 @@ describe('ForgotPasswordPage', () => {
 
     // il broker ignora un nuovo link entro 60 s: il pulsante non deve promettere un'email che non arriva
     const resend = await screen.findByRole('button', { name: /Nuovo link tra \d+ s/ })
-    expect(resend).toBeDisabled()
+    expectBlockedButFocusable(resend)
     expect(calls).toBe(1)
   })
 
@@ -111,6 +112,10 @@ describe('ForgotPasswordPage', () => {
 
     expect(await screen.findByText('Link inviato di nuovo. Usa quello dell’ultima email: il precedente non vale più.')).toBeInTheDocument()
     expect(calls).toBe(2)
+    // Riparte il conto alla rovescia: il pulsante resta focalizzato
+    const resend = screen.getByRole('button', { name: /Nuovo link tra/ })
+    expectBlockedButFocusable(resend)
+    expect(resend).toHaveFocus()
   })
 
   it('shows the throttle in the sent state when the resend is rejected with 429', async () => {
@@ -135,7 +140,9 @@ describe('ForgotPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: 'Invia di nuovo il link' }))
 
     expect(await screen.findAllByText('Troppe richieste. Potrai riprovare tra 10 minuti.')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Invia di nuovo il link' })).toBeDisabled()
+    const resend = screen.getByRole('button', { name: 'Invia di nuovo il link' })
+    expectBlockedButFocusable(resend)
+    expect(resend).toHaveFocus()
   })
 
   it('shows the generic error when the resend fails on the server', async () => {
@@ -193,7 +200,9 @@ describe('ForgotPasswordPage', () => {
 
     const messages = await screen.findAllByText('Troppe richieste. Potrai riprovare tra 10 minuti.')
     expect(messages).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Invia il link' })).toBeDisabled()
+    const button = screen.getByRole('button', { name: 'Invia il link' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
   })
 
   it('shows the server validation error under the field', async () => {

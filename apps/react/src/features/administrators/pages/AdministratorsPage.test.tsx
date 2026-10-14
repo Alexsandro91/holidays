@@ -6,6 +6,7 @@ import AdministratorsPage from '@/features/administrators/pages/AdministratorsPa
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, userListResponse } from '@/test/usersFixtures'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -213,6 +214,9 @@ describe('AdministratorsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' }))
 
     expect(await within(dialog).findByText('Troppi tentativi con la password. Riprova tra 15 minuti.')).toBeInTheDocument()
+    const button = within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
   })
 
   it('shows both the missing user and missing password errors', async () => {

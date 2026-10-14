@@ -49,7 +49,7 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
   const submitting = useRef(false)
 
   const submit = async ({ currentPassword }: PasswordValues) => {
-    if (submitting.current) return
+    if (submitting.current || locked) return
     submitting.current = true
     setPending(true)
     setNotice(null)
@@ -118,7 +118,8 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
         <AlertDialogCancel type="button" disabled={pending}>
           {t('users.confirm.back')}
         </AlertDialogCancel>
-        <Button type="submit" variant="destructive" disabled={pending || locked}>
+        {/* aria-disabled: dopo un 429 il pulsante resta focalizzabile (il blocco è nel gestore dell'invio) */}
+        <Button type="submit" variant="destructive" aria-disabled={pending || locked || undefined}>
           {pending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
           {t('administrators.revokeDialog.submit', { name: user.name })}
         </Button>

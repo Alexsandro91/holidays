@@ -87,7 +87,16 @@ const ResetPasswordPage = () => {
     navigate('/login/verify', { replace: true, state: { email, passwordReset: true } })
   }
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
+  // Invio in corso o blocco dopo un 429: il pulsante resta focalizzabile (aria-disabled) e l'invio non parte
+  const blocked = reset.isPending || lock.secondsLeft > 0
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (blocked) {
+      event.preventDefault()
+      return
+    }
+    return form.handleSubmit(submit)(event)
+  }
 
   // WCAG 3.3.7: l'email già nota non va reinserita nel login
   const backToLogin = (
@@ -169,7 +178,7 @@ const ResetPasswordPage = () => {
               />
               <FieldError id="password-confirmation-error">{errors.confirmation?.message}</FieldError>
             </Field>
-            <Button type="submit" size="lg" className="w-full" disabled={reset.isPending || lock.secondsLeft > 0}>
+            <Button type="submit" size="lg" className="w-full" aria-disabled={blocked || undefined}>
               {reset.isPending ? (
                 <>
                   <LoaderCircle className="animate-spin" aria-hidden="true" />

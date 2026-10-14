@@ -7,6 +7,7 @@ import { sessionEndKey, userQueryKey } from '@/lib/queryKeys'
 import { rememberedSessionEnd } from '@/lib/sessionEnd'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -166,7 +167,7 @@ describe('VerifyCodePage', () => {
     server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'ok' }, { status: 202 })))
     const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
 
-    expect(await screen.findByRole('button', { name: /Nuovo codice tra/ })).toBeDisabled()
+    expectBlockedButFocusable(await screen.findByRole('button', { name: /Nuovo codice tra/ }))
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
@@ -175,6 +176,22 @@ describe('VerifyCodePage', () => {
 
     expect(await screen.findByText('Nuovo codice inviato. Il precedente non è più valido.')).toBeInTheDocument()
     expect(screen.getByLabelText('Codice di verifica')).toHaveFocus()
+  })
+
+  it('keeps the focus on "send a new code" when the resend is throttled', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'Too Many Attempts.' }, { status: 429, headers: { 'Retry-After': '45' } })))
+    const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
+    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+
+    await act(async () => {
+      vi.advanceTimersByTime(61_000)
+    })
+    await user.click(screen.getByRole('button', { name: 'Invia un nuovo codice' }))
+
+    const resend = await screen.findByRole('button', { name: /Nuovo codice tra 45 s/ })
+    expectBlockedButFocusable(resend)
+    expect(resend).toHaveFocus()
   })
 
   it('stops offering new codes when the limit is reached', async () => {
@@ -189,7 +206,9 @@ describe('VerifyCodePage', () => {
     await user.click(screen.getByRole('button', { name: 'Invia un nuovo codice' }))
 
     expect(await screen.findByText('Hai raggiunto il limite di nuovi codici. Se non lo ricevi, ricomincia l’accesso.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Invia un nuovo codice' })).toBeDisabled()
+    const resend = screen.getByRole('button', { name: 'Invia un nuovo codice' })
+    expectBlockedButFocusable(resend)
+    expect(resend).toHaveFocus()
   })
 
   it('describes the code field with the page description and, on error, the error', async () => {
@@ -224,7 +243,8 @@ describe('VerifyCodePage', () => {
     await user.type(input, '000000')
 
     expect(await screen.findByText('Troppi tentativi. Riprova tra 30 secondi.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Verifica e accedi' })).toBeDisabled()
+    expectBlockedButFocusable(screen.getByRole('button', { name: 'Verifica e accedi' }))
+    expect(input).toHaveFocus()
 
     // Durante il blocco il sesto numero non fa partire un'altra richiesta
     await user.type(input, '111111')

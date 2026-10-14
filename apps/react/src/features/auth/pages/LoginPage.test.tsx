@@ -6,6 +6,7 @@ import LoginPage from '@/features/auth/pages/LoginPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { userQueryKey } from '@/lib/queryKeys'
 import { adminUser } from '@/test/fixtures'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -121,8 +122,14 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password')).toHaveFocus()
   })
 
-  it('locks the form while throttled', async () => {
-    server.use(http.post('/api/auth/login', () => HttpResponse.json({ message: 'Too Many Attempts.' }, { status: 429, headers: { 'Retry-After': '30' } })))
+  it('locks the form while throttled, keeping the focus on the button', async () => {
+    let calls = 0
+    server.use(
+      http.post('/api/auth/login', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'Too Many Attempts.' }, { status: 429, headers: { 'Retry-After': '30' } })
+      }),
+    )
     const { user } = renderRoutes(routes, ['/login'])
 
     await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
@@ -135,7 +142,14 @@ describe('LoginPage', () => {
     expect(messages[0]).toHaveTextContent('tra 30 secondi.')
     expect(messages[0]).toHaveClass('sr-only')
     expect(messages[1]).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByRole('button', { name: 'Continua' })).toBeDisabled()
+    const button = screen.getByRole('button', { name: 'Continua' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
+
+    // Durante il blocco né il pulsante né l'Invio nei campi fanno partire richieste
+    await user.keyboard('{Enter}')
+    await user.type(screen.getByLabelText('Password'), '{Enter}')
+    expect(calls).toBe(1)
   })
 
   it('keeps the password and shows a network message when the server is unreachable', async () => {

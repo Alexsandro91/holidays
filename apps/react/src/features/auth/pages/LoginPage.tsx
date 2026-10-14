@@ -85,7 +85,16 @@ const LoginPage = () => {
     navigate({ pathname: '/login/verify', search: redirect ? `?${new URLSearchParams({ redirect }).toString()}` : '' }, { state: { email: values.email } })
   }
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
+  // Invio in corso o blocco dopo un 429: il pulsante resta focalizzabile (aria-disabled) e l'invio non parte
+  const blocked = login.isPending || lock.secondsLeft > 0
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (blocked) {
+      event.preventDefault()
+      return
+    }
+    return form.handleSubmit(submit)(event)
+  }
 
   return (
     <>
@@ -145,7 +154,7 @@ const LoginPage = () => {
                 {t('login.forgot')}
               </Link>
             </Button>
-            <Button type="submit" size="lg" className="w-full" disabled={login.isPending || lock.secondsLeft > 0}>
+            <Button type="submit" size="lg" className="w-full" aria-disabled={blocked || undefined}>
               {login.isPending ? (
                 <>
                   <LoaderCircle className="animate-spin" aria-hidden="true" />

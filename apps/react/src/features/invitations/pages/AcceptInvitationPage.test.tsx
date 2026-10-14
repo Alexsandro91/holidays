@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import AcceptInvitationPage from '@/features/invitations/pages/AcceptInvitationPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -77,6 +78,28 @@ describe('AcceptInvitationPage', () => {
     await user.click(screen.getByRole('button', { name: 'Attiva account' }))
     await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
 
+    expect(calls).toBe(1)
+  })
+
+  it('locks the form while throttled, keeping the focus on the button', async () => {
+    validInvitation()
+    let calls = 0
+    server.use(
+      http.post('/api/invitations/abc/accept', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'Too Many Attempts.' }, { status: 429, headers: { 'Retry-After': '30' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/invitation/abc'])
+
+    await fillForm(user)
+    await user.click(screen.getByRole('button', { name: 'Attiva account' }))
+
+    expect(await screen.findAllByText(/Troppi tentativi\. Potrai riprovare tra \d+ secondi\./)).toHaveLength(2)
+    const button = screen.getByRole('button', { name: 'Attiva account' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
+    await user.keyboard('{Enter}')
     expect(calls).toBe(1)
   })
 

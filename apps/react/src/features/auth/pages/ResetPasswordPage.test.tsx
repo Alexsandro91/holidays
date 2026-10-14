@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -214,7 +215,9 @@ describe('ResetPasswordPage', () => {
 
     const messages = await screen.findAllByText(/Troppi tentativi\. Potrai riprovare tra \d+ secondi\./)
     expect(messages[0]).toHaveTextContent('tra 30 secondi.')
-    expect(screen.getByRole('button', { name: 'Salva la password' })).toBeDisabled()
+    const button = screen.getByRole('button', { name: 'Salva la password' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
   })
 
   it('has no accessibility violations in the form and in the invalid state', async () => {

@@ -130,7 +130,16 @@ const AcceptInvitationPage = () => {
     navigate('/login/verify', { replace: true, state: { email: invitation.data.email, invitationAccepted: true } })
   }
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
+  // Invio in corso o blocco dopo un 429: il pulsante resta focalizzabile (aria-disabled) e l'invio non parte
+  const blocked = accept.isPending || lock.secondsLeft > 0
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (blocked) {
+      event.preventDefault()
+      return
+    }
+    return form.handleSubmit(submit)(event)
+  }
 
   if (signedInUser) return <SignedInNotice user={signedInUser} />
 
@@ -262,7 +271,7 @@ const AcceptInvitationPage = () => {
               </Button>
               <FieldError id="privacy-error">{errors.privacy?.message}</FieldError>
             </Field>
-            <Button type="submit" size="lg" className="w-full" disabled={accept.isPending || lock.secondsLeft > 0}>
+            <Button type="submit" size="lg" className="w-full" aria-disabled={blocked || undefined}>
               {accept.isPending ? (
                 <>
                   <LoaderCircle className="animate-spin" aria-hidden="true" />
