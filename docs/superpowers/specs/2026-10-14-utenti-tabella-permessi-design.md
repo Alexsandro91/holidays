@@ -179,3 +179,21 @@ Comportamento dopo l'invio:
   - la revoca risponde 409 se l'admin non è attivo;
   - l'interfaccia mostra solo Reinvia, Modifica e Annulla.
 - **Admin declassato mentre agisce su un altro admin:** riceve 403, come il responsabile.
+
+### 7.6 Aggiornamento del 14/10/2026 pomeriggio (terza richiesta dell'utente)
+- **Utenti senza admin:**
+  - `GET /api/users` esclude sempre gli admin, in qualunque stato, dalla lista e da `meta.counts`;
+  - `filter[role]` accetta solo `employee` e `manager` (`admin` dà 422);
+  - il filtro Ruolo dell'interfaccia non ha più "Admin", e un link vecchio con `role=admin` mostra tutti i ruoli;
+  - gli admin si gestiscono solo dalla pagina Amministratori. Questo supera "vede anche gli admin" della tabella al §2.
+- **Disattivare un admin senza togliergli il ruolo:**
+  - la pagina Amministratori ha "Disattiva" sugli admin attivi (mai su sé stessi) e "Riattiva" su quelli disattivati, secondo `can.disable` e `can.enable`;
+  - usa gli endpoint esistenti `/api/users/{user}/disable|enable`, con la password di conferma, la regola "mai zero admin" e l'email agli admin della fase 3;
+  - l'admin disattivato resta nella pagina con lo stato "Disattivato". "Revoca" resta solo sugli admin attivi.
+- **Toast:**
+  - in alto a destra;
+  - riuscito con i colori del badge "Attivo", errore rosso, avviso con quelli di "Invitato";
+  - token in `index.css` e contrasto AA del rosso verificato in `themeContrast.test.ts`.
+- **Modali più grandi:**
+  - `Dialog` e `AlertDialog` larghi fino a `max-w-lg` (512 px), con padding di 24 px e titolo `text-lg`;
+  - sul telefono restano a tutta larghezza meno 16 px per lato e scorrono se più alti dello schermo.
