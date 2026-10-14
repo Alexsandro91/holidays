@@ -14,13 +14,17 @@
   `employee@holidays.test` con password `holidays-dev-password` (più `reset@holidays.test`, riservato all'E2E del recupero password: la password cambia a ogni esecuzione); i codici di login arrivano su Mailpit (`localhost:8025`).
 - Auth: login = pipeline Fortify con `StartEmailLoginChallenge` (niente sessione fino al codice); codice in
   `TwoFactorChallengeController`; chiavi di sessione in `App\Support\AuthSession`; testi PHP con `App\Support\Translate::text()`.
-- Primo admin: `sail artisan app:create-admin "Nome Cognome" email@azienda.it` (invito come gli altri, nessuna password da terminale). Rilanciato sulla stessa email rimanda l’invito; se esiste già un admin attivo serve `--force`.
+- Primo admin: `sail artisan app:create-admin Nome Cognome email@azienda.it` (nome e cognome sono argomenti separati, tra virgolette se composti: `Mario "De Rossi"`; invito come gli altri, nessuna password da terminale). Rilanciato sulla stessa email rimanda l’invito; se esiste già un admin attivo serve `--force`.
 - Inviti: link valido 72 ore, attivazione su `/invitation/:token`. Un nuovo admin nasce per promozione di un utente attivo
   o per invito (`POST /api/administrators/invitations`, con password di conferma) dalla sezione "Amministratori", oppure con
   il comando sopra; l'invito normale (`POST /api/users`) non accetta mai il ruolo admin.
 - Permessi (`UserPolicy`): la gestione utenti è di responsabile e admin, ma il responsabile non agisce mai sugli admin; la
   sezione Amministratori è solo dell'admin (`manageAdministrators`). I servizi ricontrollano attore e permesso sulle righe
-  bloccate (destinatario cambiato nel frattempo: 409 `users.state_changed`).
+  bloccate (destinatario cambiato nel frattempo: 409 `users.state_changed`; chi agisce declassato o disattivato: 403
+  `users.no_longer_allowed`). Una violazione dell'indice unico sull'email (richieste parallele) diventa 422 su `email`.
+- Utenti: `first_name` e `last_name` (il nome completo è l'accessor `name`); regole comuni in `App\Support\PersonRules`.
+  L'email si modifica solo per gli invitati (nuovo link). Eventi con campi cambiati in `auth_events.changed_fields`
+  (solo i nomi, mai i valori).
 
 ## Approccio
 Questo progetto segue le **best practice Laravel** (guideline e skill Boost), non lo scaffolding del
