@@ -32,6 +32,13 @@ final class InvitationService
 
     private const TOKEN_LENGTH = 64;
 
+    /**
+     * Tentativi delle transazioni con blocchi: un deadlock (per esempio tra una modifica e l'accettazione dello stesso
+     * invito) si ripete da capo, rileggendo tutto sotto blocco. Email ed eventi del tentativo fallito si scartano
+     * con il rollback (le email partono solo dopo il commit).
+     */
+    private const TRANSACTION_ATTEMPTS = 3;
+
     public function __construct(private readonly AuthEventLogger $events) {}
 
     /**
@@ -49,7 +56,7 @@ final class InvitationService
             $this->events->log(AuthEventType::InvitationSent, $request, $user, $inviter);
 
             return $user;
-        }));
+        }, self::TRANSACTION_ATTEMPTS));
     }
 
     /**
@@ -125,7 +132,7 @@ final class InvitationService
             $this->ensureStillAllowed('resendInvitation', $actor, $this->freshActor($actor), $fresh);
             $this->send($fresh, $actor);
             $this->events->log(AuthEventType::InvitationSent, $request, $fresh, $actor);
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**
@@ -138,7 +145,7 @@ final class InvitationService
             $this->ensureStillAllowed('cancelInvitation', $actor, $this->freshActor($actor), $fresh);
             $fresh->delete();
             $this->events->log(AuthEventType::InvitationCancelled, $request, null, $actor);
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**
@@ -171,7 +178,7 @@ final class InvitationService
             $this->events->log(AuthEventType::InvitationAccepted, $request, $user);
 
             return $user;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 /**
  * Ruoli e stato degli utenti. Ogni azione blocca prima le righe degli admin attivi (stesso ordine ovunque),
@@ -31,6 +32,13 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 final class UserManagementService
 {
     use RechecksUserPermissions, RejectsDuplicateEmail;
+
+    /**
+     * Tentativi delle transazioni con blocchi: un deadlock (per esempio tra una modifica e l'accettazione dello stesso
+     * invito) si ripete da capo, rileggendo tutto sotto blocco. Email ed eventi del tentativo fallito si scartano
+     * con il rollback (le email partono solo dopo il commit).
+     */
+    private const TRANSACTION_ATTEMPTS = 3;
 
     public function __construct(
         private readonly AuthEventLogger $events,
@@ -60,7 +68,7 @@ final class UserManagementService
             $this->events->log(AuthEventType::RoleChanged, $request, $fresh, $actor);
 
             return $fresh;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**
@@ -78,9 +86,10 @@ final class UserManagementService
         return $this->rejectingDuplicateEmail((string) $email, fn (): User => DB::transaction(function () use ($target, $firstName, $lastName, $email, $actor, $request, $passwordConfirmed): User {
             $this->lockActiveAdminIds();
             $freshActor = $this->lockUserManager($actor);
-            // Invito prima dell'utente, come in accettazione, reinvio e annullamento: niente deadlock
-            Invitation::query()->where('user_id', $target->id)->lockForUpdate()->first();
+            // Invito prima dell'utente, come in accettazione, reinvio e annullamento
+            $invitation = Invitation::query()->where('user_id', $target->id)->lockForUpdate()->first();
             $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
+            $fresh->setRelation('invitation', $invitation);
             $this->ensureStillAllowed('update', $actor, $freshActor, $fresh);
             $targetIsAnotherAdmin = $fresh->isAdmin() && ! $fresh->is($actor);
 
@@ -94,6 +103,13 @@ final class UserManagementService
             // Nel frattempo l'invito può essere stato accettato: l'email ora è quella di accesso
             if ($changeEmail && $fresh->status !== UserStatus::Invited) {
                 throw ValidationException::withMessages(['email' => [Translate::text('users.email_locked')]]);
+            }
+
+            // Un cambio di email è un nuovo invio: stessa attesa del reinvio, niente raffiche di inviti
+            $wait = $changeEmail ? $this->invitations->secondsUntilResend($fresh) : 0;
+
+            if ($wait > 0) {
+                throw new TooManyRequestsHttpException($wait, Translate::text('invitations.resend_wait', ['seconds' => $wait]));
             }
 
             $fresh->forceFill([
@@ -121,7 +137,7 @@ final class UserManagementService
             }
 
             return $fresh;
-        }), $target->id);
+        }, self::TRANSACTION_ATTEMPTS), $target->id);
     }
 
     /**
@@ -154,7 +170,7 @@ final class UserManagementService
             }
 
             return $fresh;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**
@@ -180,7 +196,7 @@ final class UserManagementService
             }
 
             return $fresh;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     public function grantAdmin(User $target, User $actor, Request $request): User
@@ -199,7 +215,7 @@ final class UserManagementService
             $this->notifyAdmins(AdminChange::Granted, $fresh, $actor);
 
             return $fresh;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**
@@ -214,7 +230,7 @@ final class UserManagementService
             $this->notifyAdmins(AdminChange::Invited, $invited, $actor, notifyTarget: false);
 
             return $invited;
-        }));
+        }, self::TRANSACTION_ATTEMPTS));
     }
 
     /**
@@ -251,7 +267,7 @@ final class UserManagementService
             $this->notifyAdmins(AdminChange::Revoked, $fresh, $actor);
 
             return $fresh;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     /**

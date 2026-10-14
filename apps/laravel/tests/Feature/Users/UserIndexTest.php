@@ -136,6 +136,8 @@ class UserIndexTest extends TestCase
             'una parola in campi diversi' => ['ross', ['mario.r@example.test', 'mrossini@example.test', 'paolo.rossi@example.test']],
             'spazi in eccesso' => ['  mario   bianchi ', ['mbianchi@example.test']],
             'nessun risultato' => ['mario verdi', []],
+            // Contano solo le prime 5 parole distinte: la sesta ("zzz") è ignorata
+            'oltre cinque parole' => ['mario rossi mario example test r zzz', ['mario.r@example.test']],
         ];
     }
 

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 final class UserController extends Controller
 {
@@ -35,9 +36,15 @@ final class UserController extends Controller
      */
     private const SEARCHABLE = ['first_name', 'last_name', 'email'];
 
+    /**
+     * Parole distinte della ricerca prese in considerazione: le successive si ignorano.
+     */
+    private const MAX_SEARCH_WORDS = 5;
+
     public function index(ListUsersRequest $request): AnonymousResourceCollection
     {
-        $words = preg_split('/\s+/u', $request->textFilter('search'), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $words = preg_split('/\s+/u', mb_strtolower($request->textFilter('search')), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $words = array_slice(array_values(array_unique($words)), 0, self::MAX_SEARCH_WORDS);
         $role = $request->enum('filter.role', Role::class);
         $status = $request->enum('filter.status', UserStatus::class);
 
@@ -47,7 +54,12 @@ final class UserController extends Controller
 
         // Ogni parola deve comparire in nome, cognome o email: "Mario Rossi" e "Rossi Mario" trovano la stessa persona
         foreach ($words as $word) {
-            $base->whereAny(self::SEARCHABLE, 'like', $this->containsPattern($word));
+            $pattern = $this->containsPattern($word);
+            $base->where(function (Builder $query) use ($pattern): void {
+                foreach (self::SEARCHABLE as $column) {
+                    $query->orWhereLike($column, $pattern);
+                }
+            });
         }
 
         foreach (self::SEARCHABLE as $column) {
@@ -93,17 +105,28 @@ final class UserController extends Controller
         return (new ManagedUserResource($user->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
     }
 
-    public function update(UpdateUserRequest $request, User $user, UserManagementService $users): ManagedUserResource
+    public function update(UpdateUserRequest $request, User $user, UserManagementService $users): JsonResponse|ManagedUserResource
     {
-        $updated = $users->update(
-            $user,
-            $request->string('first_name')->value(),
-            $request->string('last_name')->value(),
-            $request->newEmail(),
-            $this->actor($request),
-            $request,
-            passwordConfirmed: $request->targetIsAnotherAdmin(),
-        );
+        try {
+            $updated = $users->update(
+                $user,
+                $request->string('first_name')->value(),
+                $request->string('last_name')->value(),
+                $request->newEmail(),
+                $this->actor($request),
+                $request,
+                passwordConfirmed: $request->targetIsAnotherAdmin(),
+            );
+        } catch (TooManyRequestsHttpException $exception) {
+            // Stessa risposta del reinvio dell'invito: il frontend legge meta.retry_after
+            $wait = (int) ($exception->getHeaders()['Retry-After'] ?? 0);
+
+            return response()->json(
+                ['message' => $exception->getMessage(), 'meta' => ['retry_after' => $wait]],
+                Response::HTTP_TOO_MANY_REQUESTS,
+                ['Retry-After' => (string) $wait],
+            );
+        }
 
         return new ManagedUserResource($updated->load('invitation'));
     }

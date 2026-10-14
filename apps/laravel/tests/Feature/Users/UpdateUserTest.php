@@ -115,6 +115,8 @@ class UpdateUserTest extends TestCase
         $this->actingAs($this->admin)->postJson('/api/users', ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'sbagliata@example.test', 'role' => 'employee'])->assertCreated();
         $invited = User::query()->where('email', 'sbagliata@example.test')->firstOrFail();
         $oldHash = Invitation::query()->sole()->token_hash;
+        // Stessa attesa del reinvio tra due invii
+        $this->travel(InvitationService::RESEND_COOLDOWN_SECONDS + 1)->seconds();
 
         $this->actingAs($this->admin)->patchJson("/api/users/{$invited->id}", $this->payload(['email' => ' Sara@Example.test ']))
             ->assertOk()
@@ -323,5 +325,25 @@ class UpdateUserTest extends TestCase
             $this->assertSame('Rossi', $stale->fresh()?->last_name);
             $this->assertDatabaseCount('auth_events', 0);
         }
+    }
+
+    public function test_changing_the_email_waits_like_a_resend(): void
+    {
+        $this->actingAs($this->admin)->postJson('/api/users', ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'a@example.test', 'role' => 'employee'])->assertCreated();
+        $invited = User::query()->where('email', 'a@example.test')->firstOrFail();
+
+        $this->actingAs($this->admin)->patchJson("/api/users/{$invited->id}", $this->payload(['email' => 'b@example.test']))
+            ->assertTooManyRequests()
+            ->assertHeader('Retry-After')
+            ->assertJsonStructure(['message', 'meta' => ['retry_after']]);
+        $this->assertSame('a@example.test', $invited->fresh()?->email);
+        Mail::assertQueued(InvitationMail::class, 1);
+        // Il nome si può cambiare anche durante l'attesa: conta solo un nuovo invio
+        $this->actingAs($this->admin)->patchJson("/api/users/{$invited->id}", $this->payload(['last_name' => 'Rossi']))->assertOk();
+
+        $this->travel(InvitationService::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+        $this->actingAs($this->admin)->patchJson("/api/users/{$invited->id}", $this->payload(['email' => 'b@example.test']))->assertOk();
+        $this->actingAs($this->admin)->patchJson("/api/users/{$invited->id}", $this->payload(['email' => 'a@example.test']))->assertTooManyRequests();
+        Mail::assertQueued(InvitationMail::class, 2);
     }
 }

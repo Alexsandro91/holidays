@@ -118,7 +118,8 @@ Comportamento dopo l'invio:
 
 ### 7.2 Ricerca generale e filtri
 - **`filter[search]`:** il testo si divide in parole. Ogni parola deve comparire in nome, cognome o email (AND tra le
-  parole, OR tra i campi). "Mario Rossi", "Rossi Mario" e "rossi@" funzionano tutti.
+  parole, OR tra i campi). "Mario Rossi", "Rossi Mario" e "rossi@" funzionano tutti. Contano le prime 5 parole
+  distinte, le successive si ignorano.
 - **Filtri per campo:** `filter[first_name]`, `filter[last_name]` e `filter[email]` sostituiscono `filter[name]`.
   `filter[role]` e `filter[status]` restano.
 - **`sort`:** `first_name`, `last_name`, `email`, `role` e `status`, con `-` per l'ordine decrescente. Il default è
@@ -135,6 +136,8 @@ Comportamento dopo l'invio:
 - **Endpoint:** `PATCH /api/users/{user}` con `first_name`, `last_name` ed `email` facoltativa.
   - L'email si può cambiare solo per gli utenti `invited`: si aggiorna, si rigenera il link d'invito con l'invio al
     nuovo indirizzo e il vecchio link smette di valere.
+  - Il cambio di email è un nuovo invio: rispetta la stessa attesa del reinvio (60 secondi dall'ultimo invio), altrimenti
+    429 con `Retry-After` e `meta.retry_after`, come il reinvio.
   - Per gli altri stati un'email diversa da quella attuale dà 422 sul campo, con un testo che spiega il motivo.
   - Email unica.
 - **Permesso `update`:** l'admin su chiunque, sé stesso compreso; il responsabile su chi non è admin, sé stesso
