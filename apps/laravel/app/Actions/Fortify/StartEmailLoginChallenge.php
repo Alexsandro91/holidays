@@ -66,7 +66,22 @@ final class StartEmailLoginChallenge
             throw ValidationException::withMessages(['email' => [Translate::text('auth.failed')]]);
         }
 
+        $this->rehashPasswordIfRequired($user, $password);
+
         return $user;
+    }
+
+    /**
+     * Come il login standard di Laravel: se i parametri dell'hash sono cambiati, la password giusta
+     * appena verificata viene salvata col nuovo hash. Fuori dal Timebox: avviene solo con credenziali valide.
+     */
+    private function rehashPasswordIfRequired(User $user, #[\SensitiveParameter] string $password): void
+    {
+        if (! config('hashing.rehash_on_login', true) || $user->password === null || ! Hash::needsRehash($user->password)) {
+            return;
+        }
+
+        $user->forceFill(['password' => Hash::make($password)])->save();
     }
 
     private static function dummyHash(): string

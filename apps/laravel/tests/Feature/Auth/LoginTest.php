@@ -7,6 +7,8 @@ use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Support\AuthSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -115,5 +117,52 @@ class LoginTest extends TestCase
         $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'wrong-password'])
             ->assertTooManyRequests()
             ->assertHeader('Retry-After');
+    }
+
+    public function test_a_valid_login_rehashes_a_password_with_old_hash_parameters(): void
+    {
+        Mail::fake();
+        $user = $this->userWithOutdatedHash();
+
+        $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'password'])->assertOk();
+
+        $hash = (string) DB::table('users')->where('id', $user->id)->value('password');
+        $this->assertFalse(Hash::needsRehash($hash));
+        $this->assertTrue(Hash::check('password', $hash));
+    }
+
+    public function test_a_wrong_password_leaves_the_old_hash_untouched(): void
+    {
+        $user = $this->userWithOutdatedHash();
+        $before = DB::table('users')->where('id', $user->id)->value('password');
+
+        $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'wrong-password'])->assertUnprocessable();
+
+        $this->assertSame($before, DB::table('users')->where('id', $user->id)->value('password'));
+    }
+
+    public function test_the_rehash_can_be_turned_off_like_in_laravel(): void
+    {
+        Mail::fake();
+        config(['hashing.rehash_on_login' => false]);
+        $user = $this->userWithOutdatedHash();
+        $before = DB::table('users')->where('id', $user->id)->value('password');
+
+        $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'password'])->assertOk();
+
+        $this->assertSame($before, DB::table('users')->where('id', $user->id)->value('password'));
+    }
+
+    /**
+     * Utente con un hash creato con un costo diverso da quello configurato (scritto senza passare dal cast `hashed`).
+     */
+    private function userWithOutdatedHash(): User
+    {
+        $user = User::factory()->create();
+        $outdated = Hash::make('password', ['rounds' => ((int) config('hashing.bcrypt.rounds')) + 1]);
+        DB::table('users')->where('id', $user->id)->update(['password' => $outdated]);
+        $this->assertTrue(Hash::needsRehash($outdated));
+
+        return $user;
     }
 }
