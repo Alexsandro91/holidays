@@ -727,6 +727,66 @@ describe('AdministratorsPage', () => {
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
+  it('edits the name of an active administrator with your password (the email stays read-only)', async () => {
+    admins()
+    let body: unknown = null
+    server.use(
+      http.patch('/api/users/3', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: { ...bruno, first_name: 'Brunello', name: 'Brunello Admin' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const trigger = await screen.findByRole('button', { name: 'Modifica Bruno Admin' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Bruno Admin' })
+    expect(within(dialog).getByLabelText('Email aziendale')).toHaveAttribute('readonly')
+    await user.clear(within(dialog).getByLabelText('Nome'))
+    await user.type(within(dialog).getByLabelText('Nome'), 'Brunello')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Dati di Brunello Admin aggiornati.')).toBeInTheDocument()
+    expect(body).toEqual({ first_name: 'Brunello', last_name: 'Admin', current_password: 'password' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('edits your own name without asking for the password', async () => {
+    admins([{ ...me, can: { ...NO_ACTIONS, update: true } }, bruno])
+    let body: unknown = null
+    server.use(
+      http.patch('/api/users/1', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: { ...me, last_name: 'Amministratrice', name: 'Anna Amministratrice' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Modifica Anna Admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Anna Admin' })
+    expect(within(dialog).queryByLabelText('La tua password')).not.toBeInTheDocument()
+    await user.clear(within(dialog).getByLabelText('Cognome'))
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Amministratrice')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    await waitFor(() => expect(body).toEqual({ first_name: 'Anna', last_name: 'Amministratrice' }))
+  })
+
+  it('offers edit in every state, next to the actions of that state', async () => {
+    admins([me, bruno, managedUser({ id: 4, name: 'Carla Admin', role: 'admin', status: 'disabled', status_label: 'Disattivato' })])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    const labels = (name: string) => {
+      const row = screen.getByText(name).closest('li')
+      if (!row) throw new Error(`Riga di ${name} mancante`)
+      return within(row).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+    }
+    await screen.findByText('Bruno Admin')
+    expect(labels('Bruno Admin')).toEqual(['Modifica Bruno Admin', 'Revoca Bruno Admin', 'Disattiva Bruno Admin'])
+    expect(labels('Carla Admin')).toEqual(['Modifica Carla Admin', 'Riattiva Carla Admin'])
+  })
+
   it('hides resend and cancel when the server does not allow them', async () => {
     const invited = managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato', can: { ...NO_ACTIONS, cancel_invitation: true } })
     admins([me, invited])

@@ -20,6 +20,18 @@ const invitationTriggerKey = (user: ManagedUser, action: string): string => `${u
 
 type ConfirmedAction = 'resend' | 'cancel' | 'disable' | 'enable'
 
+/**
+ * Colore di significato dei pulsanti di riga (token in index.css, contrasto AA nei due temi): modifica nel primario,
+ * revoca in ambra (toglie il ruolo, l'account resta), disattiva e annulla invito in rosso (bloccano o cancellano),
+ * riattiva in verde. Reinvia resta neutro. Il testo dice sempre l'azione: il colore non è l'unico segnale
+ */
+const TONE = {
+  edit: 'text-primary-soft-foreground hover:bg-primary-soft hover:text-primary-soft-foreground',
+  warning: 'text-status-invited-foreground hover:bg-status-invited hover:text-status-invited-foreground',
+  danger: 'text-danger-soft-foreground hover:bg-danger-soft hover:text-danger-soft-foreground',
+  success: 'text-status-active-foreground hover:bg-status-active hover:text-status-active-foreground',
+}
+
 const AdministratorsPage = () => {
   const { t } = useTranslation()
   const administrators = useAdministrators()
@@ -64,6 +76,18 @@ const AdministratorsPage = () => {
           <ul className="grid gap-2">
             {administrators.data.map((admin) => {
               const detail = invitationDetail(admin)
+              // Nome e cognome si modificano in ogni stato, anche i propri; l'email solo da invitato (spec §7.3)
+              const editButton = admin.can.update && (
+                <Button
+                  variant="outline"
+                  className={TONE.edit}
+                  aria-label={t('administrators.editFor', { name: admin.name })}
+                  {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'edit') }}
+                  onClick={() => setEditing(admin)}
+                >
+                  {t('administrators.edit')}
+                </Button>
+              )
               return (
                 <li key={admin.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
                   <div className="min-w-0">
@@ -88,19 +112,11 @@ const AdministratorsPage = () => {
                             {t('administrators.resend')}
                           </Button>
                         )}
-                        {admin.can.update && (
-                          <Button
-                            variant="outline"
-                            aria-label={t('administrators.editFor', { name: admin.name })}
-                            {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'edit') }}
-                            onClick={() => setEditing(admin)}
-                          >
-                            {t('administrators.edit')}
-                          </Button>
-                        )}
+                        {editButton}
                         {admin.can.cancel_invitation && (
                           <Button
                             variant="outline"
+                            className={TONE.danger}
                             aria-label={t('administrators.cancelFor', { name: admin.name })}
                             {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'cancel') }}
                             onClick={() => setConfirming({ user: admin, action: 'cancel' })}
@@ -112,35 +128,46 @@ const AdministratorsPage = () => {
                     ) : admin.status === 'active' ? (
                       // Revoca solo degli admin attivi: per gli altri il server risponde 409 (spec §7.5). Disattivare
                       // lascia il ruolo: l'admin resta in questa pagina e si può riattivare (spec §7.6)
-                      !admin.is_current_user && (
-                        <>
-                          <Button variant="outline" aria-label={t('administrators.revokeFor', { name: admin.name })} {...{ [REVOKE_TRIGGER_ATTRIBUTE]: admin.id }} onClick={() => setRevoking(admin)}>
+                      <>
+                        {editButton}
+                        {!admin.is_current_user && (
+                          <Button
+                            variant="outline"
+                            className={TONE.warning}
+                            aria-label={t('administrators.revokeFor', { name: admin.name })}
+                            {...{ [REVOKE_TRIGGER_ATTRIBUTE]: admin.id }}
+                            onClick={() => setRevoking(admin)}
+                          >
                             {t('administrators.revoke')}
                           </Button>
-                          {admin.can.disable && (
-                            <Button
-                              variant="outline"
-                              className="text-danger-soft-foreground hover:bg-danger-soft hover:text-danger-soft-foreground"
-                              aria-label={t('administrators.disableFor', { name: admin.name })}
-                              {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'disable') }}
-                              onClick={() => setConfirming({ user: admin, action: 'disable' })}
-                            >
-                              {t('administrators.disable')}
-                            </Button>
-                          )}
-                        </>
-                      )
+                        )}
+                        {!admin.is_current_user && admin.can.disable && (
+                          <Button
+                            variant="outline"
+                            className={TONE.danger}
+                            aria-label={t('administrators.disableFor', { name: admin.name })}
+                            {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'disable') }}
+                            onClick={() => setConfirming({ user: admin, action: 'disable' })}
+                          >
+                            {t('administrators.disable')}
+                          </Button>
+                        )}
+                      </>
                     ) : (
-                      admin.can.enable && (
-                        <Button
-                          variant="outline"
-                          aria-label={t('administrators.enableFor', { name: admin.name })}
-                          {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'enable') }}
-                          onClick={() => setConfirming({ user: admin, action: 'enable' })}
-                        >
-                          {t('administrators.enable')}
-                        </Button>
-                      )
+                      <>
+                        {editButton}
+                        {admin.can.enable && (
+                          <Button
+                            variant="outline"
+                            className={TONE.success}
+                            aria-label={t('administrators.enableFor', { name: admin.name })}
+                            {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'enable') }}
+                            onClick={() => setConfirming({ user: admin, action: 'enable' })}
+                          >
+                            {t('administrators.enable')}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </li>

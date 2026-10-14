@@ -50,8 +50,11 @@ const PAIRS: [string, string, number][] = [
   ['status-disabled-foreground', 'status-disabled', 4.5],
   // Toast di errore (quelli riusciti e di avviso usano i token dei badge qui sopra)
   ['danger-soft-foreground', 'danger-soft', 4.5],
-  // Testo rosso dei pulsanti "Disattiva" sullo sfondo della pagina
   ['danger-soft-foreground', 'background', 4.5],
+  // Testo colorato dei pulsanti di riga degli amministratori sullo sfondo della pagina
+  ['status-invited-foreground', 'background', 4.5],
+  ['primary-soft-foreground', 'background', 4.5],
+  ['status-active-foreground', 'background', 4.5],
 ]
 
 const THEMES: (':root' | '.dark')[] = [':root', '.dark']
