@@ -1,8 +1,10 @@
 import { CalendarDays, ChevronsUpDown, House, LogOut, ShieldCheck, Users } from 'lucide-react'
+import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet } from 'react-router'
 import { toast } from 'sonner'
 import Logo from '@/components/brand/Logo'
+import FullPageLoader from '@/components/layout/FullPageLoader'
 import SkipLink from '@/components/layout/SkipLink'
 import LanguageMenu from '@/components/preferences/LanguageMenu'
 import ThemeMenu from '@/components/preferences/ThemeMenu'
@@ -159,7 +161,10 @@ const AppShell = () => {
           <ThemeMenu />
         </header>
         <div className="w-full max-w-6xl flex-1 px-4 pt-6 pb-16 md:px-8 md:pt-8">
-          <Outlet />
+          {/* Pagine caricate a richiesta (vedi routes.tsx): il loader resta dentro il layout */}
+          <Suspense fallback={<FullPageLoader className="min-h-60" />}>
+            <Outlet />
+          </Suspense>
         </div>
       </SidebarInset>
     </SidebarProvider>

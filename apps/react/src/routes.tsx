@@ -1,20 +1,24 @@
+import { lazy } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import AppShell from '@/components/layout/AppShell'
 import AuthLayout from '@/components/layout/AuthLayout'
 import RootLayout from '@/components/layout/RootLayout'
 import AdminRoute from '@/features/auth/AdminRoute'
 import GuestRoute from '@/features/auth/GuestRoute'
-import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
 import LoginPage from '@/features/auth/pages/LoginPage'
-import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
-import AdministratorsPage from '@/features/administrators/pages/AdministratorsPage'
-import AcceptInvitationPage from '@/features/invitations/pages/AcceptInvitationPage'
-import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
-import PrivacyPage from '@/pages/PrivacyPage'
+
+// Caricate a richiesta (pagine admin e pagine poco usate): restano fuori dal bundle iniziale. Il fallback è il
+// Suspense di AppShell e AuthLayout
+const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'))
+const AcceptInvitationPage = lazy(() => import('@/features/invitations/pages/AcceptInvitationPage'))
+const UsersAdminPage = lazy(() => import('@/features/users/pages/UsersAdminPage'))
+const AdministratorsPage = lazy(() => import('@/features/administrators/pages/AdministratorsPage'))
+const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
 
 export const routes: RouteObject[] = [
   {

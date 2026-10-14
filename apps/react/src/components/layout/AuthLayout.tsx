@@ -1,6 +1,8 @@
+import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router'
 import Logo from '@/components/brand/Logo'
+import FullPageLoader from '@/components/layout/FullPageLoader'
 import SkipLink from '@/components/layout/SkipLink'
 import TeamCalendar from '@/components/layout/TeamCalendar'
 import LanguageMenu from '@/components/preferences/LanguageMenu'
@@ -44,7 +46,10 @@ const AuthLayout = () => {
         </header>
         <main id="main" tabIndex={-1} className="flex flex-1 items-center justify-center pt-4 pb-16 outline-none">
           <div className="w-full max-w-[400px]">
-            <Outlet />
+            {/* Pagine caricate a richiesta (vedi routes.tsx): il loader resta dentro il layout */}
+            <Suspense fallback={<FullPageLoader className="min-h-60" />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>
