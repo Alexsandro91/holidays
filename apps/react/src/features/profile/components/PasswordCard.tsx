@@ -25,7 +25,7 @@ const createSchema = (t: TFunction) =>
       confirmation: z.string(),
     })
     // Errore sotto la conferma: è il campo da correggere
-    .refine((values) => values.password === values.confirmation, { message: t('validation.passwordMismatch'), path: ['confirmation'] })
+    .refine((values) => values.password === values.confirmation, { error: t('validation.passwordMismatch'), path: ['confirmation'] })
 
 type PasswordValues = z.infer<ReturnType<typeof createSchema>>
 

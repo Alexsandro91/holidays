@@ -23,7 +23,7 @@ const createResetSchema = (t: TFunction) =>
   z
     .object({ password: z.string().min(MIN_PASSWORD_LENGTH, t('validation.passwordMin')), confirmation: z.string() })
     // Errore sotto la conferma: è il campo da correggere
-    .refine((values) => values.password === values.confirmation, { message: t('validation.passwordMismatch'), path: ['confirmation'] })
+    .refine((values) => values.password === values.confirmation, { error: t('validation.passwordMismatch'), path: ['confirmation'] })
 
 type ResetValues = z.infer<ReturnType<typeof createResetSchema>>
 

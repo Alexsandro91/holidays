@@ -33,7 +33,7 @@ const createInvitationSchema = (t: TFunction) =>
     // Errore sotto la conferma: è il campo da correggere
     // when: il controllo gira anche se il checkbox non è spuntato, così i due errori compaiono insieme
     .refine((values) => values.password === values.confirmation, {
-      message: t('validation.passwordMismatch'),
+      error: t('validation.passwordMismatch'),
       path: ['confirmation'],
       when: (payload) => !payload.issues.some((issue) => issue.path?.[0] === 'password' || issue.path?.[0] === 'confirmation'),
     })
