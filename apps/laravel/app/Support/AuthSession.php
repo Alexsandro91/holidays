@@ -45,6 +45,22 @@ final class AuthSession
     }
 
     /**
+     * Secondi che restano alla durata assoluta dal login, mai sotto 0. Senza sessione o timestamp (il middleware lo
+     * registra alla prima richiesta API) restano tutti.
+     */
+    public static function absoluteRemainingSeconds(Request $request): int
+    {
+        $total = (int) config('session.absolute_lifetime') * 60;
+        $loggedInAt = $request->hasSession() ? $request->session()->get(self::LOGGED_IN_AT) : null;
+
+        if (! is_int($loggedInAt)) {
+            return $total;
+        }
+
+        return max(0, $total - (now()->getTimestamp() - $loggedInAt));
+    }
+
+    /**
      * Chiude la sessione corrente: logout, sessione invalidata e nuovo token CSRF.
      */
     public static function end(Request $request): void
