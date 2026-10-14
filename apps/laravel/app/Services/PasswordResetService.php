@@ -86,11 +86,15 @@ final class PasswordResetService
 
         $status = $this->broker()->sendResetLink(
             ['email' => $user->email, 'status' => UserStatus::Active->value],
-            function (User $recipient, #[\SensitiveParameter] string $token) use ($requestedByStaff): void {
-                DB::afterCommit(fn () => rescue(
-                    fn () => Mail::to($recipient)->send(new ResetPasswordMail($recipient->email, $token, $requestedByStaff)),
-                    report: true,
-                ));
+            function (User $recipient, #[\SensitiveParameter] string $token) use ($requestedByStaff, $capKey): void {
+                // Email e contatore solo a transazione conclusa: un rollback (o un nuovo tentativo) non li lascia indietro
+                DB::afterCommit(function () use ($recipient, $token, $requestedByStaff, $capKey): void {
+                    RateLimiter::hit($capKey, self::LINK_CAP_DECAY_SECONDS);
+                    rescue(
+                        fn () => Mail::to($recipient)->send(new ResetPasswordMail($recipient->email, $token, $requestedByStaff)),
+                        report: true,
+                    );
+                });
             },
         );
 
@@ -104,7 +108,10 @@ final class PasswordResetService
             );
         }
 
-        RateLimiter::hit($capKey, self::LINK_CAP_DECAY_SECONDS);
+        // Utente non trovato o non attivo: chi chiama ha già verificato lo stato, quindi è un errore, non un esito
+        if ($status !== PasswordBroker::RESET_LINK_SENT) {
+            throw new LogicException("Unexpected password broker status [{$status}].");
+        }
     }
 
     /**

@@ -9,14 +9,20 @@ use App\Mail\ResetPasswordMail;
 use App\Models\AuthEvent;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Services\PasswordResetService;
 use App\Services\UserManagementService;
 use App\Support\EmailKey;
+use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
+use LogicException;
+use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
@@ -225,20 +231,78 @@ class SendPasswordResetTest extends TestCase
         Mail::assertQueuedCount(1);
     }
 
-    public function test_the_hourly_cap_is_shared_with_the_public_link(): void
+    public function test_public_links_fill_the_hourly_cap_for_the_staff(): void
     {
         $manager = User::factory()->manager()->create();
         $employee = User::factory()->create();
-        for ($i = 0; $i < 5; $i++) {
-            RateLimiter::hit('reset-link:'.EmailKey::from($employee->email), 3600);
+
+        // Cinque richieste pubbliche da IP diversi, distanziate oltre i 60 secondi del broker
+        for ($i = 1; $i <= 5; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.{$i}"])->postJson('/api/auth/forgot-password', ['email' => strtoupper($employee->email)])->assertAccepted();
+            $this->travel(61)->seconds();
         }
+        Mail::assertQueuedCount(5);
 
         $this->actingAs($manager)->postJson($this->uri($employee))
             ->assertTooManyRequests()
             ->assertHeader('Retry-After');
 
+        Mail::assertQueuedCount(5);
+        $this->assertSame(0, AuthEvent::query()->where('event', AuthEventType::PasswordResetSent)->count());
+    }
+
+    public function test_staff_links_fill_the_hourly_cap_for_the_public_flow(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $employee = User::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->actingAs($manager)->postJson($this->uri($employee))->assertAccepted();
+            $this->travel(61)->seconds();
+        }
+        Mail::assertQueuedCount(5);
+
+        // La richiesta pubblica è di un ospite: risponde come sempre ma non invia nulla
+        $this->app['auth']->forgetGuards();
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.99'])->postJson('/api/auth/forgot-password', ['email' => $employee->email])->assertAccepted();
+
+        Mail::assertQueuedCount(5);
+    }
+
+    public function test_a_failed_transaction_leaves_no_hit_and_no_email(): void
+    {
+        $actor = User::factory()->manager()->create();
+        $employee = User::factory()->create();
+        AuthEvent::creating(fn () => throw new RuntimeException('boom'));
+
+        try {
+            app(UserManagementService::class)->sendPasswordReset($employee, $actor, request(), expectAdmin: false);
+            $this->fail('The transaction should have failed.');
+        } catch (RuntimeException) {
+            // atteso
+        }
+
+        $this->assertSame(0, RateLimiter::attempts('reset-link:'.EmailKey::from($employee->email)));
         Mail::assertNothingQueued();
         $this->assertDatabaseMissing('password_reset_tokens', ['email' => $employee->email]);
+    }
+
+    public function test_an_unexpected_broker_status_is_an_error_without_hit(): void
+    {
+        $employee = User::factory()->create();
+        $broker = Mockery::mock(PasswordBroker::class);
+        $broker->shouldReceive('sendResetLink')->andReturn(PasswordBroker::INVALID_USER);
+        Password::shouldReceive('broker')->andReturn($broker);
+
+        try {
+            app(PasswordResetService::class)->sendLinkFor($employee, true);
+            $this->fail('A LogicException was expected.');
+        } catch (LogicException) {
+            // atteso
+        }
+
+        $this->assertSame(0, RateLimiter::attempts('reset-link:'.EmailKey::from($employee->email)));
+        Mail::assertNothingQueued();
     }
 
     public function test_a_staff_link_counts_toward_the_hourly_cap(): void
