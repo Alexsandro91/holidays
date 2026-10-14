@@ -51,17 +51,21 @@ const UsersFilters = ({ params, setParams, onClear, onDraft, resetKey }: UsersFi
           resetKey={resetKey}
           className="min-w-0 flex-1 basis-60 sm:max-w-md"
         />
-        <Button variant="outline" aria-expanded={open} aria-controls="users-filters-panel" onClick={() => setOpen(!open)}>
+        {/* Con filtri attivi il nome accessibile è "Filtri: 2 filtri attivi" (aria-label: un testo sr-only accanto al
+            numero lascerebbe uno spazio prima dei due punti); inizia con il testo visibile, come chiede WCAG 2.5.3 */}
+        <Button
+          variant="outline"
+          aria-expanded={open}
+          aria-controls="users-filters-panel"
+          aria-label={active > 0 ? `${t('users.filters.toggle')}: ${t('users.filters.activeCount', { count: active })}` : undefined}
+          onClick={() => setOpen(!open)}
+        >
           <SlidersHorizontal aria-hidden="true" />
           {t('users.filters.toggle')}
           {active > 0 && (
-            <>
-              <span aria-hidden="true" className="rounded-full bg-primary px-1.5 text-xs leading-5 font-semibold text-primary-foreground tabular-nums">
-                {active}
-              </span>
-              {/* Nome accessibile "Filtri: 2 filtri attivi"; il numero visibile è solo decorativo */}
-              <span className="sr-only">{`: ${t('users.filters.activeCount', { count: active })}`}</span>
-            </>
+            <span aria-hidden="true" className="rounded-full bg-primary px-1.5 text-xs leading-5 font-semibold text-primary-foreground tabular-nums">
+              {active}
+            </span>
           )}
         </Button>
       </div>

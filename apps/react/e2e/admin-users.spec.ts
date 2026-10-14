@@ -168,7 +168,7 @@ test('admin pages have no WCAG violations in light and dark mode', async () => {
 
   // Pannello dei filtri aperto e badge di stato colorati
   await admin.getByRole('button', { name: 'Filtri', exact: true }).click()
-  await expect(admin.getByRole('searchbox', { name: 'Cognome' })).toBeVisible()
+  await expect(admin.getByRole('searchbox', { name: 'Cognome', exact: true })).toBeVisible()
   await expectNoViolationsInBothSchemes(admin)
 
   await admin.getByRole('button', { name: 'Invita utente' }).click()
@@ -281,7 +281,7 @@ test('an admin invites a new administrator, edits the email of the invitation, t
   await expect(admin.getByText(`Invito da amministratore inviato a ${NEW_ADMIN}.`)).toBeVisible()
   await waitForInvitationLink(NEW_ADMIN)
 
-  const row = admin.getByRole('listitem').filter({ hasText: NEW_ADMIN })
+  const row = admin.getByRole('main').getByRole('listitem').filter({ hasText: NEW_ADMIN })
   await expect(row.getByText('Invitato')).toBeVisible()
   await expect(row.getByText(/Invito scade il/)).toBeVisible()
   // Admin solo invitato: si gestisce l'invito, non si revoca
@@ -296,14 +296,14 @@ test('an admin invites a new administrator, edits the email of the invitation, t
   await edit.getByRole('button', { name: 'Salva' }).click()
   await expect(admin.getByText(`Dati aggiornati. Nuovo invito inviato a ${NEW_ADMIN_EMAIL_CHANGED}.`)).toBeVisible()
   await waitForInvitationLink(NEW_ADMIN_EMAIL_CHANGED)
-  const changedRow = admin.getByRole('listitem').filter({ hasText: NEW_ADMIN_EMAIL_CHANGED })
+  const changedRow = admin.getByRole('main').getByRole('listitem').filter({ hasText: NEW_ADMIN_EMAIL_CHANGED })
   await expect(changedRow).toBeVisible()
 
   // Pulizia: l'invito annullato elimina l'account non attivato
   await changedRow.getByRole('button', { name: `Annulla invito di ${NEW_ADMIN_NAME}` }).click()
   await admin.getByRole('alertdialog').getByRole('button', { name: `Annulla invito di ${NEW_ADMIN_NAME}` }).click()
   await expect(admin.getByText('Invito annullato.')).toBeVisible()
-  await expect(admin.getByRole('listitem').filter({ hasText: NEW_ADMIN_EMAIL_CHANGED })).toHaveCount(0)
+  await expect(admin.getByRole('main').getByRole('listitem').filter({ hasText: NEW_ADMIN_EMAIL_CHANGED })).toHaveCount(0)
 })
 
 test('the users table searches, filters from the panel and sorts by email', async () => {
@@ -354,7 +354,7 @@ test('the users table searches, filters from the panel and sorts by email', asyn
 
   // Filtro per nome dal pannello
   await clearFilters()
-  await expectList(() => admin.getByRole('searchbox', { name: 'Nome' }).fill('Sara'), 'filter[first_name]', 'Sara')
+  await expectList(() => admin.getByRole('searchbox', { name: 'Nome', exact: true }).fill('Sara'), 'filter[first_name]', 'Sara')
   await expect(employeeRow).toBeVisible()
   await expect(managerRow).toHaveCount(0)
 
