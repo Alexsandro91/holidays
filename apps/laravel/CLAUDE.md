@@ -11,7 +11,7 @@
   (formattazione) e `sail bin pint --test` (controllo di tutto il progetto). `--dirty` non funziona perche' il container
   non vede la cartella .git della root.
 - Utenti di sviluppo (solo `local`, `sail artisan migrate:fresh --seed`): `admin@holidays.test`, `manager@holidays.test`,
-  `employee@holidays.test` con password `holidays-dev-password` (più `reset@holidays.test`, riservato all'E2E del recupero password: la password cambia a ogni esecuzione); i codici di login arrivano su Mailpit (`localhost:8025`).
+  `employee@holidays.test` con password `holidays-dev-password` (più `reset@holidays.test`, riservato all'E2E del recupero password: la password cambia a ogni esecuzione; `profile@holidays.test`, riservato all'E2E del profilo); i codici di login arrivano su Mailpit (`localhost:8025`).
 - Auth: login = pipeline Fortify con `StartEmailLoginChallenge` (niente sessione fino al codice); codice in
   `TwoFactorChallengeController`; chiavi di sessione in `App\Support\AuthSession`; testi PHP con `App\Support\Translate::text()`.
 - Primo admin: `sail artisan app:create-admin Nome Cognome email@azienda.it` (nome e cognome sono argomenti separati, tra virgolette se composti: `Mario "De Rossi"`; invito come gli altri, nessuna password da terminale). Rilanciato sulla stessa email rimanda l’invito; se esiste già un admin attivo serve `--force`.
@@ -25,6 +25,10 @@
 - Utenti: `first_name` e `last_name` (il nome completo è l'accessor `name`); regole comuni in `App\Support\PersonRules`.
   L'email si modifica solo per gli invitati (nuovo link). Eventi con campi cambiati in `auth_events.changed_fields`
   (solo i nomi, mai i valori).
+- Profilo (`ProfileController`, sotto `auth:sanctum`, nessuna policy: agisce sempre su `$request->user()`): `PATCH /api/profile`
+  (nome, cognome, `locale`) e `PUT /api/profile/password` (password attuale con lo stesso blocco/contatore delle azioni
+  admin ma eventi `password_change_*`; chiude le altre sessioni). `GET /api/auth/user` e `PATCH /api/profile` aggiungono
+  `meta.session` (`CurrentUserResource`).
 
 ## Approccio
 Questo progetto segue le **best practice Laravel** (guideline e skill Boost), non lo scaffolding del

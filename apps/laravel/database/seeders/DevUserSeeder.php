@@ -20,6 +20,8 @@ class DevUserSeeder extends Seeder
         User::factory()->disabled()->create(['first_name' => 'Elena', 'last_name' => 'Romano', 'email' => 'disabled@holidays.test', 'password' => self::PASSWORD]);
         // Usato dall'E2E del recupero password: la sua password cambia a ogni esecuzione
         User::factory()->create(['first_name' => 'Paolo', 'last_name' => 'Greco', 'email' => 'reset@holidays.test', 'password' => self::PASSWORD]);
+        // Usato dall'E2E del profilo: cambia la password e la rimette a fine test
+        User::factory()->create(['first_name' => 'Paolo', 'last_name' => 'Ferri', 'email' => 'profile@holidays.test', 'password' => self::PASSWORD]);
         User::factory()->invited()->create(['first_name' => 'Luca', 'last_name' => 'Ferrari', 'email' => 'invited@holidays.test']);
     }
 }
