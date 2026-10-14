@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Users;
 
+use App\Http\Resources\ManagedUserResource;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class UserIndexTest extends TestCase
@@ -27,13 +30,56 @@ class UserIndexTest extends TestCase
 
         $response->assertJsonCount(2, 'data');
         $this->assertSame(
-            ['id', 'name', 'email', 'role', 'role_label', 'status', 'status_label', 'invitation_expires_at', 'is_current_user'],
+            ['id', 'name', 'email', 'role', 'role_label', 'status', 'status_label', 'invitation_expires_at', 'is_current_user', 'can'],
             array_keys($response->json('data.0')),
         );
         // Limite di finalità (spec §7.3): niente ultimo accesso nella gestione utenti
         $response->assertJsonMissingPath('data.1.last_login_at');
         $response->assertJsonPath('data.0.is_current_user', true);
         $response->assertJsonPath('data.1.is_current_user', false);
+    }
+
+    public function test_each_row_says_what_the_viewer_may_do(): void
+    {
+        $manager = User::factory()->manager()->create(['name' => 'A Manager']);
+        User::factory()->admin()->create(['name' => 'B Admin']);
+        User::factory()->create(['name' => 'C Employee']);
+        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true];
+        $none = array_map(fn (): bool => false, $all);
+
+        $this->actingAs($manager)->getJson('/api/users')
+            ->assertOk()
+            ->assertJsonPath('data.0.can', [...$all, 'change_role' => false, 'disable' => false])
+            ->assertJsonPath('data.1.can', $none)
+            ->assertJsonPath('data.2.can', $all);
+    }
+
+    public function test_an_admin_may_act_on_other_admins_except_changing_their_role(): void
+    {
+        $admin = User::factory()->admin()->create(['name' => 'A Admin']);
+        User::factory()->admin()->create(['name' => 'B Admin']);
+
+        $this->actingAs($admin)->getJson('/api/users')
+            ->assertOk()
+            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true])
+            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true]);
+    }
+
+    public function test_the_permissions_of_a_row_need_no_query(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $target = User::factory()->create();
+        $request = Request::create('/api/users');
+        $request->setUserResolver(fn (): User => $admin);
+        $queries = 0;
+        DB::listen(function () use (&$queries): void {
+            $queries++;
+        });
+
+        $row = (new ManagedUserResource($target))->toArray($request);
+
+        $this->assertSame(0, $queries);
+        $this->assertTrue($row['can']['disable']);
     }
 
     public function test_filters_by_status_and_counts_every_status(): void
