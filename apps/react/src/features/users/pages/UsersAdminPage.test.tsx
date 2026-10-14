@@ -130,7 +130,8 @@ describe('UsersAdminPage', () => {
     const other = cards.find((item) => item.textContent?.includes('Marco Bianchi'))
     // Nella griglia della scheda un contenitore vuoto aggiunge comunque uno spazio
     expect(mine?.querySelectorAll(':scope > :empty')).toHaveLength(0)
-    expect(mine?.children).toHaveLength(2)
+    // Solo il contenuto: senza azioni la colonna del menu non c'è
+    expect(mine?.children).toHaveLength(1)
     expect(other && within(other).getByRole('button', { name: 'Azioni per Marco Bianchi' })).toBeInTheDocument()
   })
 

@@ -75,15 +75,18 @@ const UsersTable = ({ users, renderActions }: UsersTableProps) => {
           const detail = details(user)
           const actions = renderActions?.(user)
           return (
-            <li key={user.id} className="grid gap-3 rounded-lg border p-4">
-              {person(user)}
-              <div className="flex flex-wrap items-center gap-2">
-                <RoleBadge user={user} />
-                <StatusBadge user={user} />
+            <li key={user.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg border p-4">
+              <div className="grid gap-3">
+                {person(user)}
+                <div className="flex flex-wrap items-center gap-2">
+                  <RoleBadge user={user} />
+                  <StatusBadge user={user} />
+                </div>
+                {/* Dettagli solo se ci sono: nella griglia un contenitore vuoto lascerebbe uno spazio */}
+                {detail !== '' && <p className="text-sm text-muted-foreground">{detail}</p>}
               </div>
-              {/* Dettagli e azioni solo se ci sono: nella griglia un contenitore vuoto lascerebbe uno spazio */}
-              {detail !== '' && <p className="text-sm text-muted-foreground">{detail}</p>}
-              {actions != null && <div className="flex justify-end">{actions}</div>}
+              {/* Menu in alto a destra, accanto al nome: niente riga dedicata in fondo alla scheda */}
+              {actions != null && <div className="-mt-2 -mr-2">{actions}</div>}
             </li>
           )
         })}
