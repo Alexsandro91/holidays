@@ -58,9 +58,8 @@ const ResetPasswordPage = () => {
     setFormError(null)
     try {
       await reset.mutateAsync({ token, email, password, password_confirmation: confirmation })
-      // Il reset non apre la sessione: si entra con il codice appena inviato (spec §6.3)
-      navigate('/login/verify', { replace: true, state: { email, passwordReset: true } })
     } catch (error) {
+      submitting.current = false
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60
         setLockedFor(seconds)
@@ -77,9 +76,11 @@ const ResetPasswordPage = () => {
         return
       }
       setFormError(isApiError(error, 'network') ? t('errors.network') : t('errors.generic'))
-    } finally {
-      submitting.current = false
+      return
     }
+    // Password salvata: submitting resta true fino allo smontaggio (la navigazione non è immediata e un secondo
+    // invio userebbe un link già consumato). Il reset non apre la sessione: si entra con il codice appena inviato (spec §6.3)
+    navigate('/login/verify', { replace: true, state: { email, passwordReset: true } })
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)

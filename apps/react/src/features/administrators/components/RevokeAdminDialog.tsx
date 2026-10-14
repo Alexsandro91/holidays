@@ -44,7 +44,8 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
   // Messaggio del server mostrato nel dialog (ultimo admin, troppi tentativi)
   const [notice, setNotice] = useState<string | null>(null)
   const [locked, setLocked] = useState(false)
-  // Evita il doppio invio: letto solo nei gestori di evento
+  // Evita il doppio invio: letto solo nei gestori di evento. Dopo la revoca riuscita resta attivo fino allo smontaggio:
+  // durante l'animazione di chiusura il form è ancora nel DOM (il corpo si rimonta a ogni apertura)
   const submitting = useRef(false)
 
   const submit = async ({ currentPassword }: PasswordValues) => {
@@ -55,9 +56,9 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
     onBusyChange(true)
     try {
       await revoke.mutateAsync({ id: user.id, role, currentPassword })
-      toast.success(t('administrators.revokeDialog.done', { name: user.name }))
-      onClose()
     } catch (error) {
+      submitting.current = false
+      setPending(false)
       if (isApiError(error, 'validation')) {
         const passwordError = error.fieldErrors.current_password?.[0]
         if (passwordError) form.setError('currentPassword', { message: passwordError }, { shouldFocus: true })
@@ -70,11 +71,12 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
         toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
         onClose()
       }
+      return
     } finally {
-      submitting.current = false
-      setPending(false)
       onBusyChange(false)
     }
+    toast.success(t('administrators.revokeDialog.done', { name: user.name }))
+    onClose()
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
@@ -131,18 +133,26 @@ const RevokeAdminDialog = ({ user, onClose }: RevokeAdminDialogProps) => {
   const [last, setLast] = useState<ManagedUser | null>(user)
   if (user !== null && user !== last) setLast(user)
   const shown = user ?? last
+  // Conta le aperture: ogni apertura rimonta il corpo (anche se avviene durante l'animazione di chiusura)
+  const open = user !== null
+  const [session, setSession] = useState(0)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setSession(session + 1)
+  }
   // Durante l'invio il dialog non si chiude (Escape, clic fuori)
   const [busy, setBusy] = useState(false)
 
   return (
-    <AlertDialog open={user !== null} onOpenChange={(next) => !next && !busy && onClose()}>
+    <AlertDialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
       <AlertDialogContent
         onCloseAutoFocus={(event) => {
           event.preventDefault()
           focusTrigger(REVOKE_TRIGGER_ATTRIBUTE, shown?.id ?? null)
         }}
       >
-        {shown && <RevokeBody key={shown.id} user={shown} onClose={onClose} onBusyChange={setBusy} />}
+        {shown && <RevokeBody key={`${session}-${shown.id}`} user={shown} onClose={onClose} onBusyChange={setBusy} />}
       </AlertDialogContent>
     </AlertDialog>
   )

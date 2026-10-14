@@ -1,9 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import AdministratorsPage from '@/features/administrators/pages/AdministratorsPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, userListResponse } from '@/test/usersFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -87,6 +88,33 @@ describe('AdministratorsPage', () => {
     expect(body).toEqual({ user_id: 7, current_password: 'password' })
   })
 
+  it('never promotes twice while the dialog is closing', async () => {
+    holdDialogExitAnimation()
+    admins()
+    let calls = 0
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([managedUser({ id: 7, name: 'Marco Bianchi' })]))),
+      http.post('/api/administrators', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ id: 7, name: 'Marco Bianchi', role: 'admin' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    await user.click(await within(dialog).findByRole('radio', { name: /Marco Bianchi/ }))
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Rendi amministratore' }))
+    expect(await screen.findByText('Marco Bianchi ora è amministratore.')).toBeInTheDocument()
+    // Durante l'animazione di chiusura il form è ancora lì: un Invio non deve ripetere la promozione
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
+  })
+
   it('requires picking a user before sending', async () => {
     admins()
     server.use(http.get('/api/users', () => HttpResponse.json(userListResponse([managedUser({ id: 7 })]))))
@@ -120,6 +148,58 @@ describe('AdministratorsPage', () => {
 
     expect(await screen.findByText('Bruno Admin non è più amministratore.')).toBeInTheDocument()
     expect(body).toEqual({ role: 'manager', current_password: 'password' })
+  })
+
+  it('never revokes twice while the dialog is closing', async () => {
+    holdDialogExitAnimation()
+    admins()
+    let calls = 0
+    server.use(
+      http.delete('/api/administrators/3', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ id: 3, name: 'Bruno Admin', role: 'employee' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Revoca Bruno Admin' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Revocare il ruolo di amministratore a Bruno Admin?' })
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' }))
+    expect(await screen.findByText('Bruno Admin non è più amministratore.')).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
+  })
+
+  it('accepts a new revoke when the dialog is reopened before the closing animation ends', async () => {
+    holdDialogExitAnimation()
+    admins()
+    let calls = 0
+    server.use(
+      http.delete('/api/administrators/3', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ id: 3, name: 'Bruno Admin', role: 'employee' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Revoca Bruno Admin' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Revocare il ruolo di amministratore a Bruno Admin?' })
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' }))
+    await screen.findByText('Bruno Admin non è più amministratore.')
+    // Riapertura mentre il dialog si sta ancora chiudendo: la pagina sotto è ancora nascosta e senza puntatore
+    const pageButton = screen.getAllByRole('button', { name: 'Revoca Bruno Admin', hidden: true }).find((button) => !dialog.contains(button))
+    if (!pageButton) throw new Error('Pulsante di revoca della pagina mancante')
+    fireEvent.click(pageButton)
+    await waitFor(() => expect(dialog).toHaveAttribute('data-state', 'open'))
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' }))
+
+    await waitFor(() => expect(calls).toBe(2))
   })
 
   it('shows the lockout after too many wrong passwords', async () => {

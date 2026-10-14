@@ -37,7 +37,8 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
   const [userId, setUserId] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [locked, setLocked] = useState(false)
-  // Evita il doppio invio: letto solo nei gestori di evento
+  // Evita il doppio invio: letto solo nei gestori di evento. Dopo la promozione riuscita resta attivo fino allo
+  // smontaggio: durante l'animazione di chiusura il form è ancora nel DOM (il corpo si rimonta a ogni apertura)
   const submitting = useRef(false)
   const candidates = useManagedUsers({ status: 'active', search, page: 1 })
   const people = (candidates.data?.data ?? []).filter((person) => person.role !== 'admin')
@@ -60,9 +61,8 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
     const person = people.find((item) => String(item.id) === userId)
     try {
       await grant.mutateAsync({ userId: Number(userId), currentPassword })
-      toast.success(t('administrators.grant.done', { name: person?.name ?? '' }))
-      onDone()
     } catch (error) {
+      submitting.current = false
       if (isApiError(error, 'validation')) {
         const passwordError = error.fieldErrors.current_password?.[0]
         const userError = error.fieldErrors.user_id?.[0]
@@ -75,10 +75,12 @@ const GrantBody = ({ onDone, onBusyChange }: GrantBodyProps) => {
       } else {
         toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
       }
+      return
     } finally {
-      submitting.current = false
       onBusyChange(false)
     }
+    toast.success(t('administrators.grant.done', { name: person?.name ?? '' }))
+    onDone()
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -174,9 +176,18 @@ const GrantAdminDialog = () => {
   const [open, setOpen] = useState(false)
   // Durante l'invio il dialog non si chiude (Escape, clic fuori): un errore non va perso
   const [busy, setBusy] = useState(false)
+  // Conta le aperture: ogni apertura rimonta il corpo (anche se avviene durante l'animazione di chiusura)
+  const [session, setSession] = useState(0)
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next || !busy) && setOpen(next)}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && busy) return
+        if (next) setSession(session + 1)
+        setOpen(next)
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <ShieldPlus aria-hidden="true" />
@@ -188,7 +199,7 @@ const GrantAdminDialog = () => {
           <DialogTitle>{t('administrators.grant.title')}</DialogTitle>
           <DialogDescription>{t('administrators.grant.description')}</DialogDescription>
         </DialogHeader>
-        <GrantBody onDone={() => setOpen(false)} onBusyChange={setBusy} />
+        <GrantBody key={session} onDone={() => setOpen(false)} onBusyChange={setBusy} />
       </DialogContent>
     </Dialog>
   )

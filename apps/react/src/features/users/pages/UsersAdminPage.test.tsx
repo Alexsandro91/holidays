@@ -1,9 +1,11 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
+import ChangeRoleDialog from '@/features/users/components/ChangeRoleDialog'
 import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, userListResponse } from '@/test/usersFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -62,6 +64,41 @@ describe('UsersAdminPage', () => {
     expect(listCalls).toBeGreaterThan(1)
   })
 
+  it('never sends the invitation twice and accepts a new one after reopening the dialog', async () => {
+    holdDialogExitAnimation()
+    listing()
+    let calls = 0
+    server.use(
+      http.post('/api/users', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/users'])
+    const invite = async (email: string) => {
+      const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
+      await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+      await user.type(within(dialog).getByLabelText('Email aziendale'), email)
+      await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
+      return dialog
+    }
+
+    await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
+    const dialog = await invite('sara@holidays.test')
+    await screen.findByText('Invito inviato a sara@holidays.test.')
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    expect(calls).toBe(1)
+
+    // Riaperto, il dialog accetta un nuovo invito
+    fireEvent.click(screen.getByRole('button', { name: 'Invita utente', hidden: true }))
+    await waitFor(() => expect(dialog).toHaveAttribute('data-state', 'open'))
+    await invite('luca@holidays.test')
+
+    await waitFor(() => expect(calls).toBe(2))
+  })
+
   it('shows only the actions that fit the row', async () => {
     listing([managedUser({ status: 'invited', name: 'Luca Ferrari' })])
     const { user } = renderRoutes(routes, ['/admin/users'])
@@ -92,6 +129,31 @@ describe('UsersAdminPage', () => {
 
     expect(await screen.findByText('Marco Bianchi è stato disattivato.')).toBeInTheDocument()
     expect(called).toBe(true)
+  })
+
+  it('never disables twice while the confirmation is closing', async () => {
+    holdDialogExitAnimation()
+    listing([managedUser()])
+    let calls = 0
+    server.use(
+      http.post('/api/users/2/disable', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ status: 'disabled' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Disattivare Marco Bianchi?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Disattiva Marco Bianchi' }))
+    expect(await screen.findByText('Marco Bianchi è stato disattivato.')).toBeInTheDocument()
+    // Durante l'animazione di chiusura il pulsante è ancora lì: un secondo Invio non deve ripartire
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
   })
 
   it('asks for the password to disable an admin and shows a wrong password under the field', async () => {
@@ -132,6 +194,27 @@ describe('UsersAdminPage', () => {
 
     expect(await screen.findByText('Ruolo di Marco Bianchi aggiornato.')).toBeInTheDocument()
     expect(body).toEqual({ role: 'manager' })
+  })
+
+  it('never saves the role twice before the dialog closes', async () => {
+    let calls = 0
+    server.use(
+      http.patch('/api/users/2/role', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ role: 'manager', role_label: 'Responsabile' }) })
+      }),
+    )
+    // onClose che non chiude: resta aperta la finestra tra la risposta positiva e la chiusura
+    const { user } = renderRoutes([{ path: '/', element: <ChangeRoleDialog user={managedUser()} onClose={() => undefined} /> }])
+
+    const dialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
+    await screen.findByText('Ruolo di Marco Bianchi aggiornato.')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
   })
 
   it('keeps "Salva ruolo" disabled until a different role is chosen', async () => {

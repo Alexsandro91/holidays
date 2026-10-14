@@ -43,7 +43,8 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
   const form = useForm<PasswordValues>({ defaultValues: { currentPassword: '' } })
   const { errors } = form.formState
   const [pending, setPending] = useState(false)
-  // Evita il doppio invio: letto solo nei gestori di evento
+  // Evita il doppio invio: letto solo nei gestori di evento. Dopo l'azione riuscita resta attivo fino allo smontaggio:
+  // durante l'animazione di chiusura il form è ancora nel DOM (il corpo si rimonta a ogni apertura)
   const submitting = useRef(false)
 
   const run = async (currentPassword: string) => {
@@ -66,9 +67,9 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
     onBusyChange(true)
     try {
       await run(currentPassword)
-      toast.success(t(`users.confirm.${action}.done`, { name: user.name }))
-      onClose()
     } catch (error) {
+      submitting.current = false
+      setPending(false)
       const passwordError = isApiError(error, 'validation') ? error.fieldErrors.current_password?.[0] : undefined
       if (passwordError) {
         form.setError('currentPassword', { message: passwordError }, { shouldFocus: true })
@@ -77,11 +78,12 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
         toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
         onClose()
       }
+      return
     } finally {
-      submitting.current = false
-      setPending(false)
       onBusyChange(false)
     }
+    toast.success(t(`users.confirm.${action}.done`, { name: user.name }))
+    onClose()
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
@@ -130,6 +132,13 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
   const [last, setLast] = useState<{ user: ManagedUser; action: ConfirmAction } | null>(null)
   if (user !== null && action !== null && (last?.user !== user || last.action !== action)) setLast({ user, action })
   const shown = open ? { user, action } : last
+  // Conta le aperture: ogni apertura rimonta il corpo (anche se avviene durante l'animazione di chiusura)
+  const [session, setSession] = useState(0)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setSession(session + 1)
+  }
   // Durante l'invio il dialog non si chiude (Escape, clic fuori): un errore sulla password non va perso
   const [busy, setBusy] = useState(false)
 
@@ -141,7 +150,7 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
           focusTrigger(USER_TRIGGER_ATTRIBUTE, shown?.user.id ?? null)
         }}
       >
-        {shown && <ConfirmBody key={`${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}
+        {shown && <ConfirmBody key={`${session}-${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}
       </AlertDialogContent>
     </AlertDialog>
   )

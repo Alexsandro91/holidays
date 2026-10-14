@@ -1,5 +1,5 @@
 import { LoaderCircle } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -32,22 +32,28 @@ const RoleForm = ({ user, onClose, onBusyChange }: RoleFormProps) => {
   const [role, setRole] = useState<ManagedRole>(user.role === 'manager' ? 'manager' : 'employee')
   // Stesso ruolo: niente richiesta (e niente evento role_changed inutile)
   const unchanged = role === user.role
+  // Evita il doppio invio: letto solo nei gestori di evento. Dopo il salvataggio resta attivo fino allo smontaggio
+  // (il form si rimonta a ogni apertura del dialog)
+  const submitting = useRef(false)
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (changeRole.isPending || unchanged) return
+    if (submitting.current || unchanged) return
+    submitting.current = true
     onBusyChange(true)
     try {
       await changeRole.mutateAsync({ id: user.id, role })
-      toast.success(t('users.roleDialog.done', { name: user.name }))
-      onClose()
     } catch (error) {
+      submitting.current = false
       // 403/409 e simili: il messaggio del server è già tradotto
       if (isApiError(error, 'network')) toast.error(t('errors.network'))
       else toast.error(isApiError(error) ? error.message : t('errors.generic'))
+      return
     } finally {
       onBusyChange(false)
     }
+    toast.success(t('users.roleDialog.done', { name: user.name }))
+    onClose()
   }
 
   return (

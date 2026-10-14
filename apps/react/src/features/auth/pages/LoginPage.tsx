@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { TFunction } from 'i18next'
 import { ArrowRight, CircleAlert, Clock, LoaderCircle } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { type FormEvent, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
@@ -39,6 +39,8 @@ const LoginPage = () => {
   const [formError, setFormError] = useState<string | null>(null)
   // secondi iniziali del blocco: testo costante per gli screen reader, così non è riannunciato a ogni tick
   const [lockedFor, setLockedFor] = useState(0)
+  // Evita il doppio invio (doppio click, Invio ripetuto): letto solo nei gestori di evento
+  const submitting = useRef(false)
   const schema = useMemo(() => createLoginSchema(t), [t])
   const initialState = emailStateSchema.safeParse(location.state)
   const form = useForm<LoginValues>({
@@ -50,12 +52,14 @@ const LoginPage = () => {
   const notice = searchParams.get('reason')
   const redirect = searchParams.get('redirect')
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const submit = async (values: LoginValues) => {
+    if (submitting.current) return
+    submitting.current = true
     setFormError(null)
     try {
       await login.mutateAsync(values)
-      navigate({ pathname: '/login/verify', search: redirect ? `?${new URLSearchParams({ redirect }).toString()}` : '' }, { state: { email: values.email } })
     } catch (error) {
+      submitting.current = false
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60
         setLockedFor(seconds)
@@ -70,8 +74,14 @@ const LoginPage = () => {
       }
       // rete o server: la password resta com'è, il problema non sono le credenziali
       setFormError(isApiError(error, 'network') ? t('errors.network') : t('errors.generic'))
+      return
     }
-  })
+    // Credenziali accettate: submitting resta true fino allo smontaggio della pagina. La navigazione non è immediata
+    // e un secondo invio manderebbe un nuovo codice, invalidando quello appena ricevuto
+    navigate({ pathname: '/login/verify', search: redirect ? `?${new URLSearchParams({ redirect }).toString()}` : '' }, { state: { email: values.email } })
+  }
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
 
   return (
     <>

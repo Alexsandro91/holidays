@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
+import { toast } from 'sonner'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import i18n from '@/lib/i18n'
 import { server } from '@/test/server'
@@ -40,6 +41,8 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 
 afterEach(async () => {
   cleanup()
+  // Sonner tiene i toast in uno stato globale e li ripropone al Toaster del test successivo: si chiudono tutti
+  toast.dismiss()
   server.resetHandlers()
   document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
   document.documentElement.className = ''

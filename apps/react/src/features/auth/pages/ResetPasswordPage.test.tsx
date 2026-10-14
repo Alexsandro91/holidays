@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import type { UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
@@ -52,6 +52,27 @@ describe('ResetPasswordPage', () => {
     expect(router.state.location.state).toEqual({ email: 'giulia+hr@example.test', passwordReset: true })
     // replace: tornando indietro non si ripropone il form con il link già usato
     expect(router.state.historyAction).toBe('REPLACE')
+  })
+
+  it('never sends the new password again while the code page is loading', async () => {
+    let calls = 0
+    server.use(
+      http.post('/api/auth/reset-password', () => {
+        calls += 1
+        return HttpResponse.json(DONE)
+      }),
+    )
+    // La pagina del codice resta in caricamento: tra la risposta positiva e il cambio pagina c'è una finestra
+    const slowRoutes: RouteObject[] = [...routes.filter((route) => route.path !== '/login/verify'), { path: '/login/verify', loader: () => new Promise(() => undefined), element: <p>verify-page</p> }]
+    const { user, router } = renderRoutes(slowRoutes, [LINK])
+
+    await fillPasswords(user)
+    await user.click(screen.getByRole('button', { name: 'Salva la password' }))
+    await waitFor(() => expect(router.state.navigation.state).toBe('loading'))
+    await user.click(screen.getByRole('button', { name: 'Salva la password' }))
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
   })
 
   it('asks to confirm the password with the right hints', async () => {

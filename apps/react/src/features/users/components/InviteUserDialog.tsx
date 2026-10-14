@@ -33,7 +33,8 @@ const InviteUserDialog = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const invite = useInviteUser()
-  // Evita il doppio invio: letto solo nei gestori di evento
+  // Evita il doppio invio: letto solo nei gestori di evento. Dopo l'invito riuscito resta attivo finché il dialog
+  // non si riapre: durante l'animazione di chiusura il form è ancora nel DOM
   const submitting = useRef(false)
   const schema = useMemo(() => createInviteSchema(t), [t])
   const form = useForm<InviteValues>({ resolver: zodResolver(schema), defaultValues: { name: '', email: '', role: 'employee' } })
@@ -44,10 +45,8 @@ const InviteUserDialog = () => {
     submitting.current = true
     try {
       await invite.mutateAsync(values)
-      toast.success(t('users.inviteDialog.done', { email: values.email }))
-      setOpen(false)
-      form.reset()
     } catch (error) {
+      submitting.current = false
       if (isApiError(error, 'validation')) {
         const name = error.fieldErrors.name?.[0]
         const email = error.fieldErrors.email?.[0]
@@ -62,9 +61,11 @@ const InviteUserDialog = () => {
         return
       }
       toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error, 'throttled') ? error.message : t('errors.generic'))
-    } finally {
-      submitting.current = false
+      return
     }
+    toast.success(t('users.inviteDialog.done', { email: values.email }))
+    setOpen(false)
+    form.reset()
   }
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
@@ -75,6 +76,8 @@ const InviteUserDialog = () => {
       onOpenChange={(next) => {
         // Durante l'invio il dialog non si chiude (Escape, clic fuori): l'esito non va perso
         if (!next && invite.isPending) return
+        // Nuova apertura: si può inviare un nuovo invito
+        if (next) submitting.current = false
         setOpen(next)
         // Chiudendo si scarta quanto scritto, errori compresi
         if (!next) form.reset()

@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -52,6 +52,29 @@ describe('LoginPage', () => {
     expect(body).toEqual({ email: 'admin@holidays.test', password: 'segreta' })
     expect(router.state.location.state).toEqual({ email: 'admin@holidays.test' })
     expect(router.state.location.search).toBe('?redirect=%2Fadmin')
+  })
+
+  it('never sends the credentials again while the code page is loading', async () => {
+    let calls = 0
+    server.use(
+      http.post('/api/auth/login', () => {
+        calls += 1
+        return HttpResponse.json({ two_factor: true })
+      }),
+    )
+    // La pagina del codice resta in caricamento: tra la risposta positiva e il cambio pagina c'è una finestra
+    const slowRoutes: RouteObject[] = [...routes.filter((route) => route.path !== '/login/verify'), { path: '/login/verify', loader: () => new Promise(() => undefined), element: <p>verify-page</p> }]
+    const { user, router } = renderRoutes(slowRoutes, ['/login'])
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.type(screen.getByLabelText('Password'), 'segreta')
+    await user.click(screen.getByRole('button', { name: 'Continua' }))
+    await waitFor(() => expect(router.state.navigation.state).toBe('loading'))
+    // Un secondo login invierebbe un nuovo codice e il primo smetterebbe di valere
+    await user.type(screen.getByLabelText('Password'), '{Enter}')
+    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+
+    expect(calls).toBe(1)
   })
 
   it('shows a generic error and clears the password on wrong credentials', async () => {
