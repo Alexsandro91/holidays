@@ -38,6 +38,8 @@ const VerifyCodePage = () => {
   const resend = useResendCode()
   const resumeSession = useResumeSession()
   const cooldown = useCountdown(RESEND_COOLDOWN_SECONDS)
+  // Secondi iniziali dell'attesa: nome costante del pulsante per gli screen reader, che non va riannunciato a ogni tick
+  const [cooldownFor, setCooldownFor] = useState(RESEND_COOLDOWN_SECONDS)
   // Blocco dopo un 429 sulla verifica: niente invii finché non passano i secondi di Retry-After
   const lock = useCountdown()
   const [code, setCode] = useState('')
@@ -112,6 +114,7 @@ const VerifyCodePage = () => {
       await resend.mutateAsync()
       setCode('')
       setInfo(t('verify.resent'))
+      setCooldownFor(RESEND_COOLDOWN_SECONDS)
       cooldown.start(RESEND_COOLDOWN_SECONDS)
       codeInput.current?.focus()
     } catch (caught) {
@@ -127,7 +130,9 @@ const VerifyCodePage = () => {
         return
       }
       if (isApiError(caught, 'throttled')) {
-        cooldown.start(caught.retryAfter ?? RESEND_COOLDOWN_SECONDS)
+        const seconds = caught.retryAfter ?? RESEND_COOLDOWN_SECONDS
+        setCooldownFor(seconds)
+        cooldown.start(seconds)
         return
       }
       // Errore del nuovo invio, non del codice: va nella regione di stato e il campo resta valido
@@ -223,7 +228,14 @@ const VerifyCodePage = () => {
             onClick={() => void onResend()}
           >
             <RotateCw aria-hidden="true" />
-            {cooldown.secondsLeft > 0 ? t('verify.resendIn', { count: cooldown.secondsLeft }) : t('verify.resend')}
+            {cooldown.secondsLeft > 0 ? (
+              <>
+                <span className="sr-only">{t('verify.resendWait', { count: cooldownFor })}</span>
+                <span aria-hidden="true">{t('verify.resendIn', { count: cooldown.secondsLeft })}</span>
+              </>
+            ) : (
+              t('verify.resend')
+            )}
           </Button>
         </div>
         {/* Unica live region: il messaggio è un elemento semplice con lo stile di Alert, senza role="alert" */}

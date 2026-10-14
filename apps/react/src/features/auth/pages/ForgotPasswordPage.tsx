@@ -63,6 +63,7 @@ const ForgotPasswordPage = () => {
     try {
       await forgot.mutateAsync(email)
       setSentTo(email)
+      // L'attesa dopo un invio è sempre la stessa: il nome del pulsante per gli screen reader resta costante
       cooldown.start(RESEND_COOLDOWN_SECONDS)
       if (isResend) setInfo(t('forgot.resent'))
     } catch (error) {
@@ -138,7 +139,14 @@ const ForgotPasswordPage = () => {
             }}
           >
             <RotateCw aria-hidden="true" />
-            {cooldown.secondsLeft > 0 ? t('forgot.resendIn', { count: cooldown.secondsLeft }) : t('forgot.resend')}
+            {cooldown.secondsLeft > 0 ? (
+              <>
+                <span className="sr-only">{t('forgot.resendWait', { count: RESEND_COOLDOWN_SECONDS })}</span>
+                <span aria-hidden="true">{t('forgot.resendIn', { count: cooldown.secondsLeft })}</span>
+              </>
+            ) : (
+              t('forgot.resend')
+            )}
           </Button>
           {backToLogin}
           {/* Unica live region: il messaggio ha lo stile di Alert, senza role="alert" */}

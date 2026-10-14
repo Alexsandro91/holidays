@@ -89,7 +89,7 @@ describe('ForgotPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: 'Invia il link' }))
 
     // il broker ignora un nuovo link entro 60 s: il pulsante non deve promettere un'email che non arriva
-    const resend = await screen.findByRole('button', { name: /Nuovo link tra \d+ s/ })
+    const resend = await screen.findByRole('button', { name: /Nuovo link disponibile tra 60 secondi/ })
     expectBlockedButFocusable(resend)
     expect(calls).toBe(1)
   })
@@ -103,7 +103,7 @@ describe('ForgotPasswordPage', () => {
     const { user } = renderRoutes(routes, ['/forgot-password'], { advanceTimers: vi.advanceTimersByTime })
     await user.type(await screen.findByLabelText('Email'), 'giulia@example.test')
     await user.click(screen.getByRole('button', { name: 'Invia il link' }))
-    await screen.findByRole('button', { name: /Nuovo link tra/ })
+    await screen.findByRole('button', { name: /Nuovo link disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
@@ -113,7 +113,7 @@ describe('ForgotPasswordPage', () => {
     expect(await screen.findByText('Link inviato di nuovo. Usa quello dell’ultima email: il precedente non vale più.')).toBeInTheDocument()
     expect(calls).toBe(2)
     // Riparte il conto alla rovescia: il pulsante resta focalizzato
-    const resend = screen.getByRole('button', { name: /Nuovo link tra/ })
+    const resend = screen.getByRole('button', { name: /Nuovo link disponibile tra/ })
     expectBlockedButFocusable(resend)
     expect(resend).toHaveFocus()
   })
@@ -132,7 +132,7 @@ describe('ForgotPasswordPage', () => {
     const { user } = renderRoutes(routes, ['/forgot-password'], { advanceTimers: vi.advanceTimersByTime })
     await user.type(await screen.findByLabelText('Email'), 'giulia@example.test')
     await user.click(screen.getByRole('button', { name: 'Invia il link' }))
-    await screen.findByRole('button', { name: /Nuovo link tra/ })
+    await screen.findByRole('button', { name: /Nuovo link disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
@@ -157,7 +157,7 @@ describe('ForgotPasswordPage', () => {
     const { user } = renderRoutes(routes, ['/forgot-password'], { advanceTimers: vi.advanceTimersByTime })
     await user.type(await screen.findByLabelText('Email'), 'giulia@example.test')
     await user.click(screen.getByRole('button', { name: 'Invia il link' }))
-    await screen.findByRole('button', { name: /Nuovo link tra/ })
+    await screen.findByRole('button', { name: /Nuovo link disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)

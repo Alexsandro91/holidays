@@ -167,7 +167,7 @@ describe('VerifyCodePage', () => {
     server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'ok' }, { status: 202 })))
     const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
 
-    expectBlockedButFocusable(await screen.findByRole('button', { name: /Nuovo codice tra/ }))
+    expectBlockedButFocusable(await screen.findByRole('button', { name: /Nuovo codice disponibile tra/ }))
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
@@ -182,23 +182,37 @@ describe('VerifyCodePage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'Too Many Attempts.' }, { status: 429, headers: { 'Retry-After': '45' } })))
     const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
-    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+    await screen.findByRole('button', { name: /Nuovo codice disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
     })
     await user.click(screen.getByRole('button', { name: 'Invia un nuovo codice' }))
 
-    const resend = await screen.findByRole('button', { name: /Nuovo codice tra 45 s/ })
+    const resend = await screen.findByRole('button', { name: 'Nuovo codice disponibile tra 45 secondi' })
     expectBlockedButFocusable(resend)
     expect(resend).toHaveFocus()
+  })
+
+  it('keeps a constant accessible name on the resend button while the countdown runs', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
+    const resend = await screen.findByRole('button', { name: 'Nuovo codice disponibile tra 60 secondi' })
+
+    await act(async () => {
+      vi.advanceTimersByTime(5_000)
+    })
+
+    // Il conto alla rovescia visibile scorre, il nome letto dagli screen reader no (niente annuncio a ogni secondo)
+    expect(resend).toHaveTextContent(/Nuovo codice tra 5\d s/)
+    expect(resend).toHaveAccessibleName('Nuovo codice disponibile tra 60 secondi')
   })
 
   it('stops offering new codes when the limit is reached', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'x', meta: { limit_reached: true } }, { status: 429 })))
     const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
-    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+    await screen.findByRole('button', { name: /Nuovo codice disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
@@ -255,7 +269,7 @@ describe('VerifyCodePage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.json({ message: 'ok' }, { status: 202 })))
     const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
-    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+    await screen.findByRole('button', { name: /Nuovo codice disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
@@ -272,7 +286,7 @@ describe('VerifyCodePage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     server.use(http.post('/api/auth/two-factor/resend', () => HttpResponse.error()))
     const { user } = renderRoutes(routes, [entry], { advanceTimers: vi.advanceTimersByTime })
-    await screen.findByRole('button', { name: /Nuovo codice tra/ })
+    await screen.findByRole('button', { name: /Nuovo codice disponibile tra/ })
 
     await act(async () => {
       vi.advanceTimersByTime(61_000)
