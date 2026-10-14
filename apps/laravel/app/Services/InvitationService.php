@@ -9,6 +9,7 @@ use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Services\Concerns\RechecksUserPermissions;
+use App\Services\Concerns\RejectsDuplicateEmail;
 use App\Support\Translate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpKernel\Exception\GoneHttpException;
  */
 final class InvitationService
 {
-    use RechecksUserPermissions;
+    use RechecksUserPermissions, RejectsDuplicateEmail;
 
     public const TTL_HOURS = 72;
 
@@ -43,12 +44,12 @@ final class InvitationService
             throw new InvalidArgumentException('Admins are invited only through UserManagementService::inviteAdmin().');
         }
 
-        return DB::transaction(function () use ($name, $email, $role, $inviter, $request): User {
+        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($name, $email, $role, $inviter, $request): User {
             $user = $this->createInvited($name, $email, $role, $inviter);
             $this->events->log(AuthEventType::InvitationSent, $request, $user, $inviter);
 
             return $user;
-        });
+        }));
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Mail\AdminChangeMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Services\Concerns\RechecksUserPermissions;
+use App\Services\Concerns\RejectsDuplicateEmail;
 use App\Support\AuthSession;
 use App\Support\Translate;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,7 +29,7 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
  */
 final class UserManagementService
 {
-    use RechecksUserPermissions;
+    use RechecksUserPermissions, RejectsDuplicateEmail;
 
     public function __construct(
         private readonly AuthEventLogger $events,
@@ -145,13 +146,13 @@ final class UserManagementService
      */
     public function inviteAdmin(string $name, string $email, User $actor, Request $request): User
     {
-        return DB::transaction(function () use ($name, $email, $actor, $request): User {
+        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($name, $email, $actor, $request): User {
             $this->lockActiveAdmins($actor);
             $invited = $this->invitations->inviteAdmin($name, $email, $actor, $request);
             $this->notifyAdmins(AdminChange::Invited, $invited, $actor, notifyTarget: false);
 
             return $invited;
-        });
+        }));
     }
 
     /**

@@ -16,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -256,5 +257,29 @@ class InviteAdminTest extends TestCase
             $this->assertDatabaseMissing('users', ['email' => 'nora@example.test']);
             Mail::assertNothingQueued();
         }
+    }
+
+    public function test_two_parallel_invitations_with_the_same_email_give_422_not_500(): void
+    {
+        // La seconda richiesta ha superato la validazione prima che la prima salvasse l'utente
+        User::factory()->create(['email' => 'nora@example.test']);
+        $calls = [
+            'invito admin' => fn () => app(UserManagementService::class)->inviteAdmin('Nora Neri', 'nora@example.test', $this->admin, Request::create('/')),
+            'invito normale' => fn () => app(InvitationService::class)->invite('Nora Neri', 'nora@example.test', Role::Employee, $this->admin, Request::create('/')),
+        ];
+
+        foreach ($calls as $label => $call) {
+            try {
+                $call();
+                $this->fail("{$label}: expected ValidationException");
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('email', $exception->errors(), $label);
+            }
+        }
+
+        $this->assertSame(1, User::query()->where('email', 'nora@example.test')->count());
+        $this->assertDatabaseCount('auth_events', 0);
+        $this->assertDatabaseCount('invitations', 0);
+        Mail::assertNothingQueued();
     }
 }
