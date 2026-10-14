@@ -3,6 +3,7 @@ import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import AdministratorsPage from '@/features/administrators/pages/AdministratorsPage'
+import type { User } from '@/features/auth/api'
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
@@ -10,6 +11,7 @@ import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
+import { userQueryKey } from '@/lib/queryKeys'
 
 const routes: RouteObject[] = [{ path: '/admin/administrators', element: <AdministratorsPage /> }]
 
@@ -761,7 +763,9 @@ describe('AdministratorsPage', () => {
         return HttpResponse.json({ data: { ...me, last_name: 'Amministratrice', name: 'Anna Amministratrice' } })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/administrators'])
+    const { user, queryClient } = renderRoutes(routes, ['/admin/administrators'])
+    const current: User = { id: 1, name: 'Anna Admin', email: me.email, role: 'admin', role_label: 'HR / Admin', status: 'active', locale: 'it', last_login_at: null }
+    queryClient.setQueryData(userQueryKey, current)
 
     await user.click(await screen.findByRole('button', { name: 'Modifica Anna Admin' }))
     const dialog = await screen.findByRole('dialog', { name: 'Modifica Anna Admin' })
@@ -771,6 +775,8 @@ describe('AdministratorsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
 
     await waitFor(() => expect(body).toEqual({ first_name: 'Anna', last_name: 'Amministratrice' }))
+    // Il nome nel menu account (sidebar) si aggiorna subito, senza ricaricare la pagina
+    await waitFor(() => expect(queryClient.getQueryData<User>(userQueryKey)?.name).toBe('Anna Amministratrice'))
   })
 
   it('offers edit in every state, next to the actions of that state', async () => {

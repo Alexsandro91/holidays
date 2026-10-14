@@ -1,7 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { request, requestData } from '@/lib/api'
-import { adminQueryKey } from '@/lib/queryKeys'
+import type { User } from '@/features/auth/api'
+import { adminQueryKey, userQueryKey } from '@/lib/queryKeys'
 
 export const managedUserSchema = z.object({
   id: z.number(),
@@ -121,10 +122,11 @@ export interface InviteUserInput {
 const userResourceSchema = z.object({ data: managedUserSchema })
 
 /** Dopo ogni modifica si ricaricano tutte le query admin (lista utenti, amministratori, conteggi). */
-const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) => {
+const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>, onSuccess?: (result: TResult) => void) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,
+    onSuccess,
     // Variabili (password di conferma comprese) fuori dalla cache appena il dialog si chiude
     gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
@@ -154,15 +156,22 @@ export interface UpdateUserInput {
   currentPassword?: string
 }
 
-export const useUpdateUser = () =>
-  useAdminMutation(({ id, firstName, lastName, email, currentPassword }: UpdateUserInput) =>
-    requestData('PATCH', `/api/users/${id}`, userResourceSchema, {
-      first_name: firstName,
-      last_name: lastName,
-      ...(email === undefined ? {} : { email }),
-      ...(currentPassword === undefined ? {} : { current_password: currentPassword }),
-    }),
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient()
+  return useAdminMutation(
+    ({ id, firstName, lastName, email, currentPassword }: UpdateUserInput) =>
+      requestData('PATCH', `/api/users/${id}`, userResourceSchema, {
+        first_name: firstName,
+        last_name: lastName,
+        ...(email === undefined ? {} : { email }),
+        ...(currentPassword === undefined ? {} : { current_password: currentPassword }),
+      }),
+    // Modificando sé stessi cambia anche il nome del menu account: si aggiorna subito l'utente corrente
+    ({ data }) => {
+      queryClient.setQueryData<User | null>(userQueryKey, (current) => (current && current.id === data.id ? { ...current, name: data.name } : current))
+    },
   )
+}
 
 export interface UserStatusInput {
   id: number
