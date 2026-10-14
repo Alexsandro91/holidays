@@ -27,31 +27,83 @@ trait ConfirmsCurrentPassword
         return ['required', 'string', 'current_password:web'];
     }
 
+    /** Tentativo prenotato da questa richiesta, da restituire se la password non risulta sbagliata. */
+    private bool $passwordAttemptReserved = false;
+
+    /**
+     * Prenota il tentativo prima di verificare la password: l'incremento è atomico e il valore che restituisce
+     * decide il blocco, così anche richieste parallele non superano i 5 errori. Il campo vuoto non prenota.
+     */
     protected function ensurePasswordNotLockedOut(): void
     {
         $key = $this->passwordFailuresKey();
 
-        if (RateLimiter::tooManyAttempts($key, self::MAX_PASSWORD_FAILURES)) {
-            $seconds = RateLimiter::availableIn($key);
-            $this->logPasswordEvent(AuthEventType::AdminPasswordLocked);
+        if (! $this->filled('current_password')) {
+            if (RateLimiter::tooManyAttempts($key, self::MAX_PASSWORD_FAILURES)) {
+                $this->throwPasswordLockout($key);
+            }
 
-            throw new ThrottleRequestsException(
-                Translate::text('users.password_locked', ['minutes' => (int) ceil($seconds / 60)]),
-                null,
-                ['Retry-After' => (string) $seconds],
-            );
+            return;
         }
+
+        if (RateLimiter::increment($key, self::PASSWORD_FAILURE_DECAY_SECONDS) > self::MAX_PASSWORD_FAILURES) {
+            // Richiesta respinta senza verificare la password: il tentativo non conta
+            RateLimiter::decrement($key, self::PASSWORD_FAILURE_DECAY_SECONDS);
+            $this->throwPasswordLockout($key);
+        }
+
+        $this->passwordAttemptReserved = true;
     }
 
     protected function failedValidation(Validator $validator): void
     {
-        // Contano solo le password sbagliate, non il campo lasciato vuoto
-        if ($this->filled('current_password') && $validator->errors()->has('current_password')) {
-            RateLimiter::hit($this->passwordFailuresKey(), self::PASSWORD_FAILURE_DECAY_SECONDS);
+        if ($this->passwordAttemptReserved && $validator->errors()->has('current_password')) {
+            // Password sbagliata: il tentativo prenotato resta contato
+            $this->passwordAttemptReserved = false;
             $this->logPasswordEvent(AuthEventType::AdminPasswordFailed);
+        } else {
+            $this->releasePasswordAttempt();
         }
 
         parent::failedValidation($validator);
+    }
+
+    protected function passedValidation(): void
+    {
+        $this->releasePasswordAttempt();
+
+        parent::passedValidation();
+    }
+
+    /**
+     * Password giusta: il tentativo prenotato si restituisce, le azioni riuscite non consumano tentativi.
+     */
+    private function releasePasswordAttempt(): void
+    {
+        if (! $this->passwordAttemptReserved) {
+            return;
+        }
+
+        $this->passwordAttemptReserved = false;
+        $key = $this->passwordFailuresKey();
+
+        // Senza errori né altre prenotazioni il contatore sparisce: la finestra di 15 minuti
+        // deve partire dal primo errore, non da un'azione riuscita
+        if (RateLimiter::decrement($key, self::PASSWORD_FAILURE_DECAY_SECONDS) <= 0) {
+            RateLimiter::clear($key);
+        }
+    }
+
+    private function throwPasswordLockout(string $key): never
+    {
+        $seconds = RateLimiter::availableIn($key);
+        $this->logPasswordEvent(AuthEventType::AdminPasswordLocked);
+
+        throw new ThrottleRequestsException(
+            Translate::text('users.password_locked', ['minutes' => (int) ceil($seconds / 60)]),
+            null,
+            ['Retry-After' => (string) $seconds],
+        );
     }
 
     /**

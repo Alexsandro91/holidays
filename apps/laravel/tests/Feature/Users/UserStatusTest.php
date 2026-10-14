@@ -11,9 +11,11 @@ use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Services\UserManagementService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
@@ -126,6 +128,89 @@ class UserStatusTest extends TestCase
 
         $this->travel(16)->minutes();
         $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertOk();
+    }
+
+    public function test_successful_actions_do_not_use_up_password_attempts(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+        $disable = "/api/users/{$otherAdmin->id}/disable";
+        $enable = "/api/users/{$otherAdmin->id}/enable";
+
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            $this->actingAs($this->admin)->postJson($disable, ['current_password' => 'sbagliata'])->assertUnprocessable();
+        }
+
+        // Le azioni riuscite restituiscono il tentativo prenotato: restano 4 errori
+        for ($round = 0; $round < 3; $round++) {
+            $this->actingAs($this->admin)->postJson($disable, ['current_password' => 'password'])->assertOk();
+            $this->actingAs($this->admin)->postJson($enable, ['current_password' => 'password'])->assertOk();
+        }
+
+        $this->actingAs($this->admin)->postJson($disable, ['current_password' => 'sbagliata'])->assertUnprocessable();
+        $this->actingAs($this->admin)->postJson($disable, ['current_password' => 'password'])->assertTooManyRequests();
+    }
+
+    public function test_an_empty_password_field_does_not_use_up_attempts(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => ''])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('current_password');
+        }
+
+        $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertOk();
+    }
+
+    public function test_the_attempt_is_reserved_before_the_password_is_checked(): void
+    {
+        $otherAdmin = User::factory()->admin()->create();
+        $key = 'admin-password:'.$this->admin->id;
+        $seen = [];
+
+        // Hasher che registra quanti tentativi risultano già contati mentre la password viene verificata:
+        // con richieste parallele il blocco regge solo se il tentativo è prenotato prima della verifica
+        $this->app->instance('hash', new class(app('hash'), function () use (&$seen, $key): void {
+            $seen[] = RateLimiter::attempts($key);
+        }) implements Hasher
+        {
+
+            public function __construct(private readonly Hasher $inner, private readonly \Closure $onCheck) {}
+
+            /** @return array<string, mixed> */
+            public function info($hashedValue): array
+            {
+                return $this->inner->info($hashedValue);
+            }
+
+            /** @param  array<string, mixed>  $options */
+            public function make($value, array $options = []): string
+            {
+                return $this->inner->make($value, $options);
+            }
+
+            /** @param  array<string, mixed>  $options */
+            public function check($value, $hashedValue, array $options = []): bool
+            {
+                ($this->onCheck)();
+
+                return $this->inner->check($value, $hashedValue, $options);
+            }
+
+            /** @param  array<string, mixed>  $options */
+            public function needsRehash($hashedValue, array $options = []): bool
+            {
+                return $this->inner->needsRehash($hashedValue, $options);
+            }
+        });
+
+        $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'sbagliata'])->assertUnprocessable();
+        $this->actingAs($this->admin)->postJson("/api/users/{$otherAdmin->id}/disable", ['current_password' => 'password'])->assertOk();
+
+        $this->assertSame([1, 2], $seen);
+        // L'errore resta contato, il successo ha restituito il suo tentativo
+        $this->assertSame(1, RateLimiter::attempts($key));
     }
 
     public function test_wrong_admin_passwords_and_the_lockout_are_audited(): void
