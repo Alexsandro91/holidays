@@ -32,10 +32,13 @@ const FIELDS: (keyof InviteAdminValues)[] = ['firstName', 'lastName', 'email', '
 interface InviteAdminFormProps {
   onDone: () => void
   onBusyChange: (busy: boolean) => void
+  /** Blocco dopo un 429, condiviso dalle due modalità del dialog (cambiare modalità non lo aggira) */
+  lockNotice: string | null
+  onLock: (message: string) => void
 }
 
 /** Invito di una persona nuova come admin. Si monta a ogni apertura del dialog: campi ed errori ripartono vuoti. */
-const InviteAdminForm = ({ onDone, onBusyChange }: InviteAdminFormProps) => {
+const InviteAdminForm = ({ onDone, onBusyChange, lockNotice, onLock }: InviteAdminFormProps) => {
   const { t } = useTranslation()
   const invite = useInviteAdmin()
   const schema = useMemo(() => createSchema(t), [t])
@@ -43,7 +46,7 @@ const InviteAdminForm = ({ onDone, onBusyChange }: InviteAdminFormProps) => {
   const { errors } = form.formState
   // Messaggio del server mostrato nel dialog (troppi tentativi, errori senza campo)
   const [notice, setNotice] = useState<string | null>(null)
-  const [locked, setLocked] = useState(false)
+  const locked = lockNotice !== null
   // Evita il doppio invio: letto solo nei gestori di evento. Dopo l'invito riuscito resta attivo fino allo smontaggio:
   // durante l'animazione di chiusura il form è ancora nel DOM (il form si rimonta a ogni apertura)
   const submitting = useRef(false)
@@ -73,8 +76,7 @@ const InviteAdminForm = ({ onDone, onBusyChange }: InviteAdminFormProps) => {
         if (first) form.setFocus(first)
         else setNotice(error.message)
       } else if (isApiError(error, 'throttled')) {
-        setNotice(error.message)
-        setLocked(true)
+        onLock(error.message)
       } else {
         // 403 e 409: il messaggio del server è già tradotto
         toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
@@ -147,9 +149,9 @@ const InviteAdminForm = ({ onDone, onBusyChange }: InviteAdminFormProps) => {
           />
           <FieldError id="invite-admin-password-error">{errors.currentPassword?.message}</FieldError>
         </Field>
-        {notice && (
+        {(lockNotice ?? notice) && (
           <Alert variant="destructive" role="alert">
-            <AlertDescription>{notice}</AlertDescription>
+            <AlertDescription>{lockNotice ?? notice}</AlertDescription>
           </Alert>
         )}
       </FieldGroup>

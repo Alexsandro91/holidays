@@ -21,6 +21,8 @@ const GrantAdminDialog = () => {
   const [mode, setMode] = useState<GrantMode>('existing')
   // Durante l'invio il dialog non si chiude (Escape, clic fuori) e la modalità non cambia: un errore non va perso
   const [busy, setBusy] = useState(false)
+  // Blocco dopo un 429 (troppe password sbagliate): vale per le due modalità, si azzera solo a una nuova apertura
+  const [lockNotice, setLockNotice] = useState<string | null>(null)
   // Conta le aperture: ogni apertura rimonta il form (anche se avviene durante l'animazione di chiusura)
   const [openCount, setOpenCount] = useState(0)
 
@@ -32,6 +34,7 @@ const GrantAdminDialog = () => {
         if (next) {
           setOpenCount(openCount + 1)
           setMode('existing')
+          setLockNotice(null)
         }
         setOpen(next)
       }}
@@ -48,8 +51,17 @@ const GrantAdminDialog = () => {
           <DialogDescription>{t('administrators.grant.description')}</DialogDescription>
         </DialogHeader>
         <FieldSet>
-          <FieldLegend variant="label">{t('administrators.grant.mode')}</FieldLegend>
-          <RadioGroup value={mode} onValueChange={(value) => !busy && isMode(value) && setMode(value)} className="flex flex-wrap gap-x-6 gap-y-2">
+          <FieldLegend id="grant-mode-label" variant="label">
+            {t('administrators.grant.mode')}
+          </FieldLegend>
+          {/* Durante l'invio la modalità non cambia: il gruppo è disabilitato, non ignora i clic in silenzio */}
+          <RadioGroup
+            aria-labelledby="grant-mode-label"
+            disabled={busy}
+            value={mode}
+            onValueChange={(value) => isMode(value) && setMode(value)}
+            className="flex flex-wrap gap-x-6 gap-y-2"
+          >
             {MODES.map((item) => (
               <Field key={item} orientation="horizontal" className="w-auto">
                 <RadioGroupItem value={item} id={`grant-mode-${item}`} />
@@ -60,9 +72,9 @@ const GrantAdminDialog = () => {
         </FieldSet>
         {/* Cambiando modalità il form si rimonta: password ed errori non passano da una all'altra */}
         {mode === 'existing' ? (
-          <PromoteExistingForm key={`existing-${openCount}`} onDone={() => setOpen(false)} onBusyChange={setBusy} />
+          <PromoteExistingForm key={`existing-${openCount}`} onDone={() => setOpen(false)} onBusyChange={setBusy} lockNotice={lockNotice} onLock={setLockNotice} />
         ) : (
-          <InviteAdminForm key={`new-${openCount}`} onDone={() => setOpen(false)} onBusyChange={setBusy} />
+          <InviteAdminForm key={`new-${openCount}`} onDone={() => setOpen(false)} onBusyChange={setBusy} lockNotice={lockNotice} onLock={setLockNotice} />
         )}
       </DialogContent>
     </Dialog>

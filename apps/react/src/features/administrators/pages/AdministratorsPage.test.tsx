@@ -496,6 +496,53 @@ describe('AdministratorsPage', () => {
     expect(calls).toBe(1)
   })
 
+  it('names the mode radio group and blocks it while sending', async () => {
+    admins()
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([]))),
+      http.post('/api/administrators/invitations', async () => {
+        await delay('infinite')
+        return HttpResponse.json({}, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    const modes = within(dialog).getByRole('radiogroup', { name: 'Chi vuoi aggiungere' })
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+
+    await waitFor(() => expect(within(modes).getByRole('radio', { name: 'Utente esistente' })).toBeDisabled())
+  })
+
+  it('keeps the lockout after a 429 when switching mode', async () => {
+    admins()
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([managedUser({ id: 7, name: 'Marco Bianchi' })]))),
+      http.post('/api/administrators/invitations', () =>
+        HttpResponse.json({ message: 'Troppi tentativi con la password. Riprova tra 15 minuti.' }, { status: 429, headers: { 'Retry-After': '900' } }),
+      ),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+    await within(dialog).findByText('Troppi tentativi con la password. Riprova tra 15 minuti.')
+
+    await user.click(within(dialog).getByRole('radio', { name: 'Utente esistente' }))
+    expect(within(dialog).getByText('Troppi tentativi con la password. Riprova tra 15 minuti.')).toBeInTheDocument()
+    expectBlockedButFocusable(within(dialog).getByRole('button', { name: 'Rendi amministratore' }))
+    await user.click(within(dialog).getByRole('radio', { name: 'Nuova persona' }))
+    expectBlockedButFocusable(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+  })
+
   it('never invites twice while the dialog is closing', async () => {
     holdDialogExitAnimation()
     admins()

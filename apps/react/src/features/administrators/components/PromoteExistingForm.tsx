@@ -25,10 +25,13 @@ interface GrantValues {
 interface PromoteExistingFormProps {
   onDone: () => void
   onBusyChange: (busy: boolean) => void
+  /** Blocco dopo un 429, condiviso dalle due modalità del dialog (cambiare modalità non lo aggira) */
+  lockNotice: string | null
+  onLock: (message: string) => void
 }
 
 /** Promozione di un utente attivo. Si monta a ogni apertura del dialog: ricerca, scelta e password ripartono da zero. */
-const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps) => {
+const PromoteExistingForm = ({ onDone, onBusyChange, lockNotice, onLock }: PromoteExistingFormProps) => {
   const { t } = useTranslation()
   const grant = useGrantAdmin()
   const form = useForm<GrantValues>({ defaultValues: { userId: '', currentPassword: '' } })
@@ -37,7 +40,7 @@ const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps)
   const [search, setSearch] = useState('')
   const [userId, setUserId] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
-  const [locked, setLocked] = useState(false)
+  const locked = lockNotice !== null
   // Evita il doppio invio: letto solo nei gestori di evento. Dopo la promozione riuscita resta attivo fino allo
   // smontaggio: durante l'animazione di chiusura il form è ancora nel DOM (il corpo si rimonta a ogni apertura)
   const submitting = useRef(false)
@@ -72,8 +75,7 @@ const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps)
         if (passwordError) form.setError('currentPassword', { message: passwordError }, { shouldFocus: true })
         if (!userError && !passwordError) setNotice(error.message)
       } else if (isApiError(error, 'throttled')) {
-        setNotice(error.message)
-        setLocked(true)
+        onLock(error.message)
       } else {
         toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
       }
@@ -169,9 +171,9 @@ const PromoteExistingForm = ({ onDone, onBusyChange }: PromoteExistingFormProps)
           />
           <FieldError id="grant-password-error">{errors.currentPassword?.message}</FieldError>
         </Field>
-        {notice && (
+        {(lockNotice ?? notice) && (
           <Alert variant="destructive" role="alert">
-            <AlertDescription>{notice}</AlertDescription>
+            <AlertDescription>{lockNotice ?? notice}</AlertDescription>
           </Alert>
         )}
       </FieldGroup>
