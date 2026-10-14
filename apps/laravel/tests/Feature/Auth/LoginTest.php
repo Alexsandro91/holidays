@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\UserStatus;
 use App\Mail\LoginCodeMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
@@ -139,6 +140,21 @@ class LoginTest extends TestCase
         $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'wrong-password'])->assertUnprocessable();
 
         $this->assertSame($before, DB::table('users')->where('id', $user->id)->value('password'));
+    }
+
+    public function test_a_disabled_user_with_the_right_password_is_refused_and_not_rehashed(): void
+    {
+        Mail::fake();
+        $user = $this->userWithOutdatedHash();
+        $user->forceFill(['status' => UserStatus::Disabled])->save();
+        $before = DB::table('users')->where('id', $user->id)->value('password');
+
+        $this->postJson('/api/auth/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
+
+        $this->assertSame($before, DB::table('users')->where('id', $user->id)->value('password'));
+        Mail::assertNothingQueued();
     }
 
     public function test_the_rehash_can_be_turned_off_like_in_laravel(): void

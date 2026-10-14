@@ -12,12 +12,20 @@ use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Password dell'admin per le azioni sugli amministratori: dopo 5 errori in 15 minuti le azioni si bloccano (429).
+ *
+ * Attenzione: il trait implementa `passedValidation()` e `failedValidation()` per restituire il tentativo prenotato
+ * da `ensurePasswordNotLockedOut()`. Una FormRequest che li ridefinisce sostituisce in silenzio quelli del trait:
+ * deve chiamare `releasePasswordAttempt()` (e in `failedValidation()` contare l'errore come fa il trait), altrimenti
+ * ogni azione riuscita consuma un tentativo e dopo 5 azioni corrette l'admin resta bloccato.
  */
 trait ConfirmsCurrentPassword
 {
     private const MAX_PASSWORD_FAILURES = 5;
 
     private const PASSWORD_FAILURE_DECAY_SECONDS = 900;
+
+    /** Tentativo prenotato da questa richiesta, da restituire se la password non risulta sbagliata. */
+    private bool $passwordAttemptReserved = false;
 
     /**
      * @return list<string>
@@ -26,9 +34,6 @@ trait ConfirmsCurrentPassword
     {
         return ['required', 'string', 'current_password:web'];
     }
-
-    /** Tentativo prenotato da questa richiesta, da restituire se la password non risulta sbagliata. */
-    private bool $passwordAttemptReserved = false;
 
     /**
      * Prenota il tentativo prima di verificare la password: l'incremento è atomico e il valore che restituisce
@@ -78,7 +83,7 @@ trait ConfirmsCurrentPassword
     /**
      * Password giusta: il tentativo prenotato si restituisce, le azioni riuscite non consumano tentativi.
      */
-    private function releasePasswordAttempt(): void
+    protected function releasePasswordAttempt(): void
     {
         if (! $this->passwordAttemptReserved) {
             return;
