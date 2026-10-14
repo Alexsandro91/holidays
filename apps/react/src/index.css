@@ -14,6 +14,12 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-status-active: var(--status-active);
+  --color-status-active-foreground: var(--status-active-foreground);
+  --color-status-invited: var(--status-invited);
+  --color-status-invited-foreground: var(--status-invited-foreground);
+  --color-status-disabled: var(--status-disabled);
+  --color-status-disabled-foreground: var(--status-disabled-foreground);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -94,9 +100,16 @@
   --sidebar-primary-foreground: hsl(0 0% 100%);
   --sidebar-accent: hsl(176 45% 93%);
   --sidebar-accent-foreground: hsl(177 70% 20%);
-  /* Voce attiva del menu: più piena dell'hover. Testo 6,9:1, barra (--sidebar-primary) 4,7:1 */
-  --sidebar-active: hsl(176 45% 88%);
-  --sidebar-active-foreground: hsl(177 70% 20%);
+  /* Voce attiva del menu nel colore primario: tinta primaria, testo e barra primari (contrasti in themeContrast.test.ts) */
+  --sidebar-active: hsl(177 50% 90%);
+  --sidebar-active-foreground: hsl(177 72% 22%);
+  /* Badge di stato con colore di significato, sempre con il testo: attivo verde, invitato ambra, disattivato grigio */
+  --status-active: hsl(150 45% 90%);
+  --status-active-foreground: hsl(150 62% 24%);
+  --status-invited: hsl(40 90% 90%);
+  --status-invited-foreground: hsl(32 92% 28%);
+  --status-disabled: hsl(185 16% 93%);
+  --status-disabled-foreground: hsl(200 9% 36%);
   --sidebar-border: hsl(190 14% 87%);
   --sidebar-ring: hsl(177 72% 30%);
 }
@@ -137,9 +150,14 @@
   --sidebar-primary-foreground: hsl(200 40% 8%);
   --sidebar-accent: hsl(176 40% 14%);
   --sidebar-accent-foreground: hsl(174 60% 72%);
-  /* Voce attiva del menu: più piena dell'hover. Testo 7,6:1, barra (--sidebar-primary) 5,1:1 */
-  --sidebar-active: hsl(176 40% 18%);
-  --sidebar-active-foreground: hsl(174 60% 72%);
+  --sidebar-active: hsl(176 45% 16%);
+  --sidebar-active-foreground: hsl(174 58% 62%);
+  --status-active: hsl(150 35% 16%);
+  --status-active-foreground: hsl(150 50% 65%);
+  --status-invited: hsl(38 50% 16%);
+  --status-invited-foreground: hsl(38 90% 65%);
+  --status-disabled: hsl(200 16% 15%);
+  --status-disabled-foreground: hsl(190 10% 68%);
   --sidebar-border: hsl(200 14% 20%);
   --sidebar-ring: hsl(174 58% 55%);
 }
