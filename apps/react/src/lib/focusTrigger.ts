@@ -5,6 +5,8 @@
  */
 export const USER_TRIGGER_ATTRIBUTE = 'data-user-actions-trigger'
 export const REVOKE_TRIGGER_ATTRIBUTE = 'data-admin-revoke-trigger'
+/** Reinvia e Annulla degli admin invitati: il focus torna al primo dei due rimasto visibile */
+export const INVITATION_TRIGGER_ATTRIBUTE = 'data-admin-invitation-trigger'
 
 export const focusTrigger = (attribute: string, id: number | string | null, fallbackSelector = '#page-title'): void => {
   const triggers = id === null ? [] : Array.from(document.querySelectorAll<HTMLElement>(`[${attribute}="${id}"]`))

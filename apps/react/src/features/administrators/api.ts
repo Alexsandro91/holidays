@@ -36,6 +36,25 @@ export const useGrantAdmin = () => {
   })
 }
 
+export interface InviteAdminInput {
+  name: string
+  email: string
+  currentPassword: string
+}
+
+/** Invito di una persona nuova come admin (spec §4): risponde 201 con l'utente invitato. */
+export const useInviteAdmin = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, email, currentPassword }: InviteAdminInput) =>
+      requestData('POST', '/api/administrators/invitations', resourceSchema, { name, email, current_password: currentPassword }),
+    // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
+    gcTime: 0,
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
+    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+  })
+}
+
 export const useRevokeAdmin = () => {
   const queryClient = useQueryClient()
   return useMutation({

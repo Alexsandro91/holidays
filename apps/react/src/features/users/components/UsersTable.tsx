@@ -1,5 +1,5 @@
 import { functionalUpdate, useTable, type PaginationState, type SortingState } from '@tanstack/react-table'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -8,6 +8,7 @@ import RoleBadge from '@/features/users/components/RoleBadge'
 import SortableHeader from '@/features/users/components/SortableHeader'
 import StatusBadge from '@/features/users/components/StatusBadge'
 import UsersPagination from '@/features/users/components/UsersPagination'
+import { useInvitationDetail } from '@/features/users/useInvitationDetail'
 import { isSortField } from '@/features/users/useUserListParams'
 import { usersColumnHelper, usersTableFeatures } from '@/features/users/usersTableFeatures'
 
@@ -30,23 +31,11 @@ const toAriaSort = (sorted: false | 'asc' | 'desc'): 'ascending' | 'descending' 
  * Tabella su desktop, schede su mobile: le due viste sono entrambe nel DOM e si alternano via CSS.
  */
 const UsersTable = ({ list, sort, perPage, onChange, renderActions }: UsersTableProps) => {
-  const { t, i18n } = useTranslation()
-  // Istante di riferimento fissato al montaggio: il render resta puro
-  const [now] = useState(() => Date.now())
+  const { t } = useTranslation()
   const sorting = useMemo(() => toSorting(sort), [sort])
   const pagination: PaginationState = useMemo(() => ({ pageIndex: list.meta.current_page - 1, pageSize: perPage }), [list.meta.current_page, perPage])
 
-  const details = useCallback(
-    (user: ManagedUser): string => {
-      if (user.status !== 'invited') return ''
-      // Invito senza scadenza: cancellato dalla pulizia degli inviti scaduti da oltre 30 giorni, va reinviato
-      if (user.invitation_expires_at === null) return t('users.inviteExpired')
-      const expires = new Date(user.invitation_expires_at)
-      if (expires.getTime() <= now) return t('users.inviteExpired')
-      return t('users.inviteExpires', { date: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(expires) })
-    },
-    [t, i18n.language, now],
-  )
+  const details = useInvitationDetail()
 
   const columns = useMemo(
     () =>

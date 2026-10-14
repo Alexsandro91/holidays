@@ -13,12 +13,14 @@ import { useCancelInvitation, useDisableUser, useEnableUser, useResendInvitation
 import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import { isApiError } from '@/lib/api'
 
-type ConfirmAction = 'resend' | 'cancel' | 'disable' | 'enable'
+export type ConfirmAction = 'resend' | 'cancel' | 'disable' | 'enable'
 
 interface ConfirmUserActionDialogProps {
   user: ManagedUser | null
   action: ConfirmAction | null
   onClose: () => void
+  /** Attributo dei pulsanti che aprono il dialog: alla chiusura il focus torna lì (vedi lib/focusTrigger) */
+  triggerAttribute?: string
 }
 
 interface PasswordValues {
@@ -126,7 +128,7 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
 }
 
 /** Conferma esplicita delle azioni di riga; per gli admin chiede la password di chi agisce. */
-const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDialogProps) => {
+const ConfirmUserActionDialog = ({ user, action, onClose, triggerAttribute = USER_TRIGGER_ATTRIBUTE }: ConfirmUserActionDialogProps) => {
   const open = user !== null && action !== null
   // Contenuto conservato durante l'animazione di chiusura
   const [last, setLast] = useState<{ user: ManagedUser; action: ConfirmAction } | null>(null)
@@ -147,7 +149,7 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
       <AlertDialogContent
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          focusTrigger(USER_TRIGGER_ATTRIBUTE, shown?.user.id ?? null)
+          focusTrigger(triggerAttribute, shown?.user.id ?? null)
         }}
       >
         {shown && <ConfirmBody key={`${openCount}-${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}

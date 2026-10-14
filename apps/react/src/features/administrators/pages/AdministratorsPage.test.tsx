@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import AdministratorsPage from '@/features/administrators/pages/AdministratorsPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
-import { managedUser, userListResponse } from '@/test/usersFixtures'
+import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
@@ -353,6 +353,252 @@ describe('AdministratorsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Rendi amministratore' }))
 
     expect(await within(dialog).findByText('Scegli un utente.')).toBeInTheDocument()
+  })
+
+  it('searches the candidates by email when the text contains @', async () => {
+    admins()
+    const urls: URL[] = []
+    server.use(
+      http.get('/api/users', ({ request }) => {
+        urls.push(new URL(request.url))
+        return HttpResponse.json(userListResponse([managedUser({ id: 7, name: 'Marco Bianchi' })]))
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    await user.type(within(dialog).getByRole('searchbox', { name: 'Cerca un utente attivo' }), 'marco@')
+
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[email]')).toBe('marco@'))
+    expect(urls.at(-1)?.searchParams.has('filter[name]')).toBe(false)
+    expect(urls.at(-1)?.searchParams.get('filter[status]')).toBe('active')
+  })
+
+  const openNewPerson = async (user: ReturnType<typeof renderRoutes>['user']) => {
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    expect(within(dialog).getByRole('radio', { name: 'Utente esistente' })).toBeChecked()
+    await user.click(within(dialog).getByRole('radio', { name: 'Nuova persona' }))
+    return dialog
+  }
+
+  it('invites a new person as administrator with your password', async () => {
+    admins()
+    server.use(http.get('/api/users', () => HttpResponse.json(userListResponse([]))))
+    let body: unknown = null
+    server.use(
+      http.post('/api/administrators/invitations', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ id: 9, name: 'Sara Colombo', email: 'sara@holidays.test', role: 'admin', status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    expect(within(dialog).queryByRole('searchbox')).not.toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+
+    expect(await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')).toBeInTheDocument()
+    expect(body).toEqual({ name: 'Sara Colombo', email: 'sara@holidays.test', current_password: 'password' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('validates name, email and password of the new person before sending', async () => {
+    admins()
+    server.use(http.get('/api/users', () => HttpResponse.json(userListResponse([]))))
+    let posted = false
+    server.use(
+      http.post('/api/administrators/invitations', () => {
+        posted = true
+        return HttpResponse.json({}, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'non-valida')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+
+    expect(await within(dialog).findByText('Inserisci nome e cognome.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Inserisci un indirizzo email valido, ad esempio nome@azienda.it.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Inserisci la password.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Nome e cognome')).toHaveFocus()
+    expect(posted).toBe(false)
+  })
+
+  it('shows the server errors of the new person under the fields, focusing the first', async () => {
+    admins()
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([]))),
+      http.post('/api/administrators/invitations', () =>
+        HttpResponse.json({ message: 'x', errors: { email: ['L’email è già in uso.'], current_password: ['La password non è corretta.'] } }, { status: 422 }),
+      ),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'sbagliata')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+
+    expect(await within(dialog).findByText('L’email è già in uso.')).toBeInTheDocument()
+    expect(within(dialog).getByText('La password non è corretta.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Email aziendale')).toHaveFocus()
+  })
+
+  it('keeps the invite blocked but focusable after too many wrong passwords', async () => {
+    admins()
+    let calls = 0
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([]))),
+      http.post('/api/administrators/invitations', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'Troppi tentativi con la password. Riprova tra 15 minuti.' }, { status: 429, headers: { 'Retry-After': '900' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+
+    expect(await within(dialog).findByText('Troppi tentativi con la password. Riprova tra 15 minuti.')).toBeInTheDocument()
+    const button = within(dialog).getByRole('button', { name: 'Invita amministratore' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await waitForStrayRequests()
+    expect(calls).toBe(1)
+  })
+
+  it('never invites twice while the dialog is closing', async () => {
+    holdDialogExitAnimation()
+    admins()
+    let calls = 0
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([]))),
+      http.post('/api/administrators/invitations', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser({ id: 9, role: 'admin', status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+    expect(await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await waitForStrayRequests()
+
+    expect(calls).toBe(1)
+  })
+
+  it('does not close the dialog while the invitation is being sent', async () => {
+    admins()
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([]))),
+      http.post('/api/administrators/invitations', async () => {
+        await delay(300)
+        return HttpResponse.json({ data: managedUser({ id: 9, role: 'admin', status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+    await user.keyboard('{Escape}')
+
+    expect(screen.getByRole('dialog', { name: 'Aggiungi un amministratore' })).toBeInTheDocument()
+    expect(await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')).toBeInTheDocument()
+  })
+
+  it('shows invited administrators with the expiry, resend and cancel instead of revoke', async () => {
+    const invited = managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', role_label: 'HR / Admin', status: 'invited', status_label: 'Invitato', invitation_expires_at: '2099-10-16T10:00:00+00:00' })
+    admins([me, bruno, invited])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    const row = (await screen.findByText('Sara Colombo')).closest('li')
+    if (!row) throw new Error('Riga di Sara Colombo mancante')
+    expect(within(row).getByText('Invitato')).toBeInTheDocument()
+    expect(within(row).getByText(/Invito scade il/)).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Reinvia invito a Sara Colombo' })).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Annulla invito di Sara Colombo' })).toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: 'Revoca Sara Colombo' })).not.toBeInTheDocument()
+  })
+
+  it('hides resend and cancel when the server does not allow them', async () => {
+    const invited = managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato', can: { ...NO_ACTIONS, cancel_invitation: true } })
+    admins([me, invited])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    await screen.findByText('Sara Colombo')
+    expect(screen.queryByRole('button', { name: 'Reinvia invito a Sara Colombo' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Annulla invito di Sara Colombo' })).toBeInTheDocument()
+  })
+
+  it('resends the invitation of an invited administrator after a confirmation', async () => {
+    const invited = managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato' })
+    admins([me, invited])
+    let called = false
+    server.use(
+      http.post('/api/users/6/invitation', () => {
+        called = true
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const trigger = await screen.findByRole('button', { name: 'Reinvia invito a Sara Colombo' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('alertdialog', { name: 'Reinviare l’invito a Sara Colombo?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Reinvia' }))
+
+    expect(await screen.findByText('Invito inviato di nuovo.')).toBeInTheDocument()
+    expect(called).toBe(true)
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('cancels the invitation of an invited administrator', async () => {
+    let list = [me, managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato' })]
+    server.use(
+      http.get('/api/administrators', () => HttpResponse.json({ data: list })),
+      http.delete('/api/users/6/invitation', () => {
+        list = [me]
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Annulla invito di Sara Colombo' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Annullare l’invito di Sara Colombo?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Annulla invito di Sara Colombo' }))
+
+    expect(await screen.findByText('Invito annullato.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Sara Colombo')).not.toBeInTheDocument())
+    await waitFor(() => expect(document.getElementById('page-title')).toHaveFocus())
+  })
+
+  it('has no accessibility violations with the new person form open', async () => {
+    admins()
+    server.use(http.get('/api/users', () => HttpResponse.json(userListResponse([]))))
+    const { user, baseElement } = renderRoutes(routes, ['/admin/administrators'])
+
+    await openNewPerson(user)
+    await expectNoA11yViolations(baseElement)
   })
 
   it('has no accessibility violations', async () => {
