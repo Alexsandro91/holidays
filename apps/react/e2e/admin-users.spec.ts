@@ -10,10 +10,16 @@ const EMPLOYEE = 'employee@holidays.test'
 const PASSWORD = 'holidays-dev-password'
 // L'account attivato non si può cancellare: a fine test resta disattivato nel database di sviluppo
 const NEW_USER = `e2e-${Date.now()}@holidays.test`
-const NEW_USER_NAME = 'E2E Invitato'
+const NEW_USER_FIRST_NAME = 'E2E'
+const NEW_USER_LAST_NAME = 'Invitato'
+const NEW_USER_NAME = `${NEW_USER_FIRST_NAME} ${NEW_USER_LAST_NAME}`
 // Invitato come admin e annullato a fine test: non resta nel database
 const NEW_ADMIN = `e2e-admin-${Date.now()}@holidays.test`
-const NEW_ADMIN_NAME = 'E2E Amministratore'
+// Email cambiata mentre l'invito è ancora aperto (spec §7.3): il nuovo link arriva al nuovo indirizzo
+const NEW_ADMIN_EMAIL_CHANGED = NEW_ADMIN.replace('@', '-bis@')
+const NEW_ADMIN_FIRST_NAME = 'E2E'
+const NEW_ADMIN_LAST_NAME = 'Amministratore'
+const NEW_ADMIN_NAME = `${NEW_ADMIN_FIRST_NAME} ${NEW_ADMIN_LAST_NAME}`
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES: Array<'light' | 'dark'> = ['light', 'dark']
 
@@ -77,7 +83,8 @@ test('an admin invites a user who activates the account and enters with the code
   await admin.goto('/users')
   await admin.getByRole('button', { name: 'Invita utente' }).click()
   const dialog = admin.getByRole('dialog', { name: 'Invita utente' })
-  await dialog.getByLabel('Nome e cognome').fill(NEW_USER_NAME)
+  await dialog.getByLabel('Nome', { exact: true }).fill(NEW_USER_FIRST_NAME)
+  await dialog.getByLabel('Cognome', { exact: true }).fill(NEW_USER_LAST_NAME)
   await dialog.getByLabel('Email aziendale').fill(NEW_USER)
   await dialog.getByRole('button', { name: 'Invia invito' }).click()
   await expect(admin.getByText(`Invito inviato a ${NEW_USER}.`)).toBeVisible()
@@ -122,6 +129,21 @@ test('an admin promotes and revokes another admin, every admin is warned', async
   await waitForSubject(NEW_USER, /revocato/)
 })
 
+test('an active user can be edited, with the email read-only', async () => {
+  await admin.goto(`/users?email=${encodeURIComponent(NEW_USER)}`)
+  const row = admin.getByRole('row').filter({ hasText: NEW_USER })
+  await row.getByRole('button', { name: `Azioni per ${NEW_USER_NAME}` }).click()
+  await admin.getByRole('menuitem', { name: 'Modifica' }).click()
+  const dialog = admin.getByRole('dialog', { name: `Modifica ${NEW_USER_NAME}` })
+  await expect(dialog.getByLabel('Email aziendale')).toHaveValue(NEW_USER)
+  await expect(dialog.getByLabel('Email aziendale')).toHaveAttribute('readonly', '')
+  await expect(dialog.getByText(/solo finché l’invito non è stato accettato/)).toBeVisible()
+  // Salvataggio con gli stessi dati: nessun cambiamento nel database di sviluppo
+  await dialog.getByRole('button', { name: 'Salva' }).click()
+  await expect(admin.getByText(`Dati di ${NEW_USER_NAME} aggiornati.`)).toBeVisible()
+  await expect(admin.getByRole('dialog')).toBeHidden()
+})
+
 test('disabling a user signs them out on the next request', async () => {
   // Cerca per email: gli utenti e2e-… delle esecuzioni precedenti hanno lo stesso nome
   await admin.goto(`/users?email=${encodeURIComponent(NEW_USER)}`)
@@ -144,6 +166,11 @@ test('admin pages have no WCAG violations in light and dark mode', async () => {
   await expect(admin.getByRole('row').nth(1)).toBeVisible()
   await expectNoViolationsInBothSchemes(admin)
 
+  // Pannello dei filtri aperto e badge di stato colorati
+  await admin.getByRole('button', { name: 'Filtri', exact: true }).click()
+  await expect(admin.getByRole('searchbox', { name: 'Cognome' })).toBeVisible()
+  await expectNoViolationsInBothSchemes(admin)
+
   await admin.getByRole('button', { name: 'Invita utente' }).click()
   const inviteDialog = admin.getByRole('dialog', { name: 'Invita utente' })
   await expect(inviteDialog).toBeVisible()
@@ -162,7 +189,7 @@ test('admin pages have no WCAG violations in light and dark mode', async () => {
   await admin.getByRole('button', { name: 'Aggiungi admin' }).click()
   const grantDialog = admin.getByRole('dialog', { name: 'Aggiungi un amministratore' })
   await grantDialog.getByRole('radio', { name: 'Nuova persona' }).check()
-  await expect(grantDialog.getByLabel('Nome e cognome')).toBeVisible()
+  await expect(grantDialog.getByLabel('Cognome', { exact: true })).toBeVisible()
   await expect(grantDialog).toHaveCSS('opacity', '1')
   await expectNoViolationsInBothSchemes(admin)
   await admin.keyboard.press('Escape')
@@ -217,12 +244,22 @@ test('managers see Users but not Administrators, without actions on admins', asy
     await expect(page).toHaveURL(/\/users$/)
     await expect(page.getByRole('heading', { name: 'Utenti', level: 1 })).toBeVisible()
     await expect(navigation.getByRole('link', { name: 'Utenti' })).toHaveAttribute('aria-current', 'page')
-    const table = page.getByRole('table')
-    // Il responsabile vede anche gli admin, ma senza azioni su di loro né su sé stesso
-    await expect(table.getByRole('row').filter({ hasText: 'admin@holidays.test' })).toBeVisible()
-    await expect(table.getByRole('button', { name: 'Azioni per Giulia Rossi' })).toHaveCount(0)
-    await expect(table.getByRole('button', { name: 'Azioni per Marco Bianchi' })).toHaveCount(0)
-    await expect(table.getByRole('button', { name: 'Azioni per Sara Colombo' })).toBeVisible()
+    // Una riga per volta, filtrando per email: la prima pagina cambia con gli utenti e2e accumulati dalle esecuzioni
+    const rowFor = async (email: string) => {
+      await page.goto(`/users?email=${encodeURIComponent(email)}`)
+      const row = page.getByRole('table').getByRole('row').filter({ hasText: email })
+      await expect(row).toBeVisible()
+      return row
+    }
+    // Il responsabile vede anche gli admin, ma senza azioni su di loro
+    await expect((await rowFor('admin@holidays.test')).getByRole('button', { name: 'Azioni per Giulia Rossi' })).toHaveCount(0)
+    // Su sé stesso può solo modificare nome e cognome
+    await (await rowFor('manager@holidays.test')).getByRole('button', { name: 'Azioni per Marco Bianchi' }).click()
+    await expect(page.getByRole('menuitem')).toHaveText(['Modifica'])
+    await page.keyboard.press('Escape')
+    await (await rowFor('employee@holidays.test')).getByRole('button', { name: 'Azioni per Sara Colombo' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Disattiva' })).toBeVisible()
+    await page.keyboard.press('Escape')
 
     await page.goto('/admin/administrators')
     await expect(page.getByRole('heading', { name: 'Non hai i permessi per questa pagina' })).toBeVisible()
@@ -231,12 +268,13 @@ test('managers see Users but not Administrators, without actions on admins', asy
   }
 })
 
-test('an admin invites a new administrator, who shows up as invited, then cancels the invitation', async () => {
+test('an admin invites a new administrator, edits the email of the invitation, then cancels it', async () => {
   await admin.goto('/admin/administrators')
   await admin.getByRole('button', { name: 'Aggiungi admin' }).click()
   const dialog = admin.getByRole('dialog', { name: 'Aggiungi un amministratore' })
   await dialog.getByRole('radio', { name: 'Nuova persona' }).check()
-  await dialog.getByLabel('Nome e cognome').fill(NEW_ADMIN_NAME)
+  await dialog.getByLabel('Nome', { exact: true }).fill(NEW_ADMIN_FIRST_NAME)
+  await dialog.getByLabel('Cognome', { exact: true }).fill(NEW_ADMIN_LAST_NAME)
   await dialog.getByLabel('Email aziendale').fill(NEW_ADMIN)
   await dialog.getByLabel('La tua password').fill(PASSWORD)
   await dialog.getByRole('button', { name: 'Invita amministratore' }).click()
@@ -246,58 +284,88 @@ test('an admin invites a new administrator, who shows up as invited, then cancel
   const row = admin.getByRole('listitem').filter({ hasText: NEW_ADMIN })
   await expect(row.getByText('Invitato')).toBeVisible()
   await expect(row.getByText(/Invito scade il/)).toBeVisible()
-  await expect(row.getByRole('button', { name: `Revoca ${NEW_ADMIN_NAME}` })).toHaveCount(0)
+  // Admin solo invitato: si gestisce l'invito, non si revoca
+  await expect(row.getByRole('button')).toHaveText(['Reinvia invito', 'Modifica', 'Annulla invito'])
+
+  // Modifica dell'email finché l'invito è aperto: il nuovo link va al nuovo indirizzo
+  await row.getByRole('button', { name: `Modifica ${NEW_ADMIN_NAME}` }).click()
+  const edit = admin.getByRole('dialog', { name: `Modifica ${NEW_ADMIN_NAME}` })
+  await edit.getByLabel('Email aziendale').fill(NEW_ADMIN_EMAIL_CHANGED)
+  await edit.getByRole('button', { name: 'Salva' }).click()
+  await expect(admin.getByText(`Dati aggiornati. Nuovo invito inviato a ${NEW_ADMIN_EMAIL_CHANGED}.`)).toBeVisible()
+  await waitForInvitationLink(NEW_ADMIN_EMAIL_CHANGED)
+  const changedRow = admin.getByRole('listitem').filter({ hasText: NEW_ADMIN_EMAIL_CHANGED })
+  await expect(changedRow).toBeVisible()
 
   // Pulizia: l'invito annullato elimina l'account non attivato
-  await row.getByRole('button', { name: `Annulla invito di ${NEW_ADMIN_NAME}` }).click()
+  await changedRow.getByRole('button', { name: `Annulla invito di ${NEW_ADMIN_NAME}` }).click()
   await admin.getByRole('alertdialog').getByRole('button', { name: `Annulla invito di ${NEW_ADMIN_NAME}` }).click()
   await expect(admin.getByText('Invito annullato.')).toBeVisible()
-  await expect(admin.getByRole('listitem').filter({ hasText: NEW_ADMIN })).toHaveCount(0)
+  await expect(admin.getByRole('listitem').filter({ hasText: NEW_ADMIN_EMAIL_CHANGED })).toHaveCount(0)
 })
 
-test('the users table filters by name and role and sorts by email', async () => {
+test('the users table searches, filters from the panel and sorts by email', async () => {
   await admin.setViewportSize({ width: 1280, height: 800 })
   await admin.goto('/users')
   const table = admin.getByRole('table')
   await expect(table.getByRole('row').nth(1)).toBeVisible()
-
-  // Nome: debounce e URL aggiornato
-  await admin.getByRole('searchbox', { name: 'Nome' }).fill('Marco')
-  await expect(admin).toHaveURL(/[?&]name=Marco/)
-  await expect(table.getByRole('row').filter({ hasText: 'manager@holidays.test' })).toBeVisible()
-  await expect(table.getByRole('row').filter({ hasText: 'employee@holidays.test' })).toHaveCount(0)
-
-  // Ruolo: con "Responsabile" restano solo i responsabili
-  await admin.getByRole('button', { name: 'Azzera filtri' }).click()
-  await expect(admin).toHaveURL(/\/users$/)
-  await admin.getByRole('combobox', { name: 'Ruolo' }).click()
-  await admin.getByRole('option', { name: 'Responsabile' }).click()
-  await expect(admin).toHaveURL(/[?&]role=manager/)
-  await expect(table.getByRole('row').filter({ hasText: 'manager@holidays.test' })).toBeVisible()
-  await expect(table.getByRole('row').filter({ hasText: 'employee@holidays.test' })).toHaveCount(0)
-  await expect(table.getByRole('row').filter({ hasText: 'admin@holidays.test' })).toHaveCount(0)
-
-  // Ordinamento per email: prima crescente, poi decrescente, con aria-sort sull'intestazione
-  await admin.getByRole('button', { name: 'Azzera filtri' }).click()
-  const emailHeader = table.getByRole('columnheader').filter({ hasText: 'Email' })
-  const firstEmail = async (): Promise<string> => (await table.getByRole('row').nth(1).getByRole('cell').nth(1).innerText()).trim()
-  /** Clic sull'intestazione e attesa della risposta con quell'ordinamento: senza, si leggerebbero i dati precedenti */
-  const sortBy = async (sort: string): Promise<void> => {
+  const managerRow = table.getByRole('row').filter({ hasText: 'manager@holidays.test' })
+  const employeeRow = table.getByRole('row').filter({ hasText: 'employee@holidays.test' })
+  const adminRow = table.getByRole('row').filter({ hasText: 'admin@holidays.test' })
+  /** Azione che cambia la lista e attesa della risposta con quel parametro: senza, si leggerebbero i dati precedenti */
+  const expectList = async (action: () => Promise<void>, key: string, value: string): Promise<void> => {
     await Promise.all([
-      admin.waitForResponse((response) => response.url().includes('/api/users') && new URL(response.url()).searchParams.get('sort') === sort),
-      emailHeader.getByRole('button', { name: 'Email' }).click(),
+      admin.waitForResponse((response) => response.url().includes('/api/users') && new URL(response.url()).searchParams.get(key) === value),
+      action(),
     ])
     // I dati precedenti restano visibili con aria-busy finché arriva la vista nuova
     await expect(admin.locator('[aria-busy="true"]')).toHaveCount(0)
   }
 
-  await sortBy('email')
-  await expect(admin).toHaveURL(/[?&]sort=email/)
+  // Ricerca generale sempre visibile: cognome + nome nell'ordine inverso
+  await expectList(() => admin.getByRole('searchbox', { name: 'Cerca' }).fill('Bianchi Marco'), 'filter[search]', 'Bianchi Marco')
+  await expect(admin).toHaveURL(/[?&]search=Bianchi\+Marco/)
+  await expect(managerRow).toBeVisible()
+  await expect(employeeRow).toHaveCount(0)
+
+  /** Vista senza filtri: già in cache (staleTime), nessuna richiesta da attendere; Sara Colombo è tra i primi per cognome */
+  const clearFilters = async (): Promise<void> => {
+    await admin.getByRole('button', { name: 'Azzera filtri' }).click()
+    await expect(admin).toHaveURL(/\/users$/)
+    await expect(employeeRow).toBeVisible()
+  }
+
+  // Pannello dei filtri, chiuso finché non ci sono filtri del pannello: si apre e resta aperto
+  const toggle = admin.getByRole('button', { name: /^Filtri/ })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await clearFilters()
+  // Ruolo Responsabile
+  await admin.getByRole('combobox', { name: 'Ruolo' }).click()
+  await expectList(() => admin.getByRole('option', { name: 'Responsabile' }).click(), 'filter[role]', 'manager')
+  await expect(admin).toHaveURL(/[?&]role=manager/)
+  await expect(toggle).toHaveAccessibleName('Filtri: 1 filtro attivo')
+  await expect(managerRow).toBeVisible()
+  await expect(employeeRow).toHaveCount(0)
+  await expect(adminRow).toHaveCount(0)
+
+  // Filtro per nome dal pannello
+  await clearFilters()
+  await expectList(() => admin.getByRole('searchbox', { name: 'Nome' }).fill('Sara'), 'filter[first_name]', 'Sara')
+  await expect(employeeRow).toBeVisible()
+  await expect(managerRow).toHaveCount(0)
+
+  // Ordinamento per email: prima crescente, poi decrescente, con aria-sort sull'intestazione
+  await clearFilters()
+  const emailHeader = table.getByRole('columnheader').filter({ hasText: 'Email' })
+  const firstEmail = async (): Promise<string> => (await table.getByRole('row').nth(1).getByRole('cell').nth(2).innerText()).trim()
+
+  await expectList(() => emailHeader.getByRole('button', { name: 'Email' }).click(), 'sort', 'email')
   await expect(emailHeader).toHaveAttribute('aria-sort', 'ascending')
   const ascending = await firstEmail()
 
-  await sortBy('-email')
-  await expect(admin).toHaveURL(/[?&]sort=-email/)
+  await expectList(() => emailHeader.getByRole('button', { name: 'Email' }).click(), 'sort', '-email')
   await expect(emailHeader).toHaveAttribute('aria-sort', 'descending')
   const descending = await firstEmail()
   // La prima email in ordine crescente viene prima della prima in ordine decrescente
@@ -311,9 +379,9 @@ test('the users table filters by name and role and sorts by email', async () => 
 test('admin pages fit a phone screen and work with the keyboard', async () => {
   await admin.emulateMedia({ colorScheme: 'light' })
   await admin.setViewportSize({ width: 360, height: 740 })
-  // Filtro per nome: ogni esecuzione aggiunge un "E2E Invitato" che in ordine alfabetico viene prima di Marco Bianchi
+  // Ricerca per nome: ogni esecuzione aggiunge un "E2E Invitato" che in ordine alfabetico viene prima di Marco Bianchi
   for (const { path, name } of [
-    { path: '/users?name=marco', name: 'Marco Bianchi' },
+    { path: '/users?search=marco', name: 'Marco Bianchi' },
     { path: '/admin/administrators', name: 'Giulia Rossi' },
   ]) {
     await admin.goto(path)
@@ -324,7 +392,7 @@ test('admin pages fit a phone screen and work with the keyboard', async () => {
   }
 
   await admin.setViewportSize({ width: 1280, height: 800 })
-  await admin.goto('/users?name=marco')
+  await admin.goto('/users?search=marco')
   const triggerLabel = 'Azioni per Marco Bianchi'
   const trigger = admin.getByRole('button', { name: triggerLabel })
   await expect(trigger).toBeVisible()
