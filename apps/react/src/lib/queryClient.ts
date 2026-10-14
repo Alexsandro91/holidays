@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
 import { isUserQuery, userQueryKey } from '@/lib/queryKeys'
-import { rememberSessionEnd } from '@/lib/sessionEnd'
+import { forgetSessionEnd, rememberSessionEnd } from '@/lib/sessionEnd'
 
 interface QueryClientOptions {
   retry?: boolean
@@ -17,6 +17,10 @@ const needsUserCheck = (error: unknown): boolean =>
 export const createQueryClient = (options: QueryClientOptions = {}): QueryClient => {
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
+      onSuccess: (data, query) => {
+        // Utente riletto (accesso, sessione ripresa dopo un 409, GuestRoute): il motivo della sessione precedente non vale più
+        if (isUserQuery(query.queryKey) && data) forgetSessionEnd(client)
+      },
       onError: (error, query) => {
         rememberSessionEnd(client, error)
         // 401: sessione scaduta; 403: il ruolo può essere cambiato (es. admin revocato); 409 already_authenticated: la

@@ -4,7 +4,8 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import LoginPage from '@/features/auth/pages/LoginPage'
 import { expectNoA11yViolations } from '@/test/axe'
-import { userQueryKey } from '@/lib/queryKeys'
+import { sessionEndKey, userQueryKey } from '@/lib/queryKeys'
+import { rememberedSessionEnd } from '@/lib/sessionEnd'
 import { adminUser } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
@@ -95,6 +96,35 @@ describe('LoginPage', () => {
     expect(await screen.findByText('admin-page')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/admin')
     expect(queryClient.getQueryData(userQueryKey)).toMatchObject({ email: 'admin@holidays.test' })
+  })
+
+  it('forgets the reason of a previous session when it resumes an open one', async () => {
+    server.use(
+      http.post('/api/auth/login', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
+      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+    )
+    const { user, queryClient } = renderRoutes(routes, ['/login?redirect=%2Fadmin'])
+    queryClient.setQueryData(sessionEndKey, 'expired')
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.type(screen.getByLabelText('Password'), 'segreta')
+    await user.click(screen.getByRole('button', { name: 'Continua' }))
+
+    expect(await screen.findByText('admin-page')).toBeInTheDocument()
+    expect(rememberedSessionEnd(queryClient)).toBeNull()
+  })
+
+  it('shows the disabled notice when the reason arrives after the redirect to the login', async () => {
+    const { queryClient } = renderRoutes(routes, ['/login?redirect=%2Fadmin&reason=expired'])
+    expect(await screen.findByText('Sessione scaduta. Accedi di nuovo.')).toBeInTheDocument()
+
+    // Più richieste in parallelo: il 401 con il motivo arriva dopo quello del controllo dell'utente
+    act(() => {
+      queryClient.setQueryData(sessionEndKey, 'disabled')
+    })
+
+    expect(await screen.findByText('Il tuo account è stato disattivato. Per informazioni rivolgiti all’amministratore.')).toBeInTheDocument()
+    expect(screen.queryByText('Sessione scaduta. Accedi di nuovo.')).not.toBeInTheDocument()
   })
 
   it('shows a generic error when the open session cannot be read back', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/lib/api'
 import { createQueryClient } from '@/lib/queryClient'
-import { userQueryKey } from '@/lib/queryKeys'
+import { sessionEndKey, userQueryKey } from '@/lib/queryKeys'
 import { rememberedSessionEnd } from '@/lib/sessionEnd'
 
 describe('query client', () => {
@@ -65,5 +65,31 @@ describe('query client', () => {
 
     expect(invalidate).toHaveBeenCalledTimes(2)
     expect(invalidate).toHaveBeenCalledWith({ queryKey: userQueryKey })
+  })
+
+  it('forgets why the previous session ended as soon as the current user is read back', async () => {
+    const client = createQueryClient({ retry: false })
+    client.setQueryData(sessionEndKey, 'disabled')
+
+    await client.fetchQuery({ queryKey: userQueryKey, queryFn: () => Promise.resolve({ id: 1 }) })
+
+    expect(rememberedSessionEnd(client)).toBeNull()
+  })
+
+  it('drops the data of the closed session when the server ends it, like a logout', async () => {
+    const client = createQueryClient({ retry: false })
+    client.setQueryData(userQueryKey, { id: 1 })
+    client.setQueryData(['admin', 'users'], { data: ['Marco'] })
+    const disabled = new ApiError({ status: 401, kind: 'unauthenticated', message: 'x', meta: { reason: 'account_disabled' } })
+    // Mutation conclusa con le variabili inviate (es. la password di conferma di un admin)
+    await client.getMutationCache().build(client, { mutationFn: () => Promise.resolve(null) }).execute({ currentPassword: 'segreta' })
+
+    await client.getMutationCache().build(client, { mutationFn: () => Promise.reject(disabled) }).execute(undefined).catch(() => undefined)
+
+    expect(client.getQueryData(['admin', 'users'])).toBeUndefined()
+    expect(client.getMutationCache().getAll()).toHaveLength(0)
+    // L'utente resta: le route protette lo vedono con l'errore e mostrano il motivo (non "sei uscito")
+    expect(client.getQueryData(userQueryKey)).toEqual({ id: 1 })
+    expect(rememberedSessionEnd(client)).toBe('disabled')
   })
 })

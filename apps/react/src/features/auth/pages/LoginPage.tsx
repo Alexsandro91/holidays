@@ -17,6 +17,7 @@ import { useResumeSession } from '@/features/auth/useResumeSession'
 import { emailField, emailStateSchema } from '@/features/auth/validation'
 import { useCountdown } from '@/hooks/useCountdown'
 import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
+import { useRememberedSessionEnd } from '@/lib/sessionEnd'
 
 type Notice = 'expired' | 'disabled' | 'logged-out' | 'restart'
 
@@ -51,7 +52,10 @@ const LoginPage = () => {
   })
   const typedEmail = useWatch({ control: form.control, name: 'email' })
   const { errors } = form.formState
-  const notice = searchParams.get('reason')
+  // Con più richieste in parallelo il 401 con il motivo può arrivare dopo il redirect con reason=expired:
+  // l'account disattivato ha la precedenza
+  const remembered = useRememberedSessionEnd()
+  const notice = searchParams.get('reason') === 'expired' && remembered === 'disabled' ? 'disabled' : searchParams.get('reason')
   const redirect = searchParams.get('redirect')
 
   const submit = async (values: LoginValues) => {

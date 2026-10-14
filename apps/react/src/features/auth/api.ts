@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { isApiError, request, requestData } from '@/lib/api'
-import { isUserQuery, userQueryKey } from '@/lib/queryKeys'
-import { forgetSessionEnd } from '@/lib/sessionEnd'
+import { userQueryKey } from '@/lib/queryKeys'
+import { clearSessionData, forgetSessionEnd } from '@/lib/sessionEnd'
 
 export const userSchema = z.object({
   id: z.number(),
@@ -77,10 +77,8 @@ export const isAlreadySignedOut = (error: unknown): boolean => isApiError(error,
 export const useLogout = () => {
   const queryClient = useQueryClient()
   const signOut = () => {
-    // Dati dell'area admin o di altri utenti: non devono restare per chi usa il browser dopo
-    queryClient.removeQueries({ predicate: (query) => !isUserQuery(query.queryKey) })
-    // Le mutation concluse tengono le variabili inviate, comprese le password di conferma degli admin
-    queryClient.getMutationCache().clear()
+    // Dati dell'area admin o di altri utenti e mutation con le password di conferma: non devono restare
+    clearSessionData(queryClient)
     // null (e non "nessun dato"): le route protette mostrano l'avviso di uscita
     queryClient.setQueryData(userQueryKey, null)
   }
