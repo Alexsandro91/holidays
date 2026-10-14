@@ -11,8 +11,16 @@ describe('availableActions', () => {
     expect(availableActions(managedUser({ status: 'invited' }))).toEqual(['edit', 'resend', 'cancel'])
   })
 
-  it('offers role change and disable to active users when allowed', () => {
-    expect(availableActions(managedUser())).toEqual(['edit', 'changeRole', 'disable'])
+  it('offers role change, password reset and disable to active users when allowed', () => {
+    expect(availableActions(managedUser())).toEqual(['edit', 'changeRole', 'passwordReset', 'disable'])
+  })
+
+  it('offers the password reset only to active users and only when the server allows it', () => {
+    expect(availableActions(managedUser({ can: { ...NO_ACTIONS, send_password_reset: true } }))).toEqual(['passwordReset'])
+    expect(availableActions(managedUser({ can: { ...NO_ACTIONS, send_password_reset: false, disable: true } }))).toEqual(['disable'])
+    // Per un invitato c'è "Reinvia invito"; un disattivato non può accedere comunque
+    expect(availableActions(managedUser({ status: 'invited' }))).not.toContain('passwordReset')
+    expect(availableActions(managedUser({ status: 'disabled' }))).not.toContain('passwordReset')
   })
 
   it('offers enable to disabled users when allowed', () => {
@@ -41,5 +49,11 @@ describe('needsPassword', () => {
     expect(needsPassword(managedUser({ role: 'admin' }), 'disable')).toBe(true)
     expect(needsPassword(managedUser({ role: 'admin', status: 'disabled' }), 'enable')).toBe(true)
     expect(needsPassword(managedUser(), 'disable')).toBe(false)
+  })
+
+  it('asks for the password to send a password reset only to another admin', () => {
+    expect(needsPassword(managedUser({ role: 'admin' }), 'passwordReset')).toBe(true)
+    expect(needsPassword(managedUser(), 'passwordReset')).toBe(false)
+    expect(needsPassword(managedUser({ role: 'manager' }), 'passwordReset')).toBe(false)
   })
 })

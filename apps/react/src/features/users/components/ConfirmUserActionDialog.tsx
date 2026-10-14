@@ -9,11 +9,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { needsPassword } from '@/features/users/actions'
-import { useCancelInvitation, useDisableUser, useEnableUser, useResendInvitation, type ManagedUser } from '@/features/users/api'
+import { useCancelInvitation, useDisableUser, useEnableUser, useResendInvitation, useSendPasswordReset, type ManagedUser } from '@/features/users/api'
 import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import { isApiError } from '@/lib/api'
 
-export type ConfirmAction = 'resend' | 'cancel' | 'disable' | 'enable'
+export type ConfirmAction = 'resend' | 'cancel' | 'passwordReset' | 'disable' | 'enable'
 
 interface ConfirmUserActionDialogProps {
   user: ManagedUser | null
@@ -43,7 +43,10 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
   const cancel = useCancelInvitation()
   const disable = useDisableUser()
   const enable = useEnableUser()
+  const passwordReset = useSendPasswordReset()
   const askPassword = needsPassword(user, action)
+  // Valori dei testi: il reset della password dice a quale indirizzo arriva il link
+  const texts = { name: user.name, email: user.email }
   const form = useForm<PasswordValues>({ defaultValues: { currentPassword: '' } })
   const { errors } = form.formState
   const [pending, setPending] = useState(false)
@@ -61,6 +64,8 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
         return disable.mutateAsync({ id: user.id, currentPassword: askPassword ? currentPassword : undefined })
       case 'enable':
         return enable.mutateAsync({ id: user.id, currentPassword: askPassword ? currentPassword : undefined })
+      case 'passwordReset':
+        return passwordReset.mutateAsync({ id: user.id, currentPassword: askPassword ? currentPassword : undefined })
     }
   }
 
@@ -86,7 +91,7 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
     } finally {
       onBusyChange(false)
     }
-    toast.success(t(`users.confirm.${action}.done`, { name: user.name }))
+    toast.success(t(`users.confirm.${action}.done`, texts))
     onClose()
   }
 
@@ -95,8 +100,8 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-4">
       <AlertDialogHeader>
-        <AlertDialogTitle>{t(`users.confirm.${action}.title`, { name: user.name })}</AlertDialogTitle>
-        <AlertDialogDescription>{t(`users.confirm.${action}.description`, { name: user.name })}</AlertDialogDescription>
+        <AlertDialogTitle>{t(`users.confirm.${action}.title`, texts)}</AlertDialogTitle>
+        <AlertDialogDescription>{t(`users.confirm.${action}.description`, texts)}</AlertDialogDescription>
       </AlertDialogHeader>
       {askPassword && (
         <>
@@ -122,7 +127,7 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
         </AlertDialogCancel>
         <Button type="submit" variant={action === 'cancel' || action === 'disable' ? 'destructive' : 'default'} disabled={pending}>
           {pending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
-          {t(`users.confirm.${action}.action`, { name: user.name })}
+          {t(`users.confirm.${action}.action`, texts)}
         </Button>
       </AlertDialogFooter>
     </form>

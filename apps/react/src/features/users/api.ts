@@ -25,6 +25,8 @@ export const managedUserSchema = z.object({
     disable: z.boolean(),
     enable: z.boolean(),
     update: z.boolean(),
+    // Link di reset della password all'email della persona (spec fase 4 §6)
+    send_password_reset: z.boolean(),
   }),
 })
 
@@ -187,3 +189,7 @@ export const useDisableUser = () =>
 
 export const useEnableUser = () =>
   useAdminMutation((input: UserStatusInput) => requestData('POST', `/api/users/${input.id}/enable`, userResourceSchema, statusBody(input)))
+
+/** Link di reset della password all'email registrata della persona: 202 senza corpo (spec fase 4 §6.2). */
+export const useSendPasswordReset = () =>
+  useAdminMutation((input: UserStatusInput) => request('POST', `/api/users/${input.id}/password-reset`, statusBody(input)))

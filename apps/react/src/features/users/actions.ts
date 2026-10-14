@@ -1,6 +1,6 @@
 import type { ManagedUser } from '@/features/users/api'
 
-export type UserAction = 'edit' | 'resend' | 'cancel' | 'changeRole' | 'disable' | 'enable'
+export type UserAction = 'edit' | 'resend' | 'cancel' | 'changeRole' | 'passwordReset' | 'disable' | 'enable'
 
 /**
  * Azioni del menu di riga: quelle che il server permette a chi guarda (`can`) e che lo stato consente.
@@ -12,8 +12,10 @@ export const availableActions = ({ status, can }: ManagedUser): UserAction[] => 
       ['resend', can.resend_invitation],
       ['cancel', can.cancel_invitation],
     ],
+    // Il reset della password ha senso solo per chi può accedere: per un invitato c'è "Reinvia invito"
     active: [
       ['changeRole', can.change_role],
+      ['passwordReset', can.send_password_reset],
       ['disable', can.disable],
     ],
     disabled: [['enable', can.enable]],
@@ -23,6 +25,9 @@ export const availableActions = ({ status, can }: ManagedUser): UserAction[] => 
   return all.filter(([, allowed]) => allowed).map(([action]) => action)
 }
 
-/** Disattivare o riattivare un admin chiede la password di chi agisce (spec fase 3 §5.6). */
+/**
+ * Disattivare o riattivare un admin chiede la password di chi agisce (spec fase 3 §5.6), e così inviargli il link di
+ * reset (spec fase 4 §6.2). Su sé stessi queste azioni non ci sono: il server non le permette.
+ */
 export const needsPassword = (user: ManagedUser, action: UserAction): boolean =>
-  user.role === 'admin' && (action === 'disable' || action === 'enable')
+  user.role === 'admin' && (action === 'disable' || action === 'enable' || action === 'passwordReset')

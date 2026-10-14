@@ -223,6 +223,92 @@ describe('UsersAdminPage', () => {
     expect(within(dialog).getByLabelText('La tua password')).toHaveFocus()
   })
 
+  it('sends a password reset link to an active user after a confirmation, without a password', async () => {
+    listing([managedUser()])
+    const bodies: string[] = []
+    server.use(
+      http.post('/api/users/2/password-reset', async ({ request }) => {
+        bodies.push(await request.text())
+        return new HttpResponse(null, { status: 202 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Invia reset password' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Inviare il link per reimpostare la password a Marco Bianchi?' })
+    expect(
+      within(dialog).getByText('Riceverà un’email a marco@holidays.test con un link valido 60 minuti. La password attuale resta valida finché non la cambia.'),
+    ).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('La tua password')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Invia il link' }))
+
+    expect(await screen.findByText('Link inviato a marco@holidays.test.')).toBeInTheDocument()
+    // Nessun corpo: la password serve solo per un altro admin
+    expect(bodies).toEqual([''])
+  })
+
+  it('offers the password reset only to active users the server allows', async () => {
+    listing([
+      managedUser(),
+      managedUser({ id: 3, name: 'Luca Ferrari', email: 'luca@holidays.test', can: { ...NO_ACTIONS, disable: true } }),
+      managedUser({ id: 4, name: 'Sara Colombo', email: 'sara@holidays.test', status: 'invited', status_label: 'Invitato' }),
+    ])
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    expect((await screen.findAllByRole('menuitem')).map((item) => item.textContent)).toEqual(['Modifica', 'Cambia ruolo', 'Invia reset password', 'Disattiva'])
+    await user.keyboard('{Escape}')
+    await openMenu(user, 'Luca Ferrari')
+    expect(await screen.findByRole('menuitem', { name: 'Disattiva' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Invia reset password' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await openMenu(user, 'Sara Colombo')
+    expect(await screen.findByRole('menuitem', { name: 'Reinvia invito' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Invia reset password' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    [429, 'Un link è stato inviato da poco a questo utente. Riprova tra 42 secondi.', { 'Retry-After': '42' }],
+    [409, 'L’utente non è attivo.', {}],
+  ])('shows the server message in a red toast on a %s for the password reset', async (status, message, headers) => {
+    listing([managedUser()])
+    server.use(http.post('/api/users/2/password-reset', () => HttpResponse.json({ message }, { status, headers })))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Invia reset password' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Invia il link' }))
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(screen.queryByText(/Link inviato/)).not.toBeInTheDocument()
+  })
+
+  it('never sends the password reset twice while the confirmation is closing', async () => {
+    holdDialogExitAnimation()
+    listing([managedUser()])
+    let calls = 0
+    server.use(
+      http.post('/api/users/2/password-reset', () => {
+        calls += 1
+        return new HttpResponse(null, { status: 202 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Invia reset password' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Invia il link' }))
+    expect(await screen.findByText('Link inviato a marco@holidays.test.')).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await waitForStrayRequests()
+
+    expect(calls).toBe(1)
+  })
+
   it('changes the role between employee and manager only', async () => {
     listing([managedUser()])
     let body: unknown = null

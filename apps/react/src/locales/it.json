@@ -192,6 +192,7 @@
       "resend": "Reinvia invito",
       "cancel": "Annulla invito",
       "changeRole": "Cambia ruolo",
+      "passwordReset": "Invia reset password",
       "disable": "Disattiva",
       "enable": "Riattiva"
     },
@@ -224,6 +225,7 @@
     "confirm": {
       "resend": { "title": "Reinviare l’invito a {{name}}?", "description": "Il link precedente smetterà di funzionare.", "action": "Reinvia", "done": "Invito inviato di nuovo." },
       "cancel": { "title": "Annullare l’invito di {{name}}?", "description": "L’account non attivato verrà eliminato.", "action": "Annulla invito di {{name}}", "done": "Invito annullato." },
+      "passwordReset": { "title": "Inviare il link per reimpostare la password a {{name}}?", "description": "Riceverà un’email a {{email}} con un link valido 60 minuti. La password attuale resta valida finché non la cambia.", "action": "Invia il link", "done": "Link inviato a {{email}}." },
       "disable": { "title": "Disattivare {{name}}?", "description": "Perderà subito l’accesso e verrà disconnesso da tutti i dispositivi.", "action": "Disattiva {{name}}", "done": "{{name}} è stato disattivato." },
       "enable": { "title": "Riattivare {{name}}?", "description": "Potrà di nuovo accedere con la sua password e il codice via email.", "action": "Riattiva {{name}}", "done": "{{name}} è stato riattivato." },
       "adminNotice": "È un amministratore: tutti gli amministratori riceveranno un’email.",
