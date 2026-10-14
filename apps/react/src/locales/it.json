@@ -213,7 +213,12 @@
     "expired": "Gli inviti valgono 72 ore.",
     "askHr": "Chiedi all’ufficio HR di inviartene uno nuovo.",
     "toLogin": "Vai all’accesso",
-    "loadErrorTitle": "Impossibile caricare l’invito"
+    "loadErrorTitle": "Impossibile caricare l’invito",
+    "signedIn": {
+      "title": "Sei già connesso",
+      "description": "Hai già una sessione aperta come {{name}} ({{email}}). Per attivare questo invito esci prima.",
+      "home": "Vai alla home"
+    }
   },
   "privacy": {
     "title": "Informativa privacy",

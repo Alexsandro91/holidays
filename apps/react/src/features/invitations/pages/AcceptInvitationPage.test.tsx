@@ -4,6 +4,7 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import AcceptInvitationPage from '@/features/invitations/pages/AcceptInvitationPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -11,12 +12,15 @@ const routes: RouteObject[] = [
   { path: '/invitation/:token', element: <AcceptInvitationPage /> },
   { path: '/login/verify', element: <p>verify-page</p> },
   { path: '/login', element: <p>login-page</p> },
+  { path: '/', element: <p>home-page</p> },
 ]
 
 const PASSWORD = 'una-frase-lunga-e-nuova'
 
 const validInvitation = () =>
   server.use(http.get('/api/invitations/abc', () => HttpResponse.json({ data: { name: 'Sara Colombo', email: 'sara@holidays.test', expires_at: '2099-01-01T00:00:00+00:00' } })))
+
+const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })))
 
 const fillForm = async (user: ReturnType<typeof renderRoutes>['user']) => {
   await user.type(await screen.findByLabelText('Password', { exact: true }), PASSWORD)
@@ -159,6 +163,82 @@ describe('AcceptInvitationPage', () => {
     const { container } = renderRoutes(routes, ['/invitation/abc'])
 
     await screen.findByRole('heading', { name: 'Benvenuto, Sara Colombo' })
+    await expectNoA11yViolations(container)
+  })
+
+  it('asks a signed-in user to sign out before activating, without loading the invitation', async () => {
+    signedIn()
+    let invitationCalls = 0
+    server.use(
+      http.get('/api/invitations/abc', () => {
+        invitationCalls += 1
+        return HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })
+      }),
+    )
+    renderRoutes(routes, ['/invitation/abc'])
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Sei già connesso' })
+    await waitFor(() => expect(heading).toHaveFocus())
+    expect(screen.getByText('Hai già una sessione aperta come Giulia Rossi (admin@holidays.test). Per attivare questo invito esci prima.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Vai alla home' })).toHaveAttribute('href', '/')
+    expect(invitationCalls).toBe(0)
+  })
+
+  it('loads the invitation after signing out from the notice', async () => {
+    let signedOut = false
+    server.use(
+      http.get('/api/auth/user', () => (signedOut ? HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }) : HttpResponse.json({ data: adminUser }))),
+      http.post('/api/auth/logout', () => {
+        signedOut = true
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    validInvitation()
+    const { user, router } = renderRoutes(routes, ['/invitation/abc'])
+
+    await user.click(await screen.findByRole('button', { name: 'Esci' }))
+
+    const formHeading = await screen.findByRole('heading', { name: 'Benvenuto, Sara Colombo' })
+    await waitFor(() => expect(formHeading).toHaveFocus())
+    expect(router.state.location.pathname).toBe('/invitation/abc')
+  })
+
+  it('keeps the notice and explains when signing out fails', async () => {
+    signedIn()
+    server.use(http.post('/api/auth/logout', () => HttpResponse.json({ message: 'boom' }, { status: 500 })))
+    const { user } = renderRoutes(routes, ['/invitation/abc'])
+
+    await user.click(await screen.findByRole('button', { name: 'Esci' }))
+
+    expect(await screen.findByText('Uscita non riuscita. Riprova.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Sei già connesso' })).toBeInTheDocument()
+  })
+
+  it('shows the signed-in notice when the activation finds a session already open', async () => {
+    validInvitation()
+    let sessionOpen = false
+    server.use(
+      http.get('/api/auth/user', () => (sessionOpen ? HttpResponse.json({ data: adminUser }) : HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }))),
+      http.post('/api/invitations/abc/accept', () => {
+        // Accesso fatto nel frattempo in un'altra scheda
+        sessionOpen = true
+        return HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/invitation/abc'])
+
+    await fillForm(user)
+    await user.click(screen.getByRole('button', { name: 'Attiva account' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sei già connesso' })).toBeInTheDocument()
+    expect(screen.queryByText('Qualcosa non ha funzionato. Riprova tra poco.')).not.toBeInTheDocument()
+  })
+
+  it('has no accessibility violations on the signed-in notice', async () => {
+    signedIn()
+    const { container } = renderRoutes(routes, ['/invitation/abc'])
+
+    await screen.findByRole('heading', { level: 1, name: 'Sei già connesso' })
     await expectNoA11yViolations(container)
   })
 })

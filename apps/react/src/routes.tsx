@@ -29,7 +29,6 @@ export const routes: RouteObject[] = [
               { path: '/login', element: <LoginPage />, handle: { titleKey: 'titles.login' } },
               { path: '/forgot-password', element: <ForgotPasswordPage />, handle: { titleKey: 'titles.forgotPassword' } },
               { path: '/reset-password/:token', element: <ResetPasswordPage />, handle: { titleKey: 'titles.resetPassword' } },
-              { path: '/invitation/:token', element: <AcceptInvitationPage />, handle: { titleKey: 'titles.invitation' } },
               { path: '/login/verify', element: <VerifyCodePage />, handle: { titleKey: 'titles.verify' } },
             ],
           },
@@ -55,7 +54,11 @@ export const routes: RouteObject[] = [
       },
       {
         element: <AuthLayout />,
-        children: [{ path: '/privacy', element: <PrivacyPage />, handle: { titleKey: 'titles.privacy' } }],
+        children: [
+          // Fuori da GuestRoute: con una sessione aperta la pagina chiede di uscire invece di reindirizzare in silenzio
+          { path: '/invitation/:token', element: <AcceptInvitationPage />, handle: { titleKey: 'titles.invitation' } },
+          { path: '/privacy', element: <PrivacyPage />, handle: { titleKey: 'titles.privacy' } },
+        ],
       },
       { path: '*', element: <NotFoundPage />, handle: { titleKey: 'titles.notFound' } },
     ],

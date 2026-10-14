@@ -14,9 +14,11 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useCurrentUser, useRefreshCurrentUser } from '@/features/auth/api'
 import { useAcceptInvitation, useInvitation } from '@/features/invitations/api'
+import SignedInNotice from '@/features/invitations/components/SignedInNotice'
 import { useCountdown } from '@/hooks/useCountdown'
-import { isApiError } from '@/lib/api'
+import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
 
 const MIN_PASSWORD_LENGTH = 12
 
@@ -52,7 +54,12 @@ const AcceptInvitationPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { token = '' } = useParams()
-  const invitation = useInvitation(token)
+  const currentUser = useCurrentUser()
+  const refreshCurrentUser = useRefreshCurrentUser()
+  // Come GuestRoute: c'è una sessione valida se l'utente è in cache e l'ultimo controllo non è fallito
+  const signedInUser = currentUser.data && !currentUser.isError ? currentUser.data : null
+  // Con una sessione aperta l'invito non si carica: prima bisogna uscire
+  const invitation = useInvitation(token, !currentUser.isPending && signedInUser === null)
   const accept = useAcceptInvitation(token)
   const lock = useCountdown()
   // secondi iniziali del blocco: testo costante per gli screen reader
@@ -70,7 +77,7 @@ const AcceptInvitationPage = () => {
 
   // Il contenuto cambia senza cambiare pagina (caricamento finito, rifiuto, errore, nuovo tentativo riuscito):
   // il focus va sul nuovo titolo
-  const view = invitation.isPending ? null : (state ?? (invitation.data ? 'form' : 'error'))
+  const view = currentUser.isPending ? null : signedInUser ? 'signed-in' : invitation.isPending ? null : (state ?? (invitation.data ? 'form' : 'error'))
   useEffect(() => {
     if (view) document.getElementById('page-title')?.focus()
   }, [view])
@@ -83,6 +90,15 @@ const AcceptInvitationPage = () => {
       await accept.mutateAsync({ password, password_confirmation: confirmation, privacy_acknowledged: true })
     } catch (error) {
       submitting.current = false
+      if (isAlreadyAuthenticated(error)) {
+        // Accesso fatto nel frattempo (es. in un'altra scheda): riletto l'utente, la pagina mostra l'avviso per uscire
+        try {
+          await refreshCurrentUser()
+          return
+        } catch {
+          // Utente non rileggibile: resta l'errore generico qui sotto
+        }
+      }
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60
         setLockedFor(seconds)
@@ -116,7 +132,9 @@ const AcceptInvitationPage = () => {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
 
-  if (invitation.isPending) {
+  if (signedInUser) return <SignedInNotice user={signedInUser} />
+
+  if (currentUser.isPending || invitation.isPending) {
     return (
       <div aria-busy="true" className="grid gap-4">
         <Skeleton className="h-9 w-3/4" />

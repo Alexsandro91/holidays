@@ -15,8 +15,10 @@ export interface AcceptInvitationInput {
 // Token nel percorso: codificato per sicurezza anche se è alfanumerico
 const invitationPath = (token: string): string => `/api/invitations/${encodeURIComponent(token)}`
 
-export const useInvitation = (token: string) =>
+/** `enabled: false` con una sessione aperta: il server risponderebbe 409 (rotta per ospiti). */
+export const useInvitation = (token: string, enabled = true) =>
   useQuery({
+    enabled,
     queryKey: ['invitation', token],
     queryFn: async () => (await requestData('GET', invitationPath(token), invitationSchema)).data,
     retry: false,

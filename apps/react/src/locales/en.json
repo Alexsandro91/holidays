@@ -213,7 +213,12 @@
     "expired": "Invitations are valid for 72 hours.",
     "askHr": "Ask HR to send you a new one.",
     "toLogin": "Go to sign in",
-    "loadErrorTitle": "Couldn’t load the invitation"
+    "loadErrorTitle": "Couldn’t load the invitation",
+    "signedIn": {
+      "title": "You’re already signed in",
+      "description": "You already have an open session as {{name}} ({{email}}). To activate this invitation, sign out first.",
+      "home": "Go to the home page"
+    }
   },
   "privacy": {
     "title": "Privacy notice",
