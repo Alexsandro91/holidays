@@ -15,7 +15,12 @@
 - Auth: login = pipeline Fortify con `StartEmailLoginChallenge` (niente sessione fino al codice); codice in
   `TwoFactorChallengeController`; chiavi di sessione in `App\Support\AuthSession`; testi PHP con `App\Support\Translate::text()`.
 - Primo admin: `sail artisan app:create-admin "Nome Cognome" email@azienda.it` (invito come gli altri, nessuna password da terminale). Rilanciato sulla stessa email rimanda l’invito; se esiste già un admin attivo serve `--force`.
-- Inviti: link valido 72 ore, attivazione su `/invitation/:token`. Gli admin nascono solo per promozione dalla sezione "Amministratori" (o con il comando sopra).
+- Inviti: link valido 72 ore, attivazione su `/invitation/:token`. Un nuovo admin nasce per promozione di un utente attivo
+  o per invito (`POST /api/administrators/invitations`, con password di conferma) dalla sezione "Amministratori", oppure con
+  il comando sopra; l'invito normale (`POST /api/users`) non accetta mai il ruolo admin.
+- Permessi (`UserPolicy`): la gestione utenti è di responsabile e admin, ma il responsabile non agisce mai sugli admin; la
+  sezione Amministratori è solo dell'admin (`manageAdministrators`). I servizi ricontrollano attore e permesso sulle righe
+  bloccate (destinatario cambiato nel frattempo: 409 `users.state_changed`).
 
 ## Approccio
 Questo progetto segue le **best practice Laravel** (guideline e skill Boost), non lo scaffolding del
