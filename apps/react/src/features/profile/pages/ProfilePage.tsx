@@ -14,13 +14,20 @@ const ProfilePage = () => {
   if (!user) return null
 
   return (
-    // Larghezza di lettura, come la home: sul telefono i blocchi restano in colonna
-    <div className="grid max-w-3xl gap-6">
+    <>
       <PageHeading title={t('profile.title')} description={t('profile.description')} />
-      <PersonalDetailsCard user={user} />
-      <PasswordCard />
-      <PreferencesCard />
-    </div>
+      {/* Da lg due colonne su tutta la larghezza: dati e password a sinistra, preferenze a destra in alto. Sotto lg una
+          colonna sola nell'ordine del DOM: dati personali, password, preferenze */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
+        <div className="grid min-w-0 gap-6">
+          <PersonalDetailsCard user={user} />
+          <PasswordCard email={user.email} />
+        </div>
+        <div className="min-w-0">
+          <PreferencesCard />
+        </div>
+      </div>
+    </>
   )
 }
 

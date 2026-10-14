@@ -34,7 +34,12 @@ const FIELDS: (keyof PasswordValues)[] = ['currentPassword', 'password', 'confir
 const EMPTY: PasswordValues = { currentPassword: '', password: '', confirmation: '' }
 
 /** Cambio della propria password: le altre sessioni si chiudono, questa resta aperta (spec fase 4 §2.3 e §3.2). */
-const PasswordCard = () => {
+interface PasswordCardProps {
+  /** Email dell'account, nel campo nascosto `username` per i gestori di password */
+  email: string
+}
+
+const PasswordCard = ({ email }: PasswordCardProps) => {
   const { t } = useTranslation()
   const change = useChangePassword()
   const schema = useMemo(() => createSchema(t), [t])
@@ -43,12 +48,11 @@ const PasswordCard = () => {
   // Blocco dopo un 429: il messaggio del server dice già quanto attendere
   const lock = useCountdown()
   const [lockNotice, setLockNotice] = useState<string | null>(null)
-  // Evita il doppio invio (doppio click, Invio ripetuto): letto solo nei gestori di evento
+  // Evita il doppio invio (doppio click, Invio ripetuto): si attiva già all'invio, prima della validazione asincrona.
+  // Letto solo nei gestori di evento
   const submitting = useRef(false)
 
   const submit = async (values: PasswordValues) => {
-    if (submitting.current) return
-    submitting.current = true
     try {
       await change.mutateAsync(values)
       // Le password non restano nei campi
@@ -88,30 +92,48 @@ const PasswordCard = () => {
       event.preventDefault()
       return
     }
-    return form.handleSubmit(submit)(event)
+    submitting.current = true
+    return form.handleSubmit(submit, () => {
+      // Campi non validi: nessuna richiesta, si può correggere e riprovare
+      submitting.current = false
+    })(event)
   }
 
   return (
-    <ProfileCard titleId="profile-password-title" title={t('profile.password.title')} description={t('profile.password.description')}>
-      <form onSubmit={onSubmit} noValidate>
-        <FieldGroup>
-          {locked && lockNotice && (
-            <Alert>
-              <Clock aria-hidden="true" />
-              <AlertDescription>{lockNotice}</AlertDescription>
-            </Alert>
-          )}
-          <Field data-invalid={errors.currentPassword ? true : undefined}>
-            <FieldLabel htmlFor="profile-current-password">{t('profile.password.current')}</FieldLabel>
-            <PasswordInput
-              id="profile-current-password"
-              autoComplete="current-password"
-              aria-invalid={errors.currentPassword ? true : undefined}
-              aria-describedby={errors.currentPassword ? 'profile-current-password-error' : undefined}
-              {...form.register('currentPassword')}
-            />
-            <FieldError id="profile-current-password-error">{errors.currentPassword?.message}</FieldError>
-          </Field>
+    <ProfileCard
+      titleId="profile-password-title"
+      title={t('profile.password.title')}
+      description={t('profile.password.description')}
+      onSubmit={onSubmit}
+      footer={
+        <Button type="submit" className="w-full sm:w-auto" aria-disabled={blocked || undefined}>
+          {change.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
+          {t('profile.password.submit')}
+        </Button>
+      }
+    >
+      <FieldGroup>
+        {/* Account a cui appartiene la nuova password, per i gestori di password (stesso schema del reset) */}
+        <input type="email" autoComplete="username" value={email} readOnly hidden />
+        {locked && lockNotice && (
+          <Alert>
+            <Clock aria-hidden="true" />
+            <AlertDescription>{lockNotice}</AlertDescription>
+          </Alert>
+        )}
+        <Field data-invalid={errors.currentPassword ? true : undefined}>
+          <FieldLabel htmlFor="profile-current-password">{t('profile.password.current')}</FieldLabel>
+          <PasswordInput
+            id="profile-current-password"
+            autoComplete="current-password"
+            aria-invalid={errors.currentPassword ? true : undefined}
+            aria-describedby={errors.currentPassword ? 'profile-current-password-error' : undefined}
+            {...form.register('currentPassword')}
+          />
+          <FieldError id="profile-current-password-error">{errors.currentPassword?.message}</FieldError>
+        </Field>
+        {/* Affiancate solo da xl, quando la colonna è abbastanza larga da tenerle leggibili */}
+        <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
           {/* Correggere la nuova password rivaluta la conferma: l'avviso di password diverse non resta obsoleto */}
           <Field data-invalid={errors.password ? true : undefined}>
             <FieldLabel htmlFor="profile-new-password">{t('profile.password.new')}</FieldLabel>
@@ -136,12 +158,8 @@ const PasswordCard = () => {
             />
             <FieldError id="profile-password-confirmation-error">{errors.confirmation?.message}</FieldError>
           </Field>
-          <Button type="submit" className="justify-self-start" aria-disabled={blocked || undefined}>
-            {change.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
-            {t('profile.password.submit')}
-          </Button>
-        </FieldGroup>
-      </form>
+        </div>
+      </FieldGroup>
     </ProfileCard>
   )
 }

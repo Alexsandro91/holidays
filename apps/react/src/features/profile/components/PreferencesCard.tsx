@@ -37,7 +37,8 @@ const PreferencesCard = () => {
 
   return (
     <ProfileCard titleId="profile-preferences-title" title={t('profile.preferences.title')}>
-      <div className="grid gap-6 sm:grid-cols-2">
+      {/* Due colonne quando la card è a tutta larghezza; una sola nella colonna stretta di destra (da lg) */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
         <FieldSet>
           <FieldLegend variant="label">{t('profile.preferences.language')}</FieldLegend>
           <RadioGroup

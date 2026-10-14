@@ -35,12 +35,11 @@ const PersonalDetailsCard = ({ user }: PersonalDetailsCardProps) => {
   const schema = useMemo(() => createSchema(t), [t])
   const form = useForm<NameValues>({ resolver: zodResolver(schema), defaultValues: { firstName: user.first_name, lastName: user.last_name } })
   const { errors } = form.formState
-  // Evita il doppio invio: letto solo nei gestori di evento
+  // Evita il doppio invio: si attiva già all'invio, prima della validazione asincrona (un doppio click la scavalcherebbe).
+  // Letto solo nei gestori di evento
   const submitting = useRef(false)
 
   const submit = async ({ firstName, lastName }: NameValues) => {
-    if (submitting.current) return
-    submitting.current = true
     try {
       const updated = await update.mutateAsync({ firstName, lastName })
       // Il form riparte dai valori salvati (già ripuliti dal server)
@@ -75,63 +74,72 @@ const PersonalDetailsCard = ({ user }: PersonalDetailsCardProps) => {
       event.preventDefault()
       return
     }
-    return form.handleSubmit(submit)(event)
+    submitting.current = true
+    return form.handleSubmit(submit, () => {
+      // Campi non validi: nessuna richiesta, si può correggere e riprovare
+      submitting.current = false
+    })(event)
   }
 
   return (
-    <ProfileCard titleId="profile-personal-title" title={t('profile.personal.title')}>
-      <form onSubmit={onSubmit} noValidate>
-        <FieldGroup>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field data-invalid={errors.firstName ? true : undefined}>
-              <FieldLabel htmlFor="profile-first-name">{t('profile.personal.firstName')}</FieldLabel>
-              <Input
-                id="profile-first-name"
-                autoComplete="given-name"
-                aria-invalid={errors.firstName ? true : undefined}
-                aria-describedby={errors.firstName ? 'profile-first-name-error' : undefined}
-                {...form.register('firstName')}
-              />
-              <FieldError id="profile-first-name-error">{errors.firstName?.message}</FieldError>
-            </Field>
-            <Field data-invalid={errors.lastName ? true : undefined}>
-              <FieldLabel htmlFor="profile-last-name">{t('profile.personal.lastName')}</FieldLabel>
-              <Input
-                id="profile-last-name"
-                autoComplete="family-name"
-                aria-invalid={errors.lastName ? true : undefined}
-                aria-describedby={errors.lastName ? 'profile-last-name-error' : undefined}
-                {...form.register('lastName')}
-              />
-              <FieldError id="profile-last-name-error">{errors.lastName?.message}</FieldError>
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* In sola lettura, non disabilitati: restano leggibili e raggiungibili da tastiera, con la spiegazione */}
-            <Field>
-              <FieldLabel htmlFor="profile-email">{t('profile.personal.email')}</FieldLabel>
-              <Input
-                id="profile-email"
-                type="email"
-                value={user.email}
-                readOnly
-                aria-describedby="profile-email-note"
-                className="cursor-default bg-muted text-muted-foreground"
-              />
-              <FieldDescription id="profile-email-note">{t('profile.personal.emailNote')}</FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="profile-role">{t('profile.personal.role')}</FieldLabel>
-              <Input id="profile-role" value={user.role_label} readOnly className="cursor-default bg-muted text-muted-foreground" />
-            </Field>
-          </div>
-          {/* aria-disabled: durante l'invio il pulsante resta focalizzabile (il blocco è nel gestore dell'invio) */}
-          <Button type="submit" className="justify-self-start" aria-disabled={update.isPending || undefined}>
-            {update.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
-            {t('profile.personal.submit')}
-          </Button>
-        </FieldGroup>
-      </form>
+    <ProfileCard
+      titleId="profile-personal-title"
+      title={t('profile.personal.title')}
+      onSubmit={onSubmit}
+      footer={
+        // aria-disabled: durante l'invio il pulsante resta focalizzabile (il blocco è nel gestore dell'invio)
+        <Button type="submit" className="w-full sm:w-auto" aria-disabled={update.isPending || undefined}>
+          {update.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
+          {t('profile.personal.submit')}
+        </Button>
+      }
+    >
+      <FieldGroup>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field data-invalid={errors.firstName ? true : undefined}>
+            <FieldLabel htmlFor="profile-first-name">{t('profile.personal.firstName')}</FieldLabel>
+            <Input
+              id="profile-first-name"
+              autoComplete="given-name"
+              aria-invalid={errors.firstName ? true : undefined}
+              aria-describedby={errors.firstName ? 'profile-first-name-error' : undefined}
+              {...form.register('firstName')}
+            />
+            <FieldError id="profile-first-name-error">{errors.firstName?.message}</FieldError>
+          </Field>
+          <Field data-invalid={errors.lastName ? true : undefined}>
+            <FieldLabel htmlFor="profile-last-name">{t('profile.personal.lastName')}</FieldLabel>
+            <Input
+              id="profile-last-name"
+              autoComplete="family-name"
+              aria-invalid={errors.lastName ? true : undefined}
+              aria-describedby={errors.lastName ? 'profile-last-name-error' : undefined}
+              {...form.register('lastName')}
+            />
+            <FieldError id="profile-last-name-error">{errors.lastName?.message}</FieldError>
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* In sola lettura, non disabilitati: restano leggibili e raggiungibili da tastiera, con la spiegazione */}
+          <Field>
+            <FieldLabel htmlFor="profile-email">{t('profile.personal.email')}</FieldLabel>
+            <Input
+              id="profile-email"
+              type="email"
+              autoComplete="email"
+              value={user.email}
+              readOnly
+              aria-describedby="profile-email-note"
+              className="cursor-default bg-muted text-muted-foreground"
+            />
+            <FieldDescription id="profile-email-note">{t('profile.personal.emailNote')}</FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="profile-role">{t('profile.personal.role')}</FieldLabel>
+            <Input id="profile-role" value={user.role_label} readOnly className="cursor-default bg-muted text-muted-foreground" />
+          </Field>
+        </div>
+      </FieldGroup>
     </ProfileCard>
   )
 }
