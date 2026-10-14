@@ -38,6 +38,7 @@ class UserPermissionsTest extends TestCase
         'change_role' => ['PATCH', '/api/users/{user}/role', UserStatus::Active, Response::HTTP_OK],
         'disable' => ['POST', '/api/users/{user}/disable', UserStatus::Active, Response::HTTP_OK],
         'enable' => ['POST', '/api/users/{user}/enable', UserStatus::Disabled, Response::HTTP_OK],
+        'update' => ['PATCH', '/api/users/{user}', UserStatus::Active, Response::HTTP_OK],
     ];
 
     /**
@@ -48,16 +49,16 @@ class UserPermissionsTest extends TestCase
     private const ALLOWED = [
         'employee' => ['employee' => [], 'manager' => [], 'admin' => [], 'self' => []],
         'manager' => [
-            'employee' => ['resend', 'cancel', 'change_role', 'disable', 'enable'],
-            'manager' => ['resend', 'cancel', 'change_role', 'disable', 'enable'],
+            'employee' => ['resend', 'cancel', 'change_role', 'disable', 'enable', 'update'],
+            'manager' => ['resend', 'cancel', 'change_role', 'disable', 'enable', 'update'],
             'admin' => [],
-            'self' => ['resend', 'cancel', 'enable'],
+            'self' => ['resend', 'cancel', 'enable', 'update'],
         ],
         'admin' => [
-            'employee' => ['resend', 'cancel', 'change_role', 'disable', 'enable'],
-            'manager' => ['resend', 'cancel', 'change_role', 'disable', 'enable'],
-            'admin' => ['resend', 'cancel', 'disable', 'enable'],
-            'self' => ['resend', 'cancel', 'enable'],
+            'employee' => ['resend', 'cancel', 'change_role', 'disable', 'enable', 'update'],
+            'manager' => ['resend', 'cancel', 'change_role', 'disable', 'enable', 'update'],
+            'admin' => ['resend', 'cancel', 'disable', 'enable', 'update'],
+            'self' => ['resend', 'cancel', 'enable', 'update'],
         ],
     ];
 
@@ -79,8 +80,8 @@ class UserPermissionsTest extends TestCase
                 foreach (self::ACTIONS as $action => [, , , $success]) {
                     $expected = match (true) {
                         ! in_array($action, $allowed, true) => Response::HTTP_FORBIDDEN,
-                        // Su sé stessi l'azione è permessa ma lo stato (attivo) non la consente
-                        $target === 'self' => Response::HTTP_CONFLICT,
+                        // Su sé stessi l'azione è permessa ma lo stato (attivo) non la consente; la modifica sì
+                        $target === 'self' && $action !== 'update' => Response::HTTP_CONFLICT,
                         default => $success,
                     };
                     $cases["{$actorRole} → {$target}: {$action}"] = [$actorRole, $target, $action, $expected];
@@ -104,7 +105,7 @@ class UserPermissionsTest extends TestCase
         $newRole = $subject->role === Role::Employee ? 'manager' : 'employee';
 
         $this->actingAs($actor)
-            ->json($method, str_replace('{user}', (string) $subject->id, $template), ['role' => $newRole, 'current_password' => 'password'])
+            ->json($method, str_replace('{user}', (string) $subject->id, $template), ['role' => $newRole, 'current_password' => 'password', 'first_name' => 'Sara', 'last_name' => 'Colombo'])
             ->assertStatus($expected);
     }
 
@@ -310,7 +311,7 @@ class UserPermissionsTest extends TestCase
 
         $can = (new ManagedUserResource($subject))->toArray($request)['can'];
 
-        $abilities = ['resend_invitation' => 'resendInvitation', 'cancel_invitation' => 'cancelInvitation', 'change_role' => 'changeRole', 'disable' => 'disable', 'enable' => 'enable'];
+        $abilities = ['resend_invitation' => 'resendInvitation', 'cancel_invitation' => 'cancelInvitation', 'change_role' => 'changeRole', 'disable' => 'disable', 'enable' => 'enable', 'update' => 'update'];
         $this->assertSame(array_keys($abilities), array_keys($can));
         foreach ($abilities as $key => $ability) {
             $this->assertSame(Gate::forUser($actor)->allows($ability, $subject), $can[$key], $key);

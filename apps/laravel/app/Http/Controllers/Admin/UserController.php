@@ -8,9 +8,11 @@ use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\ListUsersRequest;
 use App\Http\Requests\Users\StoreUserRequest;
+use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\ManagedUserResource;
 use App\Models\User;
 use App\Services\InvitationService;
+use App\Services\UserManagementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -89,6 +91,20 @@ final class UserController extends Controller
         );
 
         return (new ManagedUserResource($user->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function update(UpdateUserRequest $request, User $user, UserManagementService $users): ManagedUserResource
+    {
+        $updated = $users->update(
+            $user,
+            $request->string('first_name')->value(),
+            $request->string('last_name')->value(),
+            $request->newEmail(),
+            $this->actor($request),
+            $request,
+        );
+
+        return new ManagedUserResource($updated->load('invitation'));
     }
 
     /**

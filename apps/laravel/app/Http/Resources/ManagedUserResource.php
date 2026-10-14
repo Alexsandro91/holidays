@@ -43,7 +43,7 @@ final class ManagedUserResource extends JsonResource
     /**
      * Calcolate dalla policy sui ruoli già caricati: nessuna query per riga.
      *
-     * @return array{resend_invitation: bool, cancel_invitation: bool, change_role: bool, disable: bool, enable: bool}
+     * @return array{resend_invitation: bool, cancel_invitation: bool, change_role: bool, disable: bool, enable: bool, update: bool}
      */
     private function permissions(Request $request): array
     {
@@ -55,6 +55,7 @@ final class ManagedUserResource extends JsonResource
             'change_role' => $gate->allows('changeRole', $this->resource),
             'disable' => $gate->allows('disable', $this->resource),
             'enable' => $gate->allows('enable', $this->resource),
+            'update' => $gate->allows('update', $this->resource),
         ];
     }
 }

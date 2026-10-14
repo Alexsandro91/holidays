@@ -56,6 +56,14 @@ final class UserPolicy
         return $this->mayActOn($actor, $target);
     }
 
+    /**
+     * Nome, cognome ed email: l'admin su chiunque, il responsabile su chi non è admin, sé stessi compresi.
+     */
+    public function update(User $actor, User $target): bool
+    {
+        return $this->mayActOn($actor, $target);
+    }
+
     public function grantAdmin(User $actor, User $target): bool
     {
         return $this->manageAdministrators($actor);

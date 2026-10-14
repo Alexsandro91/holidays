@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->can('resendInvitation', 'user')->name('users.invitation.resend');
     Route::delete('/users/{user}/invitation', [UserInvitationController::class, 'cancel'])
         ->can('cancelInvitation', 'user')->name('users.invitation.cancel');
+    Route::patch('/users/{user}', [UserController::class, 'update'])->can('update', 'user')->name('users.update');
     Route::patch('/users/{user}/role', UserRoleController::class)->can('changeRole', 'user')->name('users.role');
     Route::post('/users/{user}/disable', [UserStatusController::class, 'disable'])->can('disable', 'user')->name('users.disable');
     Route::post('/users/{user}/enable', [UserStatusController::class, 'enable'])->can('enable', 'user')->name('users.enable');

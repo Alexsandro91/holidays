@@ -76,6 +76,7 @@ class AdminRouteAccessTest extends TestCase
             'cambio ruolo' => ['PATCH', '/api/users/{user}/role'],
             'disattivazione' => ['POST', '/api/users/{user}/disable'],
             'riattivazione' => ['POST', '/api/users/{user}/enable'],
+            'modifica' => ['PATCH', '/api/users/{user}'],
             'revoca admin' => ['DELETE', '/api/administrators/{user}'],
         ];
     }

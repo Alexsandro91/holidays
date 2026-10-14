@@ -12,6 +12,7 @@ return [
     'not_admin' => 'This user is not an admin.',
     'admin_not_active' => 'Only an active admin can be revoked. For a pending invitation use Cancel invitation.',
     'state_changed' => 'This user changed in the meantime. Reload the page and try again.',
+    'email_locked' => 'The email can be changed only until the invitation is accepted: after activation it is the address used to sign in.',
     'name_characters' => 'The first name cannot contain square brackets, < > signs or control characters.',
     'last_name_characters' => 'The last name cannot contain square brackets, < > signs or control characters.',
     'password_locked' => 'Too many password attempts. Try again in :minutes minutes.',

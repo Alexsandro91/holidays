@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Evento di sicurezza. Serve solo alla sicurezza (art. 32 GDPR), mai al controllo dell'attività lavorativa.
  */
-#[Fillable(['user_id', 'actor_id', 'event', 'ip_address', 'user_agent'])]
+#[Fillable(['user_id', 'actor_id', 'event', 'changed_fields', 'ip_address', 'user_agent'])]
 class AuthEvent extends Model
 {
     use MassPrunable;
@@ -46,7 +46,7 @@ class AuthEvent extends Model
      */
     protected function casts(): array
     {
-        return ['event' => AuthEventType::class];
+        return ['event' => AuthEventType::class, 'changed_fields' => 'array'];
     }
 
     /**

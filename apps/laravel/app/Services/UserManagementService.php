@@ -7,6 +7,7 @@ use App\Enums\AuthEventType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Mail\AdminChangeMail;
+use App\Models\Invitation;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Services\Concerns\RechecksUserPermissions;
@@ -60,6 +61,52 @@ final class UserManagementService
 
             return $fresh;
         });
+    }
+
+    /**
+     * Nome, cognome ed email (spec del 14/10, §7.3). L'email cambia solo per un invitato: nuovo link al nuovo
+     * indirizzo e il vecchio smette di valere. L'evento `user_updated` elenca i campi cambiati, mai i valori.
+     *
+     * @param  string|null  $email  nuova email, null se non cambia
+     */
+    public function update(User $target, string $firstName, string $lastName, ?string $email, User $actor, Request $request): User
+    {
+        return $this->rejectingDuplicateEmail((string) $email, fn (): User => DB::transaction(function () use ($target, $firstName, $lastName, $email, $actor, $request): User {
+            $this->lockActiveAdminIds();
+            $freshActor = $this->lockUserManager($actor);
+            // Invito prima dell'utente, come in accettazione, reinvio e annullamento: niente deadlock
+            Invitation::query()->where('user_id', $target->id)->lockForUpdate()->first();
+            $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
+            $this->ensureStillAllowed('update', $actor, $freshActor, $fresh);
+
+            $changeEmail = $email !== null && $email !== $fresh->email;
+
+            // Nel frattempo l'invito può essere stato accettato: l'email ora è quella di accesso
+            if ($changeEmail && $fresh->status !== UserStatus::Invited) {
+                throw ValidationException::withMessages(['email' => [Translate::text('users.email_locked')]]);
+            }
+
+            $fresh->forceFill([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                ...($changeEmail ? ['email' => $email] : []),
+            ]);
+            $changedFields = array_keys($fresh->getDirty());
+
+            if ($changedFields === []) {
+                return $fresh;
+            }
+
+            $fresh->save();
+            $this->events->log(AuthEventType::UserUpdated, $request, $fresh, $actor, $changedFields);
+
+            if ($changeEmail) {
+                $this->invitations->send($fresh, $actor);
+                $this->events->log(AuthEventType::InvitationSent, $request, $fresh, $actor);
+            }
+
+            return $fresh;
+        }), $target->id);
     }
 
     /**

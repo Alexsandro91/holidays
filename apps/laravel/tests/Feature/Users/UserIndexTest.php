@@ -48,7 +48,7 @@ class UserIndexTest extends TestCase
         $manager = User::factory()->manager()->create(['last_name' => 'A']);
         User::factory()->admin()->create(['last_name' => 'B']);
         User::factory()->create(['last_name' => 'C']);
-        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true];
+        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true, 'update' => true];
         $none = array_map(fn (): bool => false, $all);
 
         $this->actingAs($manager)->getJson('/api/users')
@@ -65,8 +65,8 @@ class UserIndexTest extends TestCase
 
         $this->actingAs($admin)->getJson('/api/users')
             ->assertOk()
-            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true])
-            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true]);
+            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true, 'update' => true])
+            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true, 'update' => true]);
     }
 
     public function test_the_permissions_of_a_row_need_no_query(): void

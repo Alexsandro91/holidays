@@ -17,7 +17,7 @@ class UserPolicyTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const TARGET_ACTIONS = ['resendInvitation', 'cancelInvitation', 'changeRole', 'disable', 'enable'];
+    private const TARGET_ACTIONS = ['resendInvitation', 'cancelInvitation', 'changeRole', 'disable', 'enable', 'update'];
 
     /**
      * Azioni ammesse per ruolo di chi agisce e tipo di destinatario ('self' è chi agisce).
@@ -30,13 +30,13 @@ class UserPolicyTest extends TestCase
             'employee' => self::TARGET_ACTIONS,
             'manager' => self::TARGET_ACTIONS,
             'admin' => [],
-            'self' => ['resendInvitation', 'cancelInvitation', 'enable'],
+            'self' => ['resendInvitation', 'cancelInvitation', 'enable', 'update'],
         ],
         'admin' => [
             'employee' => self::TARGET_ACTIONS,
             'manager' => self::TARGET_ACTIONS,
-            'admin' => ['resendInvitation', 'cancelInvitation', 'disable', 'enable'],
-            'self' => ['resendInvitation', 'cancelInvitation', 'enable'],
+            'admin' => ['resendInvitation', 'cancelInvitation', 'disable', 'enable', 'update'],
+            'self' => ['resendInvitation', 'cancelInvitation', 'enable', 'update'],
         ],
     ];
 
