@@ -181,3 +181,66 @@ Ogni salvataggio ha il suo toast (verde o rosso). WCAG 2.2 AA:
   - cambio lingua che resta dopo logout e login;
   - axe in chiaro e in scuro su `/profile`;
   - 360 px senza scorrimento orizzontale.
+
+## 6. Reset della password avviato da admin o responsabile (aggiunta del 14/10)
+**Decisione dell'utente:** si invia solo il link. La password attuale resta valida finché la persona non la cambia;
+il reset avviato da altri non blocca l'account e non chiude le sessioni.
+
+### 6.1 Sicurezza
+- **Destinatario del link:** solo l'email registrata della persona (`users.email`), mai chi agisce. Chi agisce non
+  vede e non sceglie mai la password altrui.
+- **Il resto segue il flusso di "Password dimenticata", che esiste già:**
+  - token del broker, valido 60 minuti;
+  - nuova password con le regole di sempre;
+  - dopo il reset tutte le sessioni si chiudono e i login in attesa del codice vengono cancellati;
+  - si rientra con password e codice via email.
+- **Limiti:** gli stessi del link pubblico, con lo stesso contatore per account. Le richieste pubbliche e quelle degli
+  admin si sommano, così nessuno può inondare una casella di email:
+  - 60 secondi tra due link (broker);
+  - al massimo 5 link l'ora per account.
+
+  Qui chi agisce è autenticato, quindi l'esito si comunica: un limite superato dà 429, con il messaggio e
+  `Retry-After`.
+
+### 6.2 API
+`POST /api/users/{user}/password-reset`:
+- **Policy `sendPasswordReset`:** stesse regole di `disable`. Il responsabile la usa sui non admin, l'admin su
+  chiunque; nessuno su sé stesso (per sé c'è il profilo).
+- **Flag:** `can.send_password_reset` in `ManagedUserResource`.
+- **Stato:** solo per utenti `active`, altrimenti 409 `users.not_active`. Per un invitato c'è "Reinvia invito".
+- **Admin come destinatario:** se il destinatario, riletto sotto blocco, è un altro admin:
+  - serve `current_password`, con il blocco di `ConfirmsCurrentPassword` e gli eventi `admin_*`;
+  - dopo il commit parte l'email di avviso agli altri admin attivi, mai a chi agisce, con il nuovo tipo
+    `AdminChange::PasswordResetSent`;
+  - se il destinatario diventa admin tra la richiesta e il blocco e la password non è stata chiesta: 409
+    `users.state_changed`.
+- **Evento:** `password_reset_sent` (nuovo), con il destinatario e chi agisce.
+- **Email al destinatario:**
+  - è `ResetPasswordMail`, nella lingua del destinatario;
+  - ha una riga in più: "Il link è stato richiesto da un amministratore o dal tuo responsabile: se non te
+    l'aspettavi, ignora questa email e avvisa un amministratore";
+  - non riporta mai il nome di chi agisce.
+- **Risposta:** 202, senza corpo.
+
+### 6.3 Interfaccia
+- **Utenti:** voce "Invia reset password" nel menu di riga degli utenti attivi, secondo `can.send_password_reset`.
+- **Amministratori:** pulsante "Reset password" sugli altri admin attivi, con colore neutro.
+- **Conferma:** `ConfirmUserActionDialog`, con l'azione nuova `passwordReset`:
+  - titolo "Inviare il link per reimpostare la password a {nome}?";
+  - descrizione "Riceverà un'email a {email} con un link valido 60 minuti. La password attuale resta valida finché
+    non la cambia.";
+  - la password si chiede solo per un altro admin.
+- **Esito:** toast verde "Link inviato a {email}."; un 429 dà toast rosso con il messaggio del server.
+
+### 6.4 Test
+- **Backend:**
+  - matrice dei permessi;
+  - 409 per utenti non attivi;
+  - password e avviso agli admin quando il destinatario è un admin;
+  - limiti condivisi con il link pubblico (429);
+  - email al solo destinatario, con la riga in più e senza il nome di chi agisce;
+  - evento;
+  - la password resta valida e le sessioni restano aperte.
+- **Frontend:** voce di menu e pulsante secondo `can` e stato, dialog con e senza password, toast, 429.
+- **E2E:** l'admin invia il reset a `employee@holidays.test` e l'email arriva in Mailpit a quell'indirizzo, con il
+  link.
