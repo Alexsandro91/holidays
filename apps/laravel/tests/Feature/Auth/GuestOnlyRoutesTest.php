@@ -12,7 +12,7 @@ class GuestOnlyRoutesTest extends TestCase
     use RefreshDatabase;
 
     private const ALREADY_AUTHENTICATED = [
-        'message' => 'Hai già una sessione aperta',
+        'message' => 'Hai già una sessione aperta.',
         'meta' => ['reason' => 'already_authenticated'],
     ];
 
@@ -50,7 +50,7 @@ class GuestOnlyRoutesTest extends TestCase
             ->postJson('/api/auth/two-factor', ['code' => '123456'])
             ->assertConflict()
             ->assertExactJson([
-                'message' => 'You already have an open session',
+                'message' => 'You already have an open session.',
                 'meta' => ['reason' => 'already_authenticated'],
             ]);
     }

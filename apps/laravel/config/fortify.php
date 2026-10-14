@@ -160,7 +160,7 @@ return [
     */
 
     // Nessuna feature Fortify attiva e rotte registrate a mano (routes/web.php, Fortify::ignoreRoutes):
-    // il secondo fattore via email e il recupero password sono nostri, TOTP e passkey nel sotto-progetto 2.
+    // il secondo fattore via email e il recupero password sono implementati nel progetto.
     'features' => [],
 
 ];

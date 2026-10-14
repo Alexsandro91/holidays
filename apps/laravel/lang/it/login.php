@@ -8,7 +8,7 @@ return [
     'resent' => 'Nuovo codice inviato.',
     'session_expired' => 'Sessione scaduta. Accedi di nuovo.',
     'session_ended' => 'Sessione terminata. Accedi di nuovo.',
-    'already_authenticated' => 'Hai già una sessione aperta',
+    'already_authenticated' => 'Hai già una sessione aperta.',
     'device' => ':browser su :os',
     'unknown_browser' => 'browser sconosciuto',
     'unknown_os' => 'sistema sconosciuto',
