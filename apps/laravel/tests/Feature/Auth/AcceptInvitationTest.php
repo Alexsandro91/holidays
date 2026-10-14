@@ -167,9 +167,9 @@ class AcceptInvitationTest extends TestCase
         $this->getJson("/api/invitations/{$token}")->assertOk();
     }
 
-    public function test_public_invitation_pages_are_limited_to_ten_per_minute_per_ip(): void
+    public function test_public_invitation_pages_are_limited_to_thirty_per_minute_per_ip(): void
     {
-        for ($attempt = 0; $attempt < 10; $attempt++) {
+        for ($attempt = 0; $attempt < 30; $attempt++) {
             $this->getJson('/api/invitations/'.str_repeat('x', 64))->assertNotFound();
         }
 

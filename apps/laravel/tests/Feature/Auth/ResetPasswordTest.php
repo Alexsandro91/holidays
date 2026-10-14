@@ -367,11 +367,11 @@ class ResetPasswordTest extends TestCase
             ->assertJsonValidationErrors(['email', 'token', 'password']);
     }
 
-    public function test_requests_are_limited_to_ten_per_minute_per_ip(): void
+    public function test_requests_are_limited_to_thirty_per_minute_per_ip(): void
     {
         $invalid = ['email' => 'a@example.test', 'token' => 'x', 'password' => self::NEW_PASSWORD, 'password_confirmation' => self::NEW_PASSWORD];
 
-        for ($attempt = 0; $attempt < 10; $attempt++) {
+        for ($attempt = 0; $attempt < 30; $attempt++) {
             $this->postJson('/api/auth/reset-password', $invalid)->assertUnprocessable();
         }
 

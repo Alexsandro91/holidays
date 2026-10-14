@@ -145,7 +145,7 @@ class TwoFactorChallengeTest extends TestCase
 
     public function test_code_endpoints_are_throttled_per_ip(): void
     {
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 60; $i++) {
             $this->postJson('/api/auth/two-factor', ['code' => '123456'])->assertUnprocessable();
         }
 
