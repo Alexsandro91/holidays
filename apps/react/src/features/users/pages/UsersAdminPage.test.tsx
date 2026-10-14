@@ -11,7 +11,7 @@ import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
-const routes: RouteObject[] = [{ path: '/admin/users', element: <UsersAdminPage /> }]
+const routes: RouteObject[] = [{ path: '/users', element: <UsersAdminPage /> }]
 
 const listing = (users = [managedUser()]) => server.use(http.get('/api/users', () => HttpResponse.json(userListResponse(users))))
 
@@ -30,7 +30,7 @@ describe('UsersAdminPage', () => {
         return HttpResponse.json({ message: 'x', errors: { email: ['L’email è già in uso.'] } }, { status: 422 })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
@@ -52,7 +52,7 @@ describe('UsersAdminPage', () => {
       }),
       http.post('/api/users', () => HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
@@ -75,7 +75,7 @@ describe('UsersAdminPage', () => {
         return HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
     const invite = async (email: string) => {
       const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
       await user.type(within(dialog).getByLabelText('Nome e cognome'), 'Sara Colombo')
@@ -102,7 +102,7 @@ describe('UsersAdminPage', () => {
 
   it('shows only the actions that fit the row', async () => {
     listing([managedUser({ status: 'invited', name: 'Luca Ferrari' })])
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Luca Ferrari')
 
@@ -113,7 +113,7 @@ describe('UsersAdminPage', () => {
 
   it('offers to resend an invitation without expiry', async () => {
     listing([managedUser({ status: 'invited', status_label: 'Invitato', invitation_expires_at: null, name: 'Luca Ferrari' })])
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Luca Ferrari')
 
@@ -122,7 +122,7 @@ describe('UsersAdminPage', () => {
 
   it('leaves no empty space in the mobile card of a row without actions', async () => {
     listing([managedUser({ id: 1, name: 'Anna Admin', is_current_user: true }), managedUser()])
-    renderRoutes(routes, ['/admin/users'])
+    renderRoutes(routes, ['/users'])
     await screen.findByRole('table')
 
     const cards = screen.getAllByRole('listitem')
@@ -144,7 +144,7 @@ describe('UsersAdminPage', () => {
         return HttpResponse.json({ data: managedUser({ status: 'disabled' }) })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
@@ -166,7 +166,7 @@ describe('UsersAdminPage', () => {
         return HttpResponse.json({ data: managedUser({ status: 'disabled' }) })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
@@ -186,7 +186,7 @@ describe('UsersAdminPage', () => {
     server.use(
       http.post('/api/users/2/disable', () => HttpResponse.json({ message: 'x', errors: { current_password: ['La password non è corretta.'] } }, { status: 422 })),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Bruno Admin')
     await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
@@ -208,7 +208,7 @@ describe('UsersAdminPage', () => {
         return HttpResponse.json({ data: managedUser({ role: 'manager', role_label: 'Responsabile' }) })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
@@ -244,7 +244,7 @@ describe('UsersAdminPage', () => {
 
   it('keeps "Salva ruolo" disabled until a different role is chosen', async () => {
     listing([managedUser()])
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
@@ -265,7 +265,7 @@ describe('UsersAdminPage', () => {
         return HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
@@ -281,7 +281,7 @@ describe('UsersAdminPage', () => {
   it('shows the wait when resending too early', async () => {
     listing([managedUser({ status: 'invited', name: 'Luca Ferrari' })])
     server.use(http.post('/api/users/2/invitation', () => HttpResponse.json({ message: 'Attendi 42 secondi prima di inviare di nuovo l’invito.', meta: { retry_after: 42 } }, { status: 429, headers: { 'Retry-After': '42' } })))
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Luca Ferrari')
     await user.click(await screen.findByRole('menuitem', { name: 'Reinvia invito' }))
@@ -292,7 +292,7 @@ describe('UsersAdminPage', () => {
 
   it('has no accessibility violations with the invite dialog open', async () => {
     listing()
-    const { user, baseElement } = renderRoutes(routes, ['/admin/users'])
+    const { user, baseElement } = renderRoutes(routes, ['/users'])
 
     await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
     await screen.findByRole('dialog', { name: 'Invita utente' })
@@ -301,7 +301,7 @@ describe('UsersAdminPage', () => {
 
   it('has no accessibility violations with the admin confirmation and the role dialog open', async () => {
     listing([managedUser({ role: 'admin', role_label: 'HR / Admin', name: 'Bruno Admin' }), managedUser({ id: 3, name: 'Anna Verdi', email: 'anna@holidays.test' })])
-    const { user, baseElement } = renderRoutes(routes, ['/admin/users'])
+    const { user, baseElement } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Bruno Admin')
     await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
@@ -318,7 +318,7 @@ describe('UsersAdminPage', () => {
 
   it('returns focus to the row menu after closing a dialog opened from it', async () => {
     listing([managedUser()])
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
@@ -335,7 +335,7 @@ describe('UsersAdminPage', () => {
   it('returns focus to the row menu after a successful role change', async () => {
     listing([managedUser()])
     server.use(http.patch('/api/users/2/role', () => HttpResponse.json({ data: managedUser({ role: 'manager' }) })))
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
@@ -358,7 +358,7 @@ describe('UsersAdminPage', () => {
         return new HttpResponse(null, { status: 204 })
       }),
     )
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Luca Ferrari')
     await user.click(await screen.findByRole('menuitem', { name: 'Annulla invito' }))
@@ -372,7 +372,7 @@ describe('UsersAdminPage', () => {
 
   it('returns focus to the row menu when it is closed without choosing', async () => {
     listing([managedUser()])
-    const { user } = renderRoutes(routes, ['/admin/users'])
+    const { user } = renderRoutes(routes, ['/users'])
 
     await openMenu(user, 'Marco Bianchi')
     await screen.findByRole('menuitem', { name: 'Disattiva' })

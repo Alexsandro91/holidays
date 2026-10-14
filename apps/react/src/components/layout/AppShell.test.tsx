@@ -5,6 +5,7 @@ import { routes } from '@/routes'
 import { expectNoA11yViolations } from '@/test/axe'
 import { userQueryKey } from '@/lib/queryKeys'
 import { adminUser } from '@/test/fixtures'
+import { userListResponse } from '@/test/usersFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -99,20 +100,55 @@ describe('AppShell', () => {
     await expectNoA11yViolations(container)
   })
 
-  it('shows the administration group only to admins', async () => {
+  it('shows the management group by role: users to managers and admins, administrators to admins only', async () => {
     signedIn()
     const first = renderRoutes(routes, ['/'], { toaster: false })
 
-    expect(await screen.findByRole('link', { name: 'Utenti' })).toHaveAttribute('href', '/admin/users')
+    expect(await screen.findByText('Gestione')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Utenti' })).toHaveAttribute('href', '/users')
     expect(screen.getByRole('link', { name: 'Amministratori' })).toHaveAttribute('href', '/admin/administrators')
     first.unmount()
+
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'manager', role_label: 'Responsabile' } })))
+    const second = renderRoutes(routes, ['/'], { toaster: false })
+
+    expect(await screen.findByRole('link', { name: 'Utenti' })).toHaveAttribute('href', '/users')
+    expect(screen.getByText('Gestione')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Amministratori' })).not.toBeInTheDocument()
+    second.unmount()
 
     server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'employee', role_label: 'Dipendente' } })))
     renderRoutes(routes, ['/'], { toaster: false })
 
     await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+    expect(screen.queryByText('Gestione')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Utenti' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Amministratori' })).not.toBeInTheDocument()
+  })
+
+  it('redirects the old users address to /users keeping the query', async () => {
+    signedIn()
+    server.use(http.get('/api/users', () => HttpResponse.json(userListResponse([]))))
+    const { router } = renderRoutes(routes, ['/admin/users?status=invited&page=2'], { toaster: false })
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/users'))
+    expect(router.state.location.search).toBe('?status=invited&page=2')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Utenti' })).toBeInTheDocument()
+    expect(document.title).toBe('Utenti · Holidays')
+  })
+
+  it('shows the forbidden page to employees on /users', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'employee', role_label: 'Dipendente' } })))
+    renderRoutes(routes, ['/users'], { toaster: false })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Non hai i permessi per questa pagina' })).toBeInTheDocument()
+  })
+
+  it('shows the forbidden page to managers on the administrators page', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'manager', role_label: 'Responsabile' } })))
+    renderRoutes(routes, ['/admin/administrators'], { toaster: false })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Non hai i permessi per questa pagina' })).toBeInTheDocument()
   })
 
   it('marks the current page in the menu with aria-current and the active style', async () => {

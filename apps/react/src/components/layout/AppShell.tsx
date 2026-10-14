@@ -78,17 +78,20 @@ const AppShell = () => {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            {user.role === 'admin' && (
+            {/* Gestione: utenti per responsabili e admin, amministratori solo per gli admin (spec §2) */}
+            {(user.role === 'manager' || user.role === 'admin') && (
               <SidebarGroup>
-                <SidebarGroupLabel>{t('nav.admin')}</SidebarGroupLabel>
+                <SidebarGroupLabel>{t('nav.management')}</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarNavLink to="/admin/users" label={t('nav.users')} icon={<Users aria-hidden="true" />} />
+                      <SidebarNavLink to="/users" label={t('nav.users')} icon={<Users aria-hidden="true" />} />
                     </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarNavLink to="/admin/administrators" label={t('nav.administrators')} icon={<ShieldCheck aria-hidden="true" />} />
-                    </SidebarMenuItem>
+                    {user.role === 'admin' && (
+                      <SidebarMenuItem>
+                        <SidebarNavLink to="/admin/administrators" label={t('nav.administrators')} icon={<ShieldCheck aria-hidden="true" />} />
+                      </SidebarMenuItem>
+                    )}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>

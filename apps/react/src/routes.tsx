@@ -1,14 +1,14 @@
 import { lazy } from 'react'
-import { createBrowserRouter, type RouteObject } from 'react-router'
+import { createBrowserRouter, redirect, type RouteObject } from 'react-router'
 import AppShell from '@/components/layout/AppShell'
 import AuthLayout from '@/components/layout/AuthLayout'
 import RootLayout from '@/components/layout/RootLayout'
 import RouteErrorState from '@/components/layout/RouteErrorState'
-import AdminRoute from '@/features/auth/AdminRoute'
 import GuestRoute from '@/features/auth/GuestRoute'
 import LoginPage from '@/features/auth/pages/LoginPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
+import RoleRoute from '@/features/auth/RoleRoute'
 import HomePage from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
@@ -61,11 +61,12 @@ export const routes: RouteObject[] = [
                 children: [
                   { path: '/', element: <HomePage />, handle: { titleKey: 'titles.home' } },
                   {
-                    element: <AdminRoute />,
-                    children: [
-                      { path: '/admin/users', element: <UsersAdminPage />, handle: { titleKey: 'titles.users' } },
-                      { path: '/admin/administrators', element: <AdministratorsPage />, handle: { titleKey: 'titles.administrators' } },
-                    ],
+                    element: <RoleRoute roles={['manager', 'admin']} />,
+                    children: [{ path: '/users', element: <UsersAdminPage />, handle: { titleKey: 'titles.users' } }],
+                  },
+                  {
+                    element: <RoleRoute roles={['admin']} />,
+                    children: [{ path: '/admin/administrators', element: <AdministratorsPage />, handle: { titleKey: 'titles.administrators' } }],
                   },
                 ],
               },
@@ -86,6 +87,8 @@ export const routes: RouteObject[] = [
           },
         ],
       },
+      // Vecchio indirizzo della lista utenti (link salvati, email): stessa vista con la stessa query string
+      { path: '/admin/users', loader: ({ request }) => redirect(`/users${new URL(request.url).search}`) },
       { path: '*', element: <NotFoundPage />, handle: { titleKey: 'titles.notFound' } },
     ],
   },
