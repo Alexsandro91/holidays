@@ -21,9 +21,11 @@ class CreateAdminCommandTest extends TestCase
     {
         Mail::fake();
 
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => ' Giulia@Example.TEST '])->assertSuccessful();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => ' Giulia@Example.TEST '])->assertSuccessful();
 
         $admin = User::query()->where('email', 'giulia@example.test')->firstOrFail();
+        $this->assertSame('Giulia', $admin->first_name);
+        $this->assertSame('Rossi', $admin->last_name);
         $this->assertSame(Role::Admin, $admin->role);
         $this->assertSame(UserStatus::Invited, $admin->status);
         $this->assertNull($admin->password);
@@ -38,11 +40,11 @@ class CreateAdminCommandTest extends TestCase
     public function test_sends_a_new_link_to_an_admin_who_never_activated(): void
     {
         Mail::fake();
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'giulia@example.test'])->assertSuccessful();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'giulia@example.test'])->assertSuccessful();
         $oldHash = Invitation::query()->sole()->token_hash;
         $this->travel(80)->hours();
 
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'giulia@example.test'])
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'giulia@example.test'])
             ->expectsOutputToContain(Translate::text('invitations.command.resent', ['email' => 'giulia@example.test', 'hours' => 72]))
             ->assertSuccessful();
 
@@ -61,13 +63,13 @@ class CreateAdminCommandTest extends TestCase
         // Un admin disattivato o invitato non basta a bloccare il comando: conta solo quello attivo
         User::factory()->admin()->disabled()->create();
 
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'giulia@example.test'])
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'giulia@example.test'])
             ->expectsOutputToContain(Translate::text('invitations.command.admin_exists'))
             ->assertFailed();
         $this->assertDatabaseMissing('users', ['email' => 'giulia@example.test']);
         Mail::assertNothingQueued();
 
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'giulia@example.test', '--force' => true])->assertSuccessful();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'giulia@example.test', '--force' => true])->assertSuccessful();
         $this->assertDatabaseHas('users', ['email' => 'giulia@example.test', 'role' => Role::Admin->value]);
     }
 
@@ -76,7 +78,7 @@ class CreateAdminCommandTest extends TestCase
         Mail::fake();
         User::factory()->invited()->create(['email' => 'giulia@example.test']);
 
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'giulia@example.test'])->assertFailed();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'giulia@example.test'])->assertFailed();
         Mail::assertNothingQueued();
     }
 
@@ -85,8 +87,8 @@ class CreateAdminCommandTest extends TestCase
         Mail::fake();
         User::factory()->create(['email' => 'giulia@example.test']);
 
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'giulia@example.test'])->assertFailed();
-        $this->artisan('app:create-admin', ['name' => 'Giulia Rossi', 'email' => 'non-una-email'])->assertFailed();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'giulia@example.test'])->assertFailed();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'non-una-email'])->assertFailed();
         Mail::assertNothingQueued();
     }
 
@@ -94,7 +96,8 @@ class CreateAdminCommandTest extends TestCase
     {
         Mail::fake();
 
-        $this->artisan('app:create-admin', ['name' => '[Verifica](https://phish.example)', 'email' => 'giulia@example.test'])->assertFailed();
+        $this->artisan('app:create-admin', ['first_name' => '[Verifica](https://phish.example)', 'last_name' => 'Rossi', 'email' => 'giulia@example.test'])->assertFailed();
+        $this->artisan('app:create-admin', ['first_name' => 'Giulia', 'last_name' => 'Rossi <b>', 'email' => 'giulia@example.test'])->assertFailed();
         $this->assertDatabaseMissing('users', ['email' => 'giulia@example.test']);
     }
 }

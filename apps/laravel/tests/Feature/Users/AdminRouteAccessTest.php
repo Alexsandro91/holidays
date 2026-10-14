@@ -110,7 +110,7 @@ class AdminRouteAccessTest extends TestCase
         $employee = User::factory()->create();
 
         $this->actingAs(User::factory()->manager()->create())
-            ->json($method, $this->uri($template, $target->id), ['user_id' => $employee->id, 'role' => 'employee', 'name' => 'Nora Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])
+            ->json($method, $this->uri($template, $target->id), ['user_id' => $employee->id, 'role' => 'employee', 'first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])
             ->assertForbidden();
     }
 

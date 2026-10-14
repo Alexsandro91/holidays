@@ -33,4 +33,12 @@ class StoreUserRequest extends FormRequest
             'role' => ['required', Rule::enum(Role::class)->only([Role::Employee, Role::Manager])],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->inviteeMessages();
+    }
 }

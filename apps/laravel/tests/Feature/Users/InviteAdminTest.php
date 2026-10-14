@@ -35,7 +35,7 @@ class InviteAdminTest extends TestCase
     {
         parent::setUp();
         Mail::fake();
-        $this->admin = User::factory()->admin()->create(['name' => 'Anna Admin']);
+        $this->admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
     }
 
     /**
@@ -44,7 +44,7 @@ class InviteAdminTest extends TestCase
      */
     private function payload(array $overrides = []): array
     {
-        return [...['name' => 'Nora Neri', 'email' => 'nora@example.test', 'current_password' => 'password'], ...$overrides];
+        return [...['first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'nora@example.test', 'current_password' => 'password'], ...$overrides];
     }
 
     private function invitationToken(string $email): string
@@ -63,8 +63,10 @@ class InviteAdminTest extends TestCase
 
     public function test_an_admin_invites_a_new_admin(): void
     {
-        $this->actingAs($this->admin)->postJson(self::URI, $this->payload(['email' => '  Nora@Example.TEST ', 'name' => ' Nora Neri ']))
+        $this->actingAs($this->admin)->postJson(self::URI, $this->payload(['email' => '  Nora@Example.TEST ', 'first_name' => ' Nora ', 'last_name' => ' Neri ']))
             ->assertCreated()
+            ->assertJsonPath('data.first_name', 'Nora')
+            ->assertJsonPath('data.last_name', 'Neri')
             ->assertJsonPath('data.name', 'Nora Neri')
             ->assertJsonPath('data.email', 'nora@example.test')
             ->assertJsonPath('data.role', 'admin')
@@ -151,11 +153,15 @@ class InviteAdminTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson(self::URI, ['current_password' => 'password'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['name', 'email']);
+            ->assertJsonValidationErrors(['first_name', 'last_name', 'email']);
         $this->actingAs($this->admin)->withHeader('Accept-Language', 'it')
-            ->postJson(self::URI, $this->payload(['name' => '[Verifica](https://phish.example)', 'email' => 'non-una-email']))
+            ->postJson(self::URI, $this->payload(['first_name' => '[Verifica](https://phish.example)', 'last_name' => 'Neri <b>', 'email' => 'non-una-email']))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['name' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.', 'email']);
+            ->assertJsonValidationErrors([
+                'first_name' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
+                'last_name' => 'Il cognome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
+                'email',
+            ]);
         $this->assertDatabaseCount('users', 1);
     }
 
@@ -233,12 +239,12 @@ class InviteAdminTest extends TestCase
 
     public function test_the_normal_invitation_still_refuses_the_admin_role(): void
     {
-        $this->actingAs($this->admin)->postJson('/api/users', ['name' => 'Nora Neri', 'email' => 'nora@example.test', 'role' => 'admin'])
+        $this->actingAs($this->admin)->postJson('/api/users', ['first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'nora@example.test', 'role' => 'admin'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('role');
 
         try {
-            app(InvitationService::class)->invite('Nora Neri', 'nora@example.test', Role::Admin, $this->admin, Request::create('/'));
+            app(InvitationService::class)->invite('Nora', 'Neri', 'nora@example.test', Role::Admin, $this->admin, Request::create('/'));
             $this->fail('Un admin si invita solo dalla sezione Amministratori');
         } catch (InvalidArgumentException) {
             $this->assertDatabaseMissing('users', ['email' => 'nora@example.test']);
@@ -251,7 +257,7 @@ class InviteAdminTest extends TestCase
         User::query()->whereKey($stale->id)->update(['role' => 'manager']);
 
         try {
-            app(UserManagementService::class)->inviteAdmin('Nora Neri', 'nora@example.test', $stale, Request::create('/'));
+            app(UserManagementService::class)->inviteAdmin('Nora', 'Neri', 'nora@example.test', $stale, Request::create('/'));
             $this->fail('Expected AuthorizationException');
         } catch (AuthorizationException) {
             $this->assertDatabaseMissing('users', ['email' => 'nora@example.test']);
@@ -264,8 +270,8 @@ class InviteAdminTest extends TestCase
         // La seconda richiesta ha superato la validazione prima che la prima salvasse l'utente
         User::factory()->create(['email' => 'nora@example.test']);
         $calls = [
-            'invito admin' => fn () => app(UserManagementService::class)->inviteAdmin('Nora Neri', 'nora@example.test', $this->admin, Request::create('/')),
-            'invito normale' => fn () => app(InvitationService::class)->invite('Nora Neri', 'nora@example.test', Role::Employee, $this->admin, Request::create('/')),
+            'invito admin' => fn () => app(UserManagementService::class)->inviteAdmin('Nora', 'Neri', 'nora@example.test', $this->admin, Request::create('/')),
+            'invito normale' => fn () => app(InvitationService::class)->invite('Nora', 'Neri', 'nora@example.test', Role::Employee, $this->admin, Request::create('/')),
         ];
 
         foreach ($calls as $label => $call) {

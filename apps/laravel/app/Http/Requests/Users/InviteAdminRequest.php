@@ -8,7 +8,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Invito di un nuovo admin (spec del 14/10, §4): nome ed email come l'invito normale, più la password di chi agisce.
+ * Invito di un nuovo admin (spec del 14/10, §4): nome, cognome ed email come l'invito normale, più la password di chi agisce.
  */
 class InviteAdminRequest extends FormRequest
 {
@@ -34,5 +34,13 @@ class InviteAdminRequest extends FormRequest
             ...$this->inviteeRules(),
             'current_password' => $this->currentPasswordRules(),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->inviteeMessages();
     }
 }

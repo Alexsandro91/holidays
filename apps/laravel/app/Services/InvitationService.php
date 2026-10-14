@@ -37,15 +37,15 @@ final class InvitationService
     /**
      * Invito di un dipendente o di un responsabile.
      */
-    public function invite(string $name, string $email, Role $role, User $inviter, Request $request): User
+    public function invite(string $firstName, string $lastName, string $email, Role $role, User $inviter, Request $request): User
     {
         // Un nuovo admin passa solo da inviteAdmin(): blocco degli admin, evento ed email agli admin dedicati
         if ($role === Role::Admin) {
             throw new InvalidArgumentException('Admins are invited only through UserManagementService::inviteAdmin().');
         }
 
-        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($name, $email, $role, $inviter, $request): User {
-            $user = $this->createInvited($name, $email, $role, $inviter);
+        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($firstName, $lastName, $email, $role, $inviter, $request): User {
+            $user = $this->createInvited($firstName, $lastName, $email, $role, $inviter);
             $this->events->log(AuthEventType::InvitationSent, $request, $user, $inviter);
 
             return $user;
@@ -56,21 +56,22 @@ final class InvitationService
      * Invito di un nuovo admin (spec del 14/10, §4). Da chiamare solo da UserManagementService::inviteAdmin(),
      * che dentro la stessa transazione blocca gli admin attivi, verifica chi agisce e avvisa gli altri admin.
      */
-    public function inviteAdmin(string $name, string $email, User $inviter, Request $request): User
+    public function inviteAdmin(string $firstName, string $lastName, string $email, User $inviter, Request $request): User
     {
-        return DB::transaction(function () use ($name, $email, $inviter, $request): User {
-            $user = $this->createInvited($name, $email, Role::Admin, $inviter);
+        return DB::transaction(function () use ($firstName, $lastName, $email, $inviter, $request): User {
+            $user = $this->createInvited($firstName, $lastName, $email, Role::Admin, $inviter);
             $this->events->log(AuthEventType::AdminInvited, $request, $user, $inviter);
 
             return $user;
         });
     }
 
-    private function createInvited(string $name, string $email, Role $role, User $inviter): User
+    private function createInvited(string $firstName, string $lastName, string $email, Role $role, User $inviter): User
     {
         $user = new User;
         $user->forceFill([
-            'name' => $name,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $email,
             'password' => null,
             'role' => $role,

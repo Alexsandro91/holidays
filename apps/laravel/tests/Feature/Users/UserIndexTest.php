@@ -24,16 +24,19 @@ class UserIndexTest extends TestCase
 
     public function test_lists_users_with_exactly_the_managed_fields(): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'Anna Admin']);
-        User::factory()->create(['name' => 'Bruno Bianchi', 'last_login_at' => now()]);
+        $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
+        User::factory()->create(['first_name' => 'Bruno', 'last_name' => 'Bianchi', 'last_login_at' => now()]);
 
         $response = $this->actingAs($admin)->getJson('/api/users')->assertOk();
 
         $response->assertJsonCount(2, 'data');
         $this->assertSame(
-            ['id', 'name', 'email', 'role', 'role_label', 'status', 'status_label', 'invitation_expires_at', 'is_current_user', 'can'],
+            ['id', 'first_name', 'last_name', 'name', 'email', 'role', 'role_label', 'status', 'status_label', 'invitation_expires_at', 'is_current_user', 'can'],
             array_keys($response->json('data.0')),
         );
+        $response->assertJsonPath('data.0.first_name', 'Anna')
+            ->assertJsonPath('data.0.last_name', 'Admin')
+            ->assertJsonPath('data.0.name', 'Anna Admin');
         // Limite di finalità (spec §7.3): niente ultimo accesso nella gestione utenti
         $response->assertJsonMissingPath('data.1.last_login_at');
         $response->assertJsonPath('data.0.is_current_user', true);
@@ -42,9 +45,9 @@ class UserIndexTest extends TestCase
 
     public function test_each_row_says_what_the_viewer_may_do(): void
     {
-        $manager = User::factory()->manager()->create(['name' => 'A Manager']);
-        User::factory()->admin()->create(['name' => 'B Admin']);
-        User::factory()->create(['name' => 'C Employee']);
+        $manager = User::factory()->manager()->create(['last_name' => 'A']);
+        User::factory()->admin()->create(['last_name' => 'B']);
+        User::factory()->create(['last_name' => 'C']);
         $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true];
         $none = array_map(fn (): bool => false, $all);
 
@@ -57,8 +60,8 @@ class UserIndexTest extends TestCase
 
     public function test_an_admin_may_act_on_other_admins_except_changing_their_role(): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'A Admin']);
-        User::factory()->admin()->create(['name' => 'B Admin']);
+        $admin = User::factory()->admin()->create(['last_name' => 'A']);
+        User::factory()->admin()->create(['last_name' => 'B']);
 
         $this->actingAs($admin)->getJson('/api/users')
             ->assertOk()
@@ -96,58 +99,101 @@ class UserIndexTest extends TestCase
         $response->assertJsonPath('meta.counts', ['all' => 5, 'active' => 3, 'invited' => 1, 'disabled' => 1]);
     }
 
-    public function test_filters_by_name_and_email_ignoring_case_and_counts_within_the_filters(): void
+    private function createSearchFixture(): User
     {
-        $admin = User::factory()->admin()->create(['name' => 'Anna Admin', 'email' => 'anna@example.test']);
-        User::factory()->create(['name' => 'Marco Rossi', 'email' => 'm.rossi@example.test']);
-        User::factory()->disabled()->create(['name' => 'Giulia ROSSI', 'email' => 'giulia@example.test']);
-        User::factory()->create(['name' => 'Paolo Verdi', 'email' => 'paolo.rossi@example.test']);
+        $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin', 'email' => 'anna@example.test']);
+        User::factory()->create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'email' => 'mario.r@example.test']);
+        User::factory()->disabled()->create(['first_name' => 'Maria', 'last_name' => 'ROSSINI', 'email' => 'mrossini@example.test']);
+        User::factory()->create(['first_name' => 'Paolo', 'last_name' => 'Verdi', 'email' => 'paolo.rossi@example.test']);
+        User::factory()->create(['first_name' => 'Mario', 'last_name' => 'Bianchi', 'email' => 'mbianchi@example.test']);
 
-        $this->actingAs($admin)->getJson('/api/users?filter[name]=rossi')
-            ->assertOk()
-            ->assertJsonCount(2, 'data')
-            ->assertJsonPath('meta.counts', ['all' => 2, 'active' => 1, 'invited' => 0, 'disabled' => 1]);
-
-        $this->actingAs($admin)->getJson('/api/users?filter[email]=ROSSI')
-            ->assertOk()
-            ->assertJsonCount(2, 'data')
-            ->assertJsonPath('data.0.name', 'Marco Rossi')
-            ->assertJsonPath('data.1.name', 'Paolo Verdi');
-
-        // I due filtri valgono insieme
-        $this->actingAs($admin)->getJson('/api/users?filter[name]=rossi&filter[email]=m.rossi')
-            ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.name', 'Marco Rossi');
+        return $admin;
     }
 
-    public function test_counts_follow_name_email_and_role_but_not_the_status(): void
+    /**
+     * @param  list<string>  $expected
+     */
+    #[DataProvider('searches')]
+    public function test_the_search_matches_every_word_in_first_name_last_name_or_email(string $search, array $expected): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'Anna Admin']);
-        User::factory()->manager()->create(['name' => 'Marco Rossi']);
-        User::factory()->manager()->disabled()->create(['name' => 'Giulia Rossi']);
-        User::factory()->manager()->invited()->create(['name' => 'Paolo Rossi']);
-        User::factory()->create(['name' => 'Sara Rossi']);
+        $admin = $this->createSearchFixture();
 
-        $this->actingAs($admin)->getJson('/api/users?filter[role]=manager&filter[name]=rossi&filter[status]=disabled')
+        $response = $this->actingAs($admin)->getJson('/api/users?sort=email&filter[search]='.rawurlencode($search))->assertOk();
+
+        $this->assertSame($expected, array_column($response->json('data'), 'email'));
+        $this->assertSame(count($expected), $response->json('meta.counts.all'));
+    }
+
+    /**
+     * @return array<string, array{string, list<string>}>
+     */
+    public static function searches(): array
+    {
+        return [
+            'nome e cognome' => ['Mario Rossi', ['mario.r@example.test']],
+            'cognome e nome' => ['rossi mario', ['mario.r@example.test']],
+            'parte di email' => ['rossi@', ['paolo.rossi@example.test']],
+            'una parola in campi diversi' => ['ross', ['mario.r@example.test', 'mrossini@example.test', 'paolo.rossi@example.test']],
+            'spazi in eccesso' => ['  mario   bianchi ', ['mbianchi@example.test']],
+            'nessun risultato' => ['mario verdi', []],
+        ];
+    }
+
+    public function test_filters_by_first_name_last_name_and_email_ignoring_case(): void
+    {
+        $admin = $this->createSearchFixture();
+
+        $this->actingAs($admin)->getJson('/api/users?filter[first_name]=MARI')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('meta.counts', ['all' => 3, 'active' => 2, 'invited' => 0, 'disabled' => 1]);
+        $this->actingAs($admin)->getJson('/api/users?filter[last_name]=rossi')->assertOk()->assertJsonCount(2, 'data');
+        $this->actingAs($admin)->getJson('/api/users?filter[email]=ROSSI')->assertOk()->assertJsonCount(2, 'data');
+
+        // I filtri valgono insieme, anche con la ricerca
+        $this->actingAs($admin)->getJson('/api/users?filter[first_name]=mario&filter[last_name]=rossi')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Mario Rossi');
+        $this->actingAs($admin)->getJson('/api/users?filter[search]=ross&filter[email]=example&filter[first_name]=maria')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.email', 'mrossini@example.test');
+    }
+
+    public function test_counts_follow_search_fields_and_role_but_not_the_status(): void
+    {
+        $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
+        User::factory()->manager()->create(['first_name' => 'Marco', 'last_name' => 'Rossi']);
+        User::factory()->manager()->disabled()->create(['first_name' => 'Giulia', 'last_name' => 'Rossi']);
+        User::factory()->manager()->invited()->create(['first_name' => 'Paolo', 'last_name' => 'Rossi']);
+        User::factory()->create(['first_name' => 'Sara', 'last_name' => 'Rossi']);
+
+        $this->actingAs($admin)->getJson('/api/users?filter[role]=manager&filter[search]=rossi&filter[status]=disabled')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Giulia Rossi')
             ->assertJsonPath('meta.counts', ['all' => 3, 'active' => 1, 'invited' => 1, 'disabled' => 1]);
+        // Marco e Paolo hanno una "o" nel nome
+        $this->actingAs($admin)->getJson('/api/users?filter[last_name]=rossi&filter[first_name]=o')
+            ->assertOk()
+            ->assertJsonPath('meta.counts', ['all' => 2, 'active' => 1, 'invited' => 1, 'disabled' => 0]);
     }
 
     public function test_like_wildcards_are_literal(): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'Anna Admin', 'email' => 'anna@example.test']);
-        User::factory()->create(['name' => 'Mario_Rossi 100%', 'email' => 'mario_rossi@example.test']);
-        User::factory()->create(['name' => 'Mario Bianchi', 'email' => 'marioxrossi@example.test']);
-        User::factory()->create(['name' => 'Back\\slash', 'email' => 'backslash@example.test']);
+        $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin', 'email' => 'anna@example.test']);
+        User::factory()->create(['first_name' => 'Mario_Rossi', 'last_name' => '100%', 'email' => 'mario_rossi@example.test']);
+        User::factory()->create(['first_name' => 'Mario', 'last_name' => 'Bianchi', 'email' => 'marioxrossi@example.test']);
+        User::factory()->create(['first_name' => 'Back\\slash', 'last_name' => 'Verdi', 'email' => 'backslash@example.test']);
 
-        // %, _ e \ (codificati nell'URL dove serve)
+        // %, _ e \ (codificati nell'URL), sia nella ricerca sia nei filtri per campo
         foreach (['%25', '_', '%5C'] as $wildcard) {
-            $this->actingAs($admin)->getJson("/api/users?filter[name]={$wildcard}")->assertOk()->assertJsonCount(1, 'data');
+            $this->actingAs($admin)->getJson("/api/users?filter[search]={$wildcard}")->assertOk()->assertJsonCount(1, 'data');
         }
 
+        $this->actingAs($admin)->getJson('/api/users?filter[last_name]=%25')->assertOk()->assertJsonCount(1, 'data');
+        $this->actingAs($admin)->getJson('/api/users?filter[first_name]=o_r')->assertOk()->assertJsonCount(1, 'data');
         $this->actingAs($admin)->getJson('/api/users?filter[email]=o_r')
             ->assertOk()
             ->assertJsonCount(1, 'data')
@@ -155,12 +201,13 @@ class UserIndexTest extends TestCase
         $this->actingAs($admin)->getJson('/api/users?filter[email]=%25')->assertOk()->assertJsonCount(0, 'data');
     }
 
-    public function test_the_old_search_parameter_no_longer_filters(): void
+    public function test_old_parameters_no_longer_filter(): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'Anna Admin']);
-        User::factory()->create(['name' => 'Marco Rossi']);
+        $admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
+        User::factory()->create(['first_name' => 'Marco', 'last_name' => 'Rossi']);
 
         $this->actingAs($admin)->getJson('/api/users?search=rossi')->assertOk()->assertJsonCount(2, 'data');
+        $this->actingAs($admin)->getJson('/api/users?filter[name]=rossi')->assertOk()->assertJsonCount(2, 'data');
     }
 
     /**
@@ -169,11 +216,13 @@ class UserIndexTest extends TestCase
     public static function sorts(): array
     {
         return [
-            'nome' => ['name', ['Anna', 'Bruno', 'Carla', 'Dario', 'Elena']],
-            'nome decrescente' => ['-name', ['Elena', 'Dario', 'Carla', 'Bruno', 'Anna']],
+            'nome' => ['first_name', ['Anna', 'Bruno', 'Carla', 'Dario', 'Elena']],
+            'nome decrescente' => ['-first_name', ['Elena', 'Dario', 'Carla', 'Bruno', 'Anna']],
+            'cognome' => ['last_name', ['Bruno', 'Carla', 'Anna', 'Elena', 'Dario']],
+            'cognome decrescente' => ['-last_name', ['Dario', 'Elena', 'Anna', 'Carla', 'Bruno']],
             'email' => ['email', ['Bruno', 'Carla', 'Anna', 'Dario', 'Elena']],
             'email decrescente' => ['-email', ['Elena', 'Dario', 'Anna', 'Carla', 'Bruno']],
-            // Gerarchia (dipendente, responsabile, admin), non ordine alfabetico; spareggio sempre per id crescente
+            // Gerarchia (dipendente, responsabile, admin), non ordine alfabetico; spareggio per id crescente
             'ruolo' => ['role', ['Bruno', 'Carla', 'Elena', 'Anna', 'Dario']],
             'ruolo decrescente' => ['-role', ['Dario', 'Anna', 'Bruno', 'Carla', 'Elena']],
             // Attivo, invitato, disattivato
@@ -188,28 +237,27 @@ class UserIndexTest extends TestCase
     #[DataProvider('sorts')]
     public function test_sorts_by_every_column_in_both_directions(string $sort, array $expected): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'Dario', 'email' => 'd@example.test']);
-        User::factory()->manager()->create(['name' => 'Anna', 'email' => 'c@example.test']);
-        User::factory()->invited()->create(['name' => 'Bruno', 'email' => 'a@example.test']);
-        User::factory()->disabled()->create(['name' => 'Carla', 'email' => 'b@example.test']);
-        User::factory()->create(['name' => 'Elena', 'email' => 'e@example.test']);
+        $admin = User::factory()->admin()->create(['first_name' => 'Dario', 'last_name' => 'Esposito', 'email' => 'd@example.test']);
+        User::factory()->manager()->create(['first_name' => 'Anna', 'last_name' => 'Conti', 'email' => 'c@example.test']);
+        User::factory()->invited()->create(['first_name' => 'Bruno', 'last_name' => 'Arena', 'email' => 'a@example.test']);
+        User::factory()->disabled()->create(['first_name' => 'Carla', 'last_name' => 'Bruni', 'email' => 'b@example.test']);
+        User::factory()->create(['first_name' => 'Elena', 'last_name' => 'Dini', 'email' => 'e@example.test']);
 
         $response = $this->actingAs($admin)->getJson("/api/users?sort={$sort}")->assertOk();
 
-        $this->assertSame($expected, array_column($response->json('data'), 'name'));
+        $this->assertSame($expected, array_column($response->json('data'), 'first_name'));
     }
 
-    public function test_sorts_by_name_by_default_with_the_id_as_tie_break(): void
+    public function test_sorts_by_last_name_then_first_name_then_id_by_default(): void
     {
-        $admin = User::factory()->admin()->create(['name' => 'Zeno']);
-        $first = User::factory()->create(['name' => 'Mario']);
-        $second = User::factory()->create(['name' => 'Mario']);
+        $admin = User::factory()->admin()->create(['first_name' => 'Zeno', 'last_name' => 'Bianchi']);
+        $mario = User::factory()->create(['first_name' => 'Mario', 'last_name' => 'Rossi']);
+        $firstAnna = User::factory()->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+        $secondAnna = User::factory()->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
 
-        $this->actingAs($admin)->getJson('/api/users')
-            ->assertOk()
-            ->assertJsonPath('data.0.id', $first->id)
-            ->assertJsonPath('data.1.id', $second->id)
-            ->assertJsonPath('data.2.id', $admin->id);
+        $response = $this->actingAs($admin)->getJson('/api/users')->assertOk();
+
+        $this->assertSame([$admin->id, $firstAnna->id, $secondAnna->id, $mario->id], array_column($response->json('data'), 'id'));
     }
 
     public function test_the_page_size_can_be_ten_or_fifty(): void
@@ -252,12 +300,16 @@ class UserIndexTest extends TestCase
         return [
             'stato sconosciuto' => ['filter[status]=deleted', 'filter.status'],
             'ruolo sconosciuto' => ['filter[role]=root', 'filter.role'],
-            'nome troppo lungo' => ['filter[name]='.str_repeat('a', 101), 'filter.name'],
+            'ricerca troppo lunga' => ['filter[search]='.str_repeat('a', 101), 'filter.search'],
+            'nome troppo lungo' => ['filter[first_name]='.str_repeat('a', 101), 'filter.first_name'],
+            'cognome troppo lungo' => ['filter[last_name]='.str_repeat('a', 101), 'filter.last_name'],
             'email troppo lunga' => ['filter[email]='.str_repeat('a', 101), 'filter.email'],
-            'nome non testo' => ['filter[name][]=a', 'filter.name'],
+            'cognome non testo' => ['filter[last_name][]=a', 'filter.last_name'],
+            'ricerca non testo' => ['filter[search][]=a', 'filter.search'],
             'ordinamento sconosciuto' => ['sort=password', 'sort'],
-            'doppio meno' => ['sort=--name', 'sort'],
-            'più colonne' => ['sort=name,email', 'sort'],
+            'vecchio ordinamento per nome' => ['sort=name', 'sort'],
+            'doppio meno' => ['sort=--last_name', 'sort'],
+            'più colonne' => ['sort=last_name,email', 'sort'],
             'righe per pagina non ammesse' => ['per_page=20', 'per_page'],
             'righe per pagina non numeriche' => ['per_page=tutte', 'per_page'],
             'pagina zero' => ['page=0', 'page'],

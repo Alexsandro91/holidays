@@ -28,18 +28,33 @@ final class UserController extends Controller
         'status' => [UserStatus::Active->value, UserStatus::Invited->value, UserStatus::Disabled->value],
     ];
 
+    /**
+     * Campi in cui cerca `filter[search]` e colonne dei filtri "contiene".
+     */
+    private const SEARCHABLE = ['first_name', 'last_name', 'email'];
+
     public function index(ListUsersRequest $request): AnonymousResourceCollection
     {
-        $name = $request->textFilter('name');
-        $email = $request->textFilter('email');
+        $words = preg_split('/\s+/u', $request->textFilter('search'), -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $role = $request->enum('filter.role', Role::class);
         $status = $request->enum('filter.status', UserStatus::class);
 
-        // Nome, email e ruolo valgono anche per i conteggi delle schede; lo stato filtra solo la lista
+        // Ricerca, filtri per campo e ruolo valgono anche per i conteggi delle schede; lo stato filtra solo la lista
         $base = User::query()
-            ->when($name !== '', fn (Builder $query) => $query->whereLike('name', $this->containsPattern($name)))
-            ->when($email !== '', fn (Builder $query) => $query->whereLike('email', $this->containsPattern($email)))
             ->when($role !== null, fn (Builder $query) => $query->where('role', $role));
+
+        // Ogni parola deve comparire in nome, cognome o email: "Mario Rossi" e "Rossi Mario" trovano la stessa persona
+        foreach ($words as $word) {
+            $base->whereAny(self::SEARCHABLE, 'like', $this->containsPattern($word));
+        }
+
+        foreach (self::SEARCHABLE as $column) {
+            $text = $request->textFilter($column);
+
+            if ($text !== '') {
+                $base->whereLike($column, $this->containsPattern($text));
+            }
+        }
 
         $counts = (clone $base)->toBase()
             ->select('status')
@@ -65,7 +80,8 @@ final class UserController extends Controller
     public function store(StoreUserRequest $request, InvitationService $invitations): JsonResponse
     {
         $user = $invitations->invite(
-            $request->string('name')->value(),
+            $request->string('first_name')->value(),
+            $request->string('last_name')->value(),
             $request->string('email')->value(),
             $request->enum('role', Role::class) ?? Role::Employee,
             $this->actor($request),
@@ -93,6 +109,13 @@ final class UserController extends Controller
 
         if ($ranks === null) {
             $query->orderBy($column, $sort->direction());
+
+            // A parità di cognome conta il nome e viceversa (default: cognome, nome, id)
+            match ($column) {
+                'last_name' => $query->orderBy('first_name'),
+                'first_name' => $query->orderBy('last_name'),
+                default => null,
+            };
         } else {
             // CASE portabile tra i database, con valori e posizioni in binding
             $cases = implode(' ', array_fill(0, count($ranks), 'WHEN ? THEN ?'));

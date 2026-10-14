@@ -14,12 +14,12 @@ class DevUserSeeder extends Seeder
 
     public function run(): void
     {
-        User::factory()->admin()->create(['name' => 'Giulia Rossi', 'email' => 'admin@holidays.test', 'password' => self::PASSWORD]);
-        User::factory()->manager()->create(['name' => 'Marco Bianchi', 'email' => 'manager@holidays.test', 'password' => self::PASSWORD]);
-        User::factory()->create(['name' => 'Sara Colombo', 'email' => 'employee@holidays.test', 'password' => self::PASSWORD]);
-        User::factory()->disabled()->create(['name' => 'Elena Romano', 'email' => 'disabled@holidays.test', 'password' => self::PASSWORD]);
+        User::factory()->admin()->create(['first_name' => 'Giulia', 'last_name' => 'Rossi', 'email' => 'admin@holidays.test', 'password' => self::PASSWORD]);
+        User::factory()->manager()->create(['first_name' => 'Marco', 'last_name' => 'Bianchi', 'email' => 'manager@holidays.test', 'password' => self::PASSWORD]);
+        User::factory()->create(['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'employee@holidays.test', 'password' => self::PASSWORD]);
+        User::factory()->disabled()->create(['first_name' => 'Elena', 'last_name' => 'Romano', 'email' => 'disabled@holidays.test', 'password' => self::PASSWORD]);
         // Usato dall'E2E del recupero password: la sua password cambia a ogni esecuzione
-        User::factory()->create(['name' => 'Paolo Greco', 'email' => 'reset@holidays.test', 'password' => self::PASSWORD]);
-        User::factory()->invited()->create(['name' => 'Luca Ferrari', 'email' => 'invited@holidays.test']);
+        User::factory()->create(['first_name' => 'Paolo', 'last_name' => 'Greco', 'email' => 'reset@holidays.test', 'password' => self::PASSWORD]);
+        User::factory()->invited()->create(['first_name' => 'Luca', 'last_name' => 'Ferrari', 'email' => 'invited@holidays.test']);
     }
 }

@@ -3,12 +3,14 @@
 namespace App\Enums;
 
 /**
- * Ordinamenti della lista utenti (spec del 14/10, §3): la colonna, con il prefisso `-` per l'ordine decrescente.
+ * Ordinamenti della lista utenti (spec del 14/10, §7.2): la colonna, con il prefisso `-` per l'ordine decrescente.
  */
 enum UserSort: string
 {
-    case Name = 'name';
-    case NameDesc = '-name';
+    case FirstName = 'first_name';
+    case FirstNameDesc = '-first_name';
+    case LastName = 'last_name';
+    case LastNameDesc = '-last_name';
     case Email = 'email';
     case EmailDesc = '-email';
     case Role = 'role';

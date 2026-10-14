@@ -5,17 +5,15 @@ namespace App\Console\Commands;
 use App\Enums\AuthEventType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
-use App\Http\Requests\Users\StoreUserRequest;
 use App\Models\User;
 use App\Services\AuthEventLogger;
 use App\Services\InvitationService;
+use App\Support\PersonRules;
 use App\Support\Translate;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 /**
  * Primo amministratore (spec §6.1): un invito come gli altri, nessuna password passa dal terminale.
@@ -24,7 +22,8 @@ use Illuminate\Validation\Rule;
 class CreateAdmin extends Command
 {
     protected $signature = 'app:create-admin
-        {name : Nome e cognome}
+        {first_name : Nome}
+        {last_name : Cognome}
         {email : Email aziendale}
         {--force : Invita anche se esiste già un amministratore attivo}';
 
@@ -32,8 +31,9 @@ class CreateAdmin extends Command
 
     public function handle(InvitationService $invitations, AuthEventLogger $events, Request $request): int
     {
-        $name = trim((string) $this->argument('name'));
-        $email = Str::lower(trim((string) $this->argument('email')));
+        $firstName = trim((string) $this->argument('first_name'));
+        $lastName = trim((string) $this->argument('last_name'));
+        $email = PersonRules::normalizeEmail((string) $this->argument('email'));
 
         if (! $this->option('force') && $this->activeAdminExists()) {
             $this->error(Translate::text('invitations.command.admin_exists'));
@@ -58,10 +58,12 @@ class CreateAdmin extends Command
             return self::SUCCESS;
         }
 
-        $validator = Validator::make(['name' => $name, 'email' => $email], [
-            'name' => ['required', 'string', 'max:255', 'not_regex:'.StoreUserRequest::NAME_FORBIDDEN_CHARACTERS],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-        ], ['name.not_regex' => Translate::text('users.name_characters')]);
+        // Stesse regole dell'invito dalla sezione Amministratori
+        $validator = Validator::make(
+            ['first_name' => $firstName, 'last_name' => $lastName, 'email' => $email],
+            ['first_name' => PersonRules::name(), 'last_name' => PersonRules::name(), 'email' => PersonRules::email()],
+            PersonRules::messages(),
+        );
 
         if ($validator->fails()) {
             foreach ($validator->errors()->all() as $error) {
@@ -71,10 +73,11 @@ class CreateAdmin extends Command
             return self::FAILURE;
         }
 
-        DB::transaction(function () use ($name, $email, $invitations, $events, $request): void {
+        DB::transaction(function () use ($firstName, $lastName, $email, $invitations, $events, $request): void {
             $admin = new User;
             $admin->forceFill([
-                'name' => $name,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'email' => $email,
                 'password' => null,
                 'role' => Role::Admin,

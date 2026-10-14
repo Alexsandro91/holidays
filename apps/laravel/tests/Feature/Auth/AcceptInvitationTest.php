@@ -29,7 +29,7 @@ class AcceptInvitationTest extends TestCase
     {
         Mail::fake();
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->postJson('/api/users', ['name' => 'Sara Colombo', 'email' => $email, 'role' => 'employee'])->assertCreated();
+        $this->actingAs($admin)->postJson('/api/users', ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => $email, 'role' => 'employee'])->assertCreated();
         // Le pagine dell'invito sono da ospite
         $this->app['auth']->forgetGuards();
 

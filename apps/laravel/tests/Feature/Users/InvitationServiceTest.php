@@ -98,7 +98,7 @@ class InvitationServiceTest extends TestCase
         FailingMailFake::install(InvitationMail::class);
 
         $this->actingAs($this->admin)
-            ->postJson('/api/users', ['name' => 'Sara Colombo', 'email' => 'sara@example.test', 'role' => 'employee'])
+            ->postJson('/api/users', ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'sara@example.test', 'role' => 'employee'])
             ->assertCreated();
 
         $this->assertDatabaseHas('users', ['email' => 'sara@example.test', 'status' => UserStatus::Invited->value]);

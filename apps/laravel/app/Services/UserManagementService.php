@@ -144,11 +144,11 @@ final class UserManagementService
      * Invita un nuovo admin (spec del 14/10, §4): utente admin invitato, evento admin_invited ed email agli altri
      * admin attivi dopo il commit. L'invitato riceve solo l'invito.
      */
-    public function inviteAdmin(string $name, string $email, User $actor, Request $request): User
+    public function inviteAdmin(string $firstName, string $lastName, string $email, User $actor, Request $request): User
     {
-        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($name, $email, $actor, $request): User {
+        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($firstName, $lastName, $email, $actor, $request): User {
             $this->lockActiveAdmins($actor);
-            $invited = $this->invitations->inviteAdmin($name, $email, $actor, $request);
+            $invited = $this->invitations->inviteAdmin($firstName, $lastName, $email, $actor, $request);
             $this->notifyAdmins(AdminChange::Invited, $invited, $actor, notifyTarget: false);
 
             return $invited;

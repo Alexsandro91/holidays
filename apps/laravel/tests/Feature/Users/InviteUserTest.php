@@ -23,7 +23,7 @@ class InviteUserTest extends TestCase
     {
         parent::setUp();
         Mail::fake();
-        $this->admin = User::factory()->admin()->create(['name' => 'Anna Admin']);
+        $this->admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
     }
 
     /**
@@ -32,7 +32,7 @@ class InviteUserTest extends TestCase
      */
     private function payload(array $overrides = []): array
     {
-        return [...['name' => 'Sara Colombo', 'email' => 'sara@example.test', 'role' => 'employee'], ...$overrides];
+        return [...['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'sara@example.test', 'role' => 'employee'], ...$overrides];
     }
 
     private function lastInvitationToken(): string
@@ -98,16 +98,19 @@ class InviteUserTest extends TestCase
     {
         $this->actingAs($this->admin)->postJson('/api/users', [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['name', 'email', 'role']);
+            ->assertJsonValidationErrors(['first_name', 'last_name', 'email', 'role']);
     }
 
     public function test_names_with_markup_or_control_characters_are_rejected(): void
     {
         foreach (['[Verifica](https://phish.example)', 'Sara <b>Colombo</b>', "Sara\u{0007}Colombo"] as $name) {
             $this->actingAs($this->admin)->withHeader('Accept-Language', 'it')
-                ->postJson('/api/users', $this->payload(['name' => $name]))
+                ->postJson('/api/users', $this->payload(['first_name' => $name, 'last_name' => $name]))
                 ->assertUnprocessable()
-                ->assertJsonValidationErrors(['name' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.']);
+                ->assertJsonValidationErrors([
+                    'first_name' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
+                    'last_name' => 'Il cognome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
+                ]);
         }
 
         $this->assertDatabaseMissing('users', ['email' => 'sara@example.test']);

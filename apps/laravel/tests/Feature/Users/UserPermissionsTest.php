@@ -113,12 +113,12 @@ class UserPermissionsTest extends TestCase
         $manager = User::factory()->manager()->create();
 
         foreach (['employee', 'manager'] as $index => $role) {
-            $this->actingAs($manager)->postJson('/api/users', ['name' => 'Sara Colombo', 'email' => "sara{$index}@example.test", 'role' => $role])
+            $this->actingAs($manager)->postJson('/api/users', ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => "sara{$index}@example.test", 'role' => $role])
                 ->assertCreated()
                 ->assertJsonPath('data.role', $role);
         }
 
-        $this->actingAs($manager)->postJson('/api/users', ['name' => 'Sara Colombo', 'email' => 'sara9@example.test', 'role' => 'admin'])
+        $this->actingAs($manager)->postJson('/api/users', ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'sara9@example.test', 'role' => 'admin'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('role');
     }
@@ -219,7 +219,7 @@ class UserPermissionsTest extends TestCase
 
         $this->actingAs($manager)->getJson('/api/administrators')->assertForbidden();
         $this->actingAs($manager)->postJson('/api/administrators', ['user_id' => $employee->id, 'current_password' => 'password'])->assertForbidden();
-        $this->actingAs($manager)->postJson('/api/administrators/invitations', ['name' => 'Nora Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])->assertForbidden();
+        $this->actingAs($manager)->postJson('/api/administrators/invitations', ['first_name' => 'Nora', 'last_name' => 'Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])->assertForbidden();
         $this->actingAs($manager)->deleteJson("/api/administrators/{$admin->id}", ['role' => 'employee', 'current_password' => 'password'])->assertForbidden();
     }
 

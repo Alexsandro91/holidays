@@ -13,6 +13,7 @@ return [
     'admin_not_active' => 'Si può revocare solo un amministratore attivo. Per un invito ancora da accettare usa Annulla invito.',
     'state_changed' => 'La situazione dell’utente è cambiata nel frattempo. Ricarica la pagina e riprova.',
     'name_characters' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
+    'last_name_characters' => 'Il cognome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
     'password_locked' => 'Troppi tentativi con la password. Riprova tra :minutes minuti.',
     'mail' => [
         'admin_change' => [

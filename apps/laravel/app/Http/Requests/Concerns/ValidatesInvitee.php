@@ -2,50 +2,51 @@
 
 namespace App\Http\Requests\Concerns;
 
-use App\Support\Translate;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
+use App\Support\PersonRules;
 
 /**
- * Nome ed email di chi si invita: stesse regole per l'invito normale e per quello di un nuovo admin.
+ * Nome, cognome ed email di chi si invita: stesse regole per l'invito normale, quello di un nuovo admin e la modifica.
+ *
+ * Il trait non definisce `messages()`: la FormRequest deve restituire `inviteeMessages()` dal suo `messages()`,
+ * altrimenti i testi sui caratteri vietati tornerebbero quelli generici.
  */
 trait ValidatesInvitee
 {
     /**
-     * Caratteri vietati nel nome: finisce nelle email markdown (link o HTML iniettati) e nei log.
-     */
-    public const NAME_FORBIDDEN_CHARACTERS = '/[\p{Cc}\[\]<>]/u';
-
-    /**
-     * Email in minuscolo e nome senza spazi ai lati, prima della validazione.
+     * Email in minuscolo, nome e cognome senza spazi ai lati, prima della validazione.
      */
     protected function normalizeInvitee(): void
     {
-        $email = $this->input('email');
-        $name = $this->input('name');
+        $values = [];
 
-        $this->merge(array_filter([
-            'email' => is_string($email) ? Str::lower(trim($email)) : null,
-            'name' => is_string($name) ? trim($name) : null,
-        ], fn (?string $value): bool => $value !== null));
+        foreach (['first_name', 'last_name', 'email'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $values[$field] = $field === 'email' ? PersonRules::normalizeEmail($value) : trim($value);
+            }
+        }
+
+        $this->merge($values);
     }
 
     /**
-     * @return array{name: list<string>, email: list<mixed>}
+     * @return array<string, list<mixed>>
      */
-    protected function inviteeRules(): array
+    protected function inviteeRules(?int $ignoreUserId = null): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', 'not_regex:'.self::NAME_FORBIDDEN_CHARACTERS],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
+            'first_name' => PersonRules::name(),
+            'last_name' => PersonRules::name(),
+            'email' => PersonRules::email($ignoreUserId),
         ];
     }
 
     /**
      * @return array<string, string>
      */
-    public function messages(): array
+    protected function inviteeMessages(): array
     {
-        return ['name.not_regex' => Translate::text('users.name_characters')];
+        return PersonRules::messages();
     }
 }

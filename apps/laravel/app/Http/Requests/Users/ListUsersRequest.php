@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Filtri, ordinamento e paginazione della lista utenti (spec del 14/10, §3). Valori non validi: 422.
+ * Ricerca, filtri, ordinamento e paginazione della lista utenti (spec del 14/10, §3 e §7.2). Valori non validi: 422.
  */
 class ListUsersRequest extends FormRequest
 {
@@ -32,7 +32,9 @@ class ListUsersRequest extends FormRequest
     {
         return [
             'filter' => ['sometimes', 'array'],
-            'filter.name' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
+            'filter.search' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
+            'filter.first_name' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
+            'filter.last_name' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
             'filter.email' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
             'filter.role' => ['sometimes', 'nullable', Rule::enum(Role::class)],
             'filter.status' => ['sometimes', 'nullable', Rule::enum(UserStatus::class)],
@@ -43,7 +45,7 @@ class ListUsersRequest extends FormRequest
     }
 
     /**
-     * Testo di un filtro "contiene" (nome o email), senza spazi ai lati; vuoto se assente.
+     * Testo di un filtro "contiene" (search, first_name, last_name o email), senza spazi ai lati; vuoto se assente.
      */
     public function textFilter(string $key): string
     {
@@ -52,7 +54,7 @@ class ListUsersRequest extends FormRequest
 
     public function sort(): UserSort
     {
-        return $this->enum('sort', UserSort::class) ?? UserSort::Name;
+        return $this->enum('sort', UserSort::class) ?? UserSort::LastName;
     }
 
     public function perPage(): int

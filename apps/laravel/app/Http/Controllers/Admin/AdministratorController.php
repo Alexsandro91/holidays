@@ -24,7 +24,7 @@ final class AdministratorController extends Controller
     public function index(): AnonymousResourceCollection
     {
         return ManagedUserResource::collection(
-            User::query()->where('role', Role::Admin)->with('invitation')->orderBy('name')->orderBy('id')->get(),
+            User::query()->where('role', Role::Admin)->with('invitation')->orderBy('last_name')->orderBy('first_name')->orderBy('id')->get(),
         );
     }
 
@@ -46,7 +46,8 @@ final class AdministratorController extends Controller
     public function invite(InviteAdminRequest $request): JsonResponse
     {
         $invited = $this->users->inviteAdmin(
-            $request->string('name')->value(),
+            $request->string('first_name')->value(),
+            $request->string('last_name')->value(),
             $request->string('email')->value(),
             $this->actor($request),
             $request,

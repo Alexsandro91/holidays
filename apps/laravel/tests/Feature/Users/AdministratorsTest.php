@@ -24,12 +24,12 @@ class AdministratorsTest extends TestCase
     {
         parent::setUp();
         Mail::fake();
-        $this->admin = User::factory()->admin()->create(['name' => 'Anna Admin']);
+        $this->admin = User::factory()->admin()->create(['first_name' => 'Anna', 'last_name' => 'Admin']);
     }
 
     public function test_lists_only_administrators(): void
     {
-        User::factory()->admin()->create(['name' => 'Bruno Admin']);
+        User::factory()->admin()->create(['first_name' => 'Bruno', 'last_name' => 'Admin']);
         User::factory()->create();
 
         $this->actingAs($this->admin)->getJson('/api/administrators')
@@ -49,7 +49,7 @@ class AdministratorsTest extends TestCase
 
     public function test_promotes_an_active_user_with_the_password(): void
     {
-        $employee = User::factory()->create(['name' => 'Marco Bianchi']);
+        $employee = User::factory()->create(['first_name' => 'Marco', 'last_name' => 'Bianchi']);
         $otherAdmin = User::factory()->admin()->create();
 
         $this->actingAs($this->admin)->postJson('/api/administrators', ['user_id' => $employee->id, 'current_password' => 'password'])

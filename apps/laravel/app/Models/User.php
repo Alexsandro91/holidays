@@ -9,13 +9,14 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Mail;
 
-#[Fillable(['name', 'email', 'password', 'locale'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'locale'])]
 #[Hidden(['password'])]
 class User extends Authenticatable implements HasLocalePreference
 {
@@ -53,6 +54,16 @@ class User extends Authenticatable implements HasLocalePreference
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
     {
         Mail::to($this)->send(new ResetPasswordMail($this->email, $token));
+    }
+
+    /**
+     * Nome completo "Nome Cognome" per la visualizzazione e le email (spec del 14/10, §7.1).
+     *
+     * @return Attribute<string, never>
+     */
+    protected function name(): Attribute
+    {
+        return Attribute::get(fn (): string => trim($this->first_name.' '.$this->last_name));
     }
 
     public function isActive(): bool
