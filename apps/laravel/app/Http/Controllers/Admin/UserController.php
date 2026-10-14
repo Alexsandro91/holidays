@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\Role;
+use App\Enums\UserSort;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\ListUsersRequest;
@@ -17,33 +18,40 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class UserController extends Controller
 {
-    private const PER_PAGE = 25;
+    /**
+     * Gerarchia per l'ordinamento di ruolo e stato: mai l'ordine alfabetico dei valori.
+     *
+     * @var array<string, list<string>>
+     */
+    private const RANKS = [
+        'role' => [Role::Employee->value, Role::Manager->value, Role::Admin->value],
+        'status' => [UserStatus::Active->value, UserStatus::Invited->value, UserStatus::Disabled->value],
+    ];
 
     public function index(ListUsersRequest $request): AnonymousResourceCollection
     {
-        $search = $request->string('search')->trim()->value();
-        $status = $request->enum('filter.status', UserStatus::class);
+        $name = $request->textFilter('name');
+        $email = $request->textFilter('email');
         $role = $request->enum('filter.role', Role::class);
+        $status = $request->enum('filter.status', UserStatus::class);
 
-        // Ricerca e ruolo valgono anche per i conteggi delle schede; lo stato filtra solo la lista
+        // Nome, email e ruolo valgono anche per i conteggi delle schede; lo stato filtra solo la lista
         $base = User::query()
-            ->when($search !== '', function (Builder $query) use ($search): void {
-                $pattern = '%'.addcslashes($search, '%_\\').'%';
-                $query->where(fn (Builder $inner) => $inner->where('name', 'like', $pattern)->orWhere('email', 'like', $pattern));
-            })
+            ->when($name !== '', fn (Builder $query) => $query->whereLike('name', $this->containsPattern($name)))
+            ->when($email !== '', fn (Builder $query) => $query->whereLike('email', $this->containsPattern($email)))
             ->when($role !== null, fn (Builder $query) => $query->where('role', $role));
 
         $counts = (clone $base)->toBase()
-            ->selectRaw('status, count(*) as aggregate')
+            ->select('status')
+            ->selectRaw('count(*) as aggregate')
             ->groupBy('status')
             ->pluck('aggregate', 'status');
 
         $users = (clone $base)
             ->when($status !== null, fn (Builder $query) => $query->where('status', $status))
             ->with('invitation')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->paginate(self::PER_PAGE)
+            ->tap(fn (Builder $query) => $this->applySort($query, $request->sort()))
+            ->paginate($request->perPage())
             ->withQueryString();
 
         return ManagedUserResource::collection($users)->additional(['meta' => ['counts' => [
@@ -65,5 +73,34 @@ final class UserController extends Controller
         );
 
         return (new ManagedUserResource($user->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    /**
+     * Ricerca "contiene": %, _ e \ digitati dall'utente valgono come caratteri, non come jolly.
+     */
+    private function containsPattern(string $text): string
+    {
+        return '%'.addcslashes($text, '%_\\').'%';
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     */
+    private function applySort(Builder $query, UserSort $sort): void
+    {
+        $column = $sort->column();
+        $ranks = self::RANKS[$column] ?? null;
+
+        if ($ranks === null) {
+            $query->orderBy($column, $sort->direction());
+        } else {
+            // CASE portabile tra i database, con valori e posizioni in binding
+            $cases = implode(' ', array_fill(0, count($ranks), 'WHEN ? THEN ?'));
+            $bindings = array_merge(...array_map(fn (string $value, int $rank): array => [$value, $rank], $ranks, array_keys($ranks)));
+            $query->orderByRaw("CASE {$query->getQuery()->getGrammar()->wrap($column)} {$cases} END {$sort->direction()}", $bindings);
+        }
+
+        // Spareggio stabile per la paginazione
+        $query->orderBy('id');
     }
 }
