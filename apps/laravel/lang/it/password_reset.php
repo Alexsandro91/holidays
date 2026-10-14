@@ -17,7 +17,7 @@ return [
         'changed' => [
             'subject' => 'La password di Holidays è stata cambiata',
             'heading' => 'Password cambiata',
-            'intro' => 'La password del tuo account è stata cambiata da :device il :date. Per sicurezza abbiamo chiuso tutte le sessioni aperte.',
+            'intro' => 'La password del tuo account è stata cambiata da :device il :date. Per sicurezza abbiamo chiuso le altre sessioni aperte.',
             'not_you' => 'Se non sei stato tu, chiedi subito un nuovo link dalla pagina di accesso e avvisa l’ufficio HR.',
         ],
     ],

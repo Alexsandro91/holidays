@@ -60,12 +60,28 @@ trait ConfirmsCurrentPassword
         $this->passwordAttemptReserved = true;
     }
 
+    /**
+     * Evento registrato per la password sbagliata: una FormRequest lo ridefinisce se il flusso non è quello degli admin.
+     */
+    protected function passwordFailedEvent(): AuthEventType
+    {
+        return AuthEventType::AdminPasswordFailed;
+    }
+
+    /**
+     * Evento registrato per il blocco dopo troppi errori (ridefinibile come `passwordFailedEvent()`).
+     */
+    protected function passwordLockedEvent(): AuthEventType
+    {
+        return AuthEventType::AdminPasswordLocked;
+    }
+
     protected function failedValidation(Validator $validator): void
     {
         if ($this->passwordAttemptReserved && $validator->errors()->has('current_password')) {
             // Password sbagliata: il tentativo prenotato resta contato
             $this->passwordAttemptReserved = false;
-            $this->logPasswordEvent(AuthEventType::AdminPasswordFailed);
+            $this->logPasswordEvent($this->passwordFailedEvent());
         } else {
             $this->releasePasswordAttempt();
         }
@@ -102,7 +118,7 @@ trait ConfirmsCurrentPassword
     private function throwPasswordLockout(string $key): never
     {
         $seconds = RateLimiter::availableIn($key);
-        $this->logPasswordEvent(AuthEventType::AdminPasswordLocked);
+        $this->logPasswordEvent($this->passwordLockedEvent());
 
         throw new ThrottleRequestsException(
             Translate::text('users.password_locked', ['minutes' => (int) ceil($seconds / 60)]),

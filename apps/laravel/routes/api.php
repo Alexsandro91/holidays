@@ -6,11 +6,16 @@ use App\Http\Controllers\Admin\UserInvitationController;
 use App\Http\Controllers\Admin\UserRoleController;
 use App\Http\Controllers\Admin\UserStatusController;
 use App\Http\Controllers\Auth\CurrentUserController;
+use App\Http\Controllers\Auth\ProfileController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/auth/user', CurrentUserController::class)->name('auth.user');
+
+    // Profilo: ognuno agisce solo su sé stesso, qualunque sia il ruolo (nessuna policy)
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
 
     // Gestione utenti: responsabili e admin, mai sugli admin per il responsabile (UserPolicy)
     Route::get('/users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');

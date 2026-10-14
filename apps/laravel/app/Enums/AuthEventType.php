@@ -23,4 +23,6 @@ enum AuthEventType: string
     case UserUpdated = 'user_updated';
     case AdminPasswordFailed = 'admin_password_failed';
     case AdminPasswordLocked = 'admin_password_locked';
+    case PasswordChangeFailed = 'password_change_failed';
+    case PasswordChangeLocked = 'password_change_locked';
 }

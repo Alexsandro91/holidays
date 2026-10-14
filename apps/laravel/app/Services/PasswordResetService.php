@@ -82,18 +82,32 @@ final class PasswordResetService
                     LoginChallenge::query()->where('user_id', $user->id)->delete();
                     $this->events->log(AuthEventType::PasswordReset, $request, $user);
                     // Link annullato insieme al cambio: un errore dopo il commit non lo lascia riusabile
-                    $this->broker()->deleteToken($user);
-
-                    // Dopo il commit: un errore della coda è segnalato, non annulla il cambio né la risposta
-                    DB::afterCommit(fn () => rescue(
-                        fn () => Mail::to($user)->send(new PasswordChangedMail((string) $request->userAgent(), now())),
-                        report: true,
-                    ));
+                    $this->forgetResetTokens($user);
+                    $this->queueChangedMail($user, $request);
                 });
             },
         );
 
         return $status === PasswordBroker::PASSWORD_RESET ? $resetUser : null;
+    }
+
+    /**
+     * Annulla i link di recupero ancora validi dell'utente.
+     */
+    public function forgetResetTokens(User $user): void
+    {
+        $this->broker()->deleteToken($user);
+    }
+
+    /**
+     * Avviso del cambio password, dopo il commit: un errore della coda è segnalato, non annulla il cambio né la risposta.
+     */
+    public function queueChangedMail(User $user, Request $request): void
+    {
+        DB::afterCommit(fn () => rescue(
+            fn () => Mail::to($user)->send(new PasswordChangedMail((string) $request->userAgent(), now())),
+            report: true,
+        ));
     }
 
     private function broker(): PasswordBroker

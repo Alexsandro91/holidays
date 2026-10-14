@@ -18,6 +18,6 @@ class PasswordChangedMailTest extends TestCase
 
         $mail->assertHasSubject('Your Holidays password was changed');
         $mail->assertSeeInText('Chrome on macOS');
-        $mail->assertSeeInText('signed you out everywhere');
+        $mail->assertSeeInText('signed out every other open session');
     }
 }
