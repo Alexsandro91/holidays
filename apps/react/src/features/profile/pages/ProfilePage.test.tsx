@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { User } from '@/features/auth/api'
@@ -98,7 +98,7 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('button', { name: /Menu account/ })).toHaveTextContent('Marco Bianco')
   })
 
-  it('saves the name once on a double click', async () => {
+  it('saves the name once when two submits arrive in the same tick', async () => {
     signedIn()
     let saves = 0
     let release: () => void = () => undefined
@@ -108,15 +108,21 @@ describe('ProfilePage', () => {
     server.use(
       http.patch('/api/profile', async () => {
         saves += 1
-        // Risposta trattenuta: il secondo click arriva mentre il primo salvataggio è in corso
+        // Risposta trattenuta: il secondo invio arriva mentre il primo salvataggio è in corso
         await gate
         return HttpResponse.json(currentUserResponse(employee))
       }),
     )
-    const { user } = await openProfile()
+    await openProfile()
     const submit = within(card('Dati personali')).getByRole('button', { name: 'Salva' })
+    const form = submit.closest('form')
+    if (!form) throw new Error('Form dei dati personali mancante')
 
-    await user.dblClick(submit)
+    // Due invii senza attese in mezzo: la validazione asincrona del primo non è ancora finita
+    act(() => {
+      fireEvent.submit(form)
+      fireEvent.submit(form)
+    })
     await waitForStrayRequests()
     expect(saves).toBe(1)
     expectBlockedButFocusable(submit)
