@@ -707,6 +707,7 @@ describe('AdministratorsPage', () => {
     await user.click(trigger)
     const dialog = await screen.findByRole('alertdialog', { name: 'Inviare il link per reimpostare la password a Bruno Admin?' })
     expect(within(dialog).getByText(/Riceverà un’email a marco@holidays\.test con un link valido 60 minuti/)).toBeInTheDocument()
+    expect(within(dialog).getByText('Gli altri amministratori riceveranno un’email.')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Invia il link' }))
 

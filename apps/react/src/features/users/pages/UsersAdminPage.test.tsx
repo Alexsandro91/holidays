@@ -215,7 +215,8 @@ describe('UsersAdminPage', () => {
     await openMenu(user, 'Bruno Admin')
     await user.click(await screen.findByRole('menuitem', { name: 'Disattiva' }))
     const dialog = await screen.findByRole('alertdialog', { name: 'Disattivare Bruno Admin?' })
-    expect(within(dialog).getByText('È un amministratore: tutti gli amministratori riceveranno un’email.')).toBeInTheDocument()
+    // L'avviso va agli altri amministratori, mai a chi agisce
+    expect(within(dialog).getByText('Gli altri amministratori riceveranno un’email.')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('La tua password'), 'sbagliata')
     await user.click(within(dialog).getByRole('button', { name: 'Disattiva Bruno Admin' }))
 

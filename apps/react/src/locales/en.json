@@ -228,7 +228,7 @@
       "passwordReset": { "title": "Send {{name}} a link to reset the password?", "description": "They’ll get an email at {{email}} with a link valid for 60 minutes. The current password keeps working until they change it.", "action": "Send the link", "done": "Link sent to {{email}}." },
       "disable": { "title": "Disable {{name}}?", "description": "They’ll lose access right away and be signed out on every device.", "action": "Disable {{name}}", "done": "{{name}} has been disabled." },
       "enable": { "title": "Enable {{name}} again?", "description": "They’ll be able to sign in again with their password and the emailed code.", "action": "Enable {{name}}", "done": "{{name}} has been enabled again." },
-      "adminNotice": "This person is an administrator: every administrator will get an email.",
+      "adminNotice": "The other administrators will receive an email.",
       "password": "Your password",
       "back": "Back"
     }
