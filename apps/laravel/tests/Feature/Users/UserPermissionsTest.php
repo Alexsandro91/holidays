@@ -5,11 +5,14 @@ namespace Tests\Feature\Users;
 use App\Enums\AuthEventType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
+use App\Http\Resources\ManagedUserResource;
 use App\Models\User;
 use App\Services\InvitationService;
 use App\Services\UserManagementService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
@@ -218,5 +221,99 @@ class UserPermissionsTest extends TestCase
         $this->actingAs($manager)->postJson('/api/administrators', ['user_id' => $employee->id, 'current_password' => 'password'])->assertForbidden();
         $this->actingAs($manager)->postJson('/api/administrators/invitations', ['name' => 'Nora Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])->assertForbidden();
         $this->actingAs($manager)->deleteJson("/api/administrators/{$admin->id}", ['role' => 'employee', 'current_password' => 'password'])->assertForbidden();
+    }
+
+    public function test_an_actor_disabled_meanwhile_is_refused(): void
+    {
+        $staleManager = User::factory()->manager()->create();
+        User::query()->whereKey($staleManager->id)->update(['status' => 'disabled']);
+        $employee = User::factory()->create();
+        $invited = User::factory()->invited()->create();
+
+        $attempts = [
+            fn () => app(UserManagementService::class)->changeRole($employee, Role::Manager, $staleManager, request()),
+            fn () => app(UserManagementService::class)->disable($employee, $staleManager, request(), false),
+            fn () => app(InvitationService::class)->resend($invited, $staleManager, request()),
+            fn () => app(InvitationService::class)->cancel($invited, $staleManager, request()),
+        ];
+
+        foreach ($attempts as $index => $attempt) {
+            try {
+                $attempt();
+                $this->fail("Tentativo {$index}: expected AuthorizationException");
+            } catch (AuthorizationException $exception) {
+                $this->assertSame(__('users.no_longer_allowed'), $exception->getMessage());
+            }
+        }
+
+        $this->assertSame(Role::Employee, $employee->fresh()?->role);
+        $this->assertSame(UserStatus::Active, $employee->fresh()?->status);
+        $this->assertModelExists($invited);
+        $this->assertDatabaseCount('auth_events', 0);
+    }
+
+    public function test_an_admin_demoted_while_acting_on_another_admin_gets_403(): void
+    {
+        $staleAdmin = User::factory()->admin()->create();
+        User::factory()->admin()->create();
+        $activeAdmin = User::factory()->admin()->create();
+        $disabledAdmin = User::factory()->admin()->disabled()->create();
+        $invitedAdmin = User::factory()->admin()->invited()->create();
+        // Un altro admin lo ha appena reso responsabile: l'istanza in memoria è ancora admin
+        User::query()->whereKey($staleAdmin->id)->update(['role' => 'manager']);
+
+        $attempts = [
+            'disable' => fn () => app(UserManagementService::class)->disable($activeAdmin, $staleAdmin, request(), true),
+            'enable' => fn () => app(UserManagementService::class)->enable($disabledAdmin, $staleAdmin, request(), true),
+            'resend' => fn () => app(InvitationService::class)->resend($invitedAdmin, $staleAdmin, request()),
+            'cancel' => fn () => app(InvitationService::class)->cancel($invitedAdmin, $staleAdmin, request()),
+        ];
+
+        foreach ($attempts as $action => $attempt) {
+            try {
+                $attempt();
+                $this->fail("{$action}: expected AuthorizationException");
+            } catch (AuthorizationException $exception) {
+                $this->assertSame(__('users.no_longer_allowed'), $exception->getMessage());
+            }
+        }
+
+        $this->assertSame(UserStatus::Active, $activeAdmin->fresh()?->status);
+        $this->assertSame(UserStatus::Disabled, $disabledAdmin->fresh()?->status);
+        $this->assertModelExists($invitedAdmin);
+        Mail::assertNothingQueued();
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function viewers(): array
+    {
+        $cases = [];
+
+        foreach (['employee', 'manager', 'admin'] as $actorRole) {
+            foreach (['employee', 'manager', 'admin', 'self'] as $target) {
+                $cases["{$actorRole} → {$target}"] = [$actorRole, $target];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('viewers')]
+    public function test_the_row_permissions_match_the_policy(string $actorRole, string $target): void
+    {
+        $actor = User::factory()->create(['role' => $actorRole]);
+        $subject = $target === 'self' ? $actor : User::factory()->create(['role' => $target]);
+        $request = Request::create('/api/users');
+        $request->setUserResolver(fn (): User => $actor);
+
+        $can = (new ManagedUserResource($subject))->toArray($request)['can'];
+
+        $abilities = ['resend_invitation' => 'resendInvitation', 'cancel_invitation' => 'cancelInvitation', 'change_role' => 'changeRole', 'disable' => 'disable', 'enable' => 'enable'];
+        $this->assertSame(array_keys($abilities), array_keys($can));
+        foreach ($abilities as $key => $ability) {
+            $this->assertSame(Gate::forUser($actor)->allows($ability, $subject), $can[$key], $key);
+        }
     }
 }

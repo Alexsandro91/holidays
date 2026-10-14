@@ -52,7 +52,7 @@ final class UserManagementService
                 throw new ConflictHttpException(Translate::text('users.state_changed'));
             }
 
-            $this->ensureStillAllowed('changeRole', $freshActor, $fresh);
+            $this->ensureStillAllowed('changeRole', $actor, $freshActor, $fresh);
 
             $fresh->forceFill(['role' => $role])->save();
             $this->events->log(AuthEventType::RoleChanged, $request, $fresh, $actor);
@@ -70,7 +70,7 @@ final class UserManagementService
             $activeAdminIds = $this->lockActiveAdminIds();
             $freshActor = $this->lockUserManager($actor);
             $fresh = $this->lockFreshTarget($target, $expectAdmin);
-            $this->ensureStillAllowed('disable', $freshActor, $fresh);
+            $this->ensureStillAllowed('disable', $actor, $freshActor, $fresh);
 
             if ($fresh->status !== UserStatus::Active) {
                 throw new ConflictHttpException(Translate::text('users.not_active'));
@@ -103,7 +103,7 @@ final class UserManagementService
             $this->lockActiveAdminIds();
             $freshActor = $this->lockUserManager($actor);
             $fresh = $this->lockFreshTarget($target, $expectAdmin);
-            $this->ensureStillAllowed('enable', $freshActor, $fresh);
+            $this->ensureStillAllowed('enable', $actor, $freshActor, $fresh);
 
             if ($fresh->status !== UserStatus::Disabled) {
                 throw new ConflictHttpException(Translate::text('users.not_disabled'));
@@ -174,6 +174,11 @@ final class UserManagementService
 
             if (! $fresh->isAdmin()) {
                 throw new ConflictHttpException(Translate::text('users.not_admin'));
+            }
+
+            // Un admin invitato non si revoca (si annulla l'invito), uno disattivato va prima riattivato
+            if ($fresh->status !== UserStatus::Active) {
+                throw new ConflictHttpException(Translate::text('users.admin_not_active'));
             }
 
             $this->ensureAnAdminRemains($fresh, $activeAdminIds);

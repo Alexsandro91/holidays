@@ -120,7 +120,7 @@ final class InvitationService
     {
         DB::transaction(function () use ($user, $actor, $request): void {
             $fresh = $this->lockPendingInvitation($user);
-            $this->ensureStillAllowed('resendInvitation', $this->freshActor($actor), $fresh);
+            $this->ensureStillAllowed('resendInvitation', $actor, $this->freshActor($actor), $fresh);
             $this->send($fresh, $actor);
             $this->events->log(AuthEventType::InvitationSent, $request, $fresh, $actor);
         });
@@ -133,7 +133,7 @@ final class InvitationService
     {
         DB::transaction(function () use ($user, $actor, $request): void {
             $fresh = $this->lockPendingInvitation($user);
-            $this->ensureStillAllowed('cancelInvitation', $this->freshActor($actor), $fresh);
+            $this->ensureStillAllowed('cancelInvitation', $actor, $this->freshActor($actor), $fresh);
             $fresh->delete();
             $this->events->log(AuthEventType::InvitationCancelled, $request, null, $actor);
         });

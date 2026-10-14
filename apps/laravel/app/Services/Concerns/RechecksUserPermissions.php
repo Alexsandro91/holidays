@@ -27,12 +27,19 @@ trait RechecksUserPermissions
     }
 
     /**
-     * Permesso sul destinatario riletto: se ora è negato, è cambiata la situazione del destinatario (409).
+     * Permesso sul destinatario riletto. Se ora è negato: 403 se nel frattempo è cambiato il ruolo di chi agisce
+     * (non può più agire su quella persona), altrimenti 409 perché è cambiata la situazione del destinatario.
      */
-    private function ensureStillAllowed(string $ability, User $freshActor, User $freshTarget): void
+    private function ensureStillAllowed(string $ability, User $actor, User $freshActor, User $freshTarget): void
     {
-        if (Gate::forUser($freshActor)->denies($ability, $freshTarget)) {
-            throw new ConflictHttpException(Translate::text('users.state_changed'));
+        if (Gate::forUser($freshActor)->allows($ability, $freshTarget)) {
+            return;
         }
+
+        if ($freshActor->role !== $actor->role) {
+            throw new AuthorizationException(Translate::text('users.no_longer_allowed'));
+        }
+
+        throw new ConflictHttpException(Translate::text('users.state_changed'));
     }
 }

@@ -106,6 +106,37 @@ class AdministratorsTest extends TestCase
             ->assertConflict();
     }
 
+    public function test_only_an_active_admin_can_be_revoked(): void
+    {
+        $invitedAdmin = User::factory()->admin()->invited()->create();
+        $disabledAdmin = User::factory()->admin()->disabled()->create();
+
+        foreach ([$invitedAdmin, $disabledAdmin] as $target) {
+            $this->actingAs($this->admin)->withHeader('Accept-Language', 'it')
+                ->deleteJson("/api/administrators/{$target->id}", ['role' => 'employee', 'current_password' => 'password'])
+                ->assertConflict()
+                ->assertJsonPath('message', __('users.admin_not_active', [], 'it'));
+            $this->assertSame(Role::Admin, $target->fresh()?->role);
+        }
+
+        Mail::assertNothingQueued();
+    }
+
+    public function test_a_revoke_on_an_admin_no_longer_active_conflicts_under_lock(): void
+    {
+        $stale = User::factory()->admin()->create();
+        User::query()->whereKey($stale->id)->update(['status' => 'disabled']);
+
+        try {
+            app(UserManagementService::class)->revokeAdmin($stale, Role::Employee, $this->admin, request());
+            $this->fail('Expected ConflictHttpException');
+        } catch (ConflictHttpException) {
+            $this->assertSame(Role::Admin, $stale->fresh()?->role);
+            $this->assertDatabaseMissing('auth_events', ['user_id' => $stale->id, 'event' => AuthEventType::AdminRevoked->value]);
+            Mail::assertNothingQueued();
+        }
+    }
+
     public function test_revoking_rejects_the_admin_role_as_target_role(): void
     {
         $otherAdmin = User::factory()->admin()->create();

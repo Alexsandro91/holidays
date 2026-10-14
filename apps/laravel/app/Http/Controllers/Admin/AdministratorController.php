@@ -61,6 +61,10 @@ final class AdministratorController extends Controller
             return response()->json(['message' => Translate::text('users.not_admin')], Response::HTTP_CONFLICT);
         }
 
+        if ($user->status !== UserStatus::Active) {
+            return response()->json(['message' => Translate::text('users.admin_not_active')], Response::HTTP_CONFLICT);
+        }
+
         return new ManagedUserResource($this->users->revokeAdmin($user, Role::from($request->validated('role')), $this->actor($request), $request));
     }
 }
