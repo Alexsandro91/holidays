@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
 
@@ -32,24 +33,53 @@ final class InvitationService
 
     public function __construct(private readonly AuthEventLogger $events) {}
 
+    /**
+     * Invito di un dipendente o di un responsabile.
+     */
     public function invite(string $name, string $email, Role $role, User $inviter, Request $request): User
     {
-        return DB::transaction(function () use ($name, $email, $role, $inviter, $request): User {
-            $user = new User;
-            $user->forceFill([
-                'name' => $name,
-                'email' => $email,
-                'password' => null,
-                'role' => $role,
-                'status' => UserStatus::Invited,
-                'locale' => app()->getLocale(),
-            ])->save();
+        // Un nuovo admin passa solo da inviteAdmin(): blocco degli admin, evento ed email agli admin dedicati
+        if ($role === Role::Admin) {
+            throw new InvalidArgumentException('Admins are invited only through UserManagementService::inviteAdmin().');
+        }
 
-            $this->send($user, $inviter);
+        return DB::transaction(function () use ($name, $email, $role, $inviter, $request): User {
+            $user = $this->createInvited($name, $email, $role, $inviter);
             $this->events->log(AuthEventType::InvitationSent, $request, $user, $inviter);
 
             return $user;
         });
+    }
+
+    /**
+     * Invito di un nuovo admin (spec del 14/10, §4). Da chiamare solo da UserManagementService::inviteAdmin(),
+     * che dentro la stessa transazione blocca gli admin attivi, verifica chi agisce e avvisa gli altri admin.
+     */
+    public function inviteAdmin(string $name, string $email, User $inviter, Request $request): User
+    {
+        return DB::transaction(function () use ($name, $email, $inviter, $request): User {
+            $user = $this->createInvited($name, $email, Role::Admin, $inviter);
+            $this->events->log(AuthEventType::AdminInvited, $request, $user, $inviter);
+
+            return $user;
+        });
+    }
+
+    private function createInvited(string $name, string $email, Role $role, User $inviter): User
+    {
+        $user = new User;
+        $user->forceFill([
+            'name' => $name,
+            'email' => $email,
+            'password' => null,
+            'role' => $role,
+            'status' => UserStatus::Invited,
+            'locale' => app()->getLocale(),
+        ])->save();
+
+        $this->send($user, $inviter);
+
+        return $user;
     }
 
     /**

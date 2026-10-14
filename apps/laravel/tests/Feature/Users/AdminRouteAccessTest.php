@@ -36,6 +36,7 @@ class AdminRouteAccessTest extends TestCase
             ...self::userRoutes(),
             'lista amministratori' => ['GET', '/api/administrators'],
             'promozione' => ['POST', '/api/administrators'],
+            'invito admin' => ['POST', '/api/administrators/invitations'],
         ];
     }
 
@@ -49,6 +50,7 @@ class AdminRouteAccessTest extends TestCase
         return [
             'lista amministratori' => ['GET', '/api/administrators'],
             'promozione' => ['POST', '/api/administrators'],
+            'invito admin' => ['POST', '/api/administrators/invitations'],
             'revoca admin' => ['DELETE', '/api/administrators/{user}'],
         ];
     }
@@ -108,7 +110,7 @@ class AdminRouteAccessTest extends TestCase
         $employee = User::factory()->create();
 
         $this->actingAs(User::factory()->manager()->create())
-            ->json($method, $this->uri($template, $target->id), ['user_id' => $employee->id, 'role' => 'employee', 'current_password' => 'password'])
+            ->json($method, $this->uri($template, $target->id), ['user_id' => $employee->id, 'role' => 'employee', 'name' => 'Nora Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])
             ->assertForbidden();
     }
 

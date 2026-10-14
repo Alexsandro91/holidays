@@ -26,5 +26,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Sezione Amministratori: solo admin
     Route::get('/administrators', [AdministratorController::class, 'index'])->can('manageAdministrators', User::class)->name('administrators.index');
     Route::post('/administrators', [AdministratorController::class, 'store'])->can('manageAdministrators', User::class)->name('administrators.store');
+    Route::post('/administrators/invitations', [AdministratorController::class, 'invite'])->can('manageAdministrators', User::class)->name('administrators.invitations.store');
     Route::delete('/administrators/{user}', [AdministratorController::class, 'destroy'])->can('revokeAdmin', 'user')->name('administrators.destroy');
 });

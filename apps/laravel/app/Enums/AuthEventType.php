@@ -19,6 +19,7 @@ enum AuthEventType: string
     case RoleChanged = 'role_changed';
     case AdminGranted = 'admin_granted';
     case AdminRevoked = 'admin_revoked';
+    case AdminInvited = 'admin_invited';
     case AdminPasswordFailed = 'admin_password_failed';
     case AdminPasswordLocked = 'admin_password_locked';
 }

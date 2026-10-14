@@ -8,4 +8,5 @@ enum AdminChange: string
     case Revoked = 'revoked';
     case Disabled = 'disabled';
     case Enabled = 'enabled';
+    case Invited = 'invited';
 }

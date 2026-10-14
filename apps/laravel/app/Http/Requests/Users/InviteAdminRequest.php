@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Http\Requests\Users;
+
+use App\Http\Requests\Concerns\ConfirmsCurrentPassword;
+use App\Http\Requests\Concerns\ValidatesInvitee;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Invito di un nuovo admin (spec del 14/10, §4): nome ed email come l'invito normale, più la password di chi agisce.
+ */
+class InviteAdminRequest extends FormRequest
+{
+    use ConfirmsCurrentPassword, ValidatesInvitee;
+
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeInvitee();
+        $this->ensurePasswordNotLockedOut();
+    }
+
+    /**
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            ...$this->inviteeRules(),
+            'current_password' => $this->currentPasswordRules(),
+        ];
+    }
+}

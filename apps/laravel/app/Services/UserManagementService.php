@@ -30,7 +30,10 @@ final class UserManagementService
 {
     use RechecksUserPermissions;
 
-    public function __construct(private readonly AuthEventLogger $events) {}
+    public function __construct(
+        private readonly AuthEventLogger $events,
+        private readonly InvitationService $invitations,
+    ) {}
 
     public function changeRole(User $target, Role $role, User $actor, Request $request): User
     {
@@ -137,6 +140,21 @@ final class UserManagementService
     }
 
     /**
+     * Invita un nuovo admin (spec del 14/10, §4): utente admin invitato, evento admin_invited ed email agli altri
+     * admin attivi dopo il commit. L'invitato riceve solo l'invito.
+     */
+    public function inviteAdmin(string $name, string $email, User $actor, Request $request): User
+    {
+        return DB::transaction(function () use ($name, $email, $actor, $request): User {
+            $this->lockActiveAdmins($actor);
+            $invited = $this->invitations->inviteAdmin($name, $email, $actor, $request);
+            $this->notifyAdmins(AdminChange::Invited, $invited, $actor, notifyTarget: false);
+
+            return $invited;
+        });
+    }
+
+    /**
      * Revoca il ruolo admin: il nuovo ruolo è solo dipendente o responsabile. Lo garantiscono già request e policy,
      * il servizio lo riverifica perché può essere chiamato anche fuori da HTTP.
      */
@@ -234,9 +252,9 @@ final class UserManagementService
     }
 
     /**
-     * Email dopo il commit a chi subisce la modifica e agli altri admin attivi (non a chi agisce).
+     * Email dopo il commit agli altri admin attivi e, se richiesto, a chi subisce la modifica (mai a chi agisce).
      */
-    private function notifyAdmins(AdminChange $change, User $target, User $actor): void
+    private function notifyAdmins(AdminChange $change, User $target, User $actor, bool $notifyTarget = true): void
     {
         $occurredAt = now();
         $recipients = User::query()
@@ -244,7 +262,7 @@ final class UserManagementService
             ->where('status', UserStatus::Active)
             ->whereKeyNot($actor->id)
             ->get()
-            ->push($target)
+            ->when($notifyTarget, fn (Collection $admins): Collection => $admins->push($target))
             ->unique('id')
             ->reject(fn (User $user): bool => $user->is($actor));
 

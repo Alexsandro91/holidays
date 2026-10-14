@@ -216,6 +216,7 @@ class UserPermissionsTest extends TestCase
 
         $this->actingAs($manager)->getJson('/api/administrators')->assertForbidden();
         $this->actingAs($manager)->postJson('/api/administrators', ['user_id' => $employee->id, 'current_password' => 'password'])->assertForbidden();
+        $this->actingAs($manager)->postJson('/api/administrators/invitations', ['name' => 'Nora Neri', 'email' => 'nora@example.test', 'current_password' => 'password'])->assertForbidden();
         $this->actingAs($manager)->deleteJson("/api/administrators/{$admin->id}", ['role' => 'employee', 'current_password' => 'password'])->assertForbidden();
     }
 }

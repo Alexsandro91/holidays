@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\GrantAdminRequest;
+use App\Http\Requests\Users\InviteAdminRequest;
 use App\Http\Requests\Users\RevokeAdminRequest;
 use App\Http\Resources\ManagedUserResource;
 use App\Models\User;
@@ -37,6 +38,21 @@ final class AdministratorController extends Controller
         }
 
         return new ManagedUserResource($this->users->grantAdmin($target, $this->actor($request), $request));
+    }
+
+    /**
+     * Nuovo admin invitato per email (spec del 14/10, §4): diventa un admin attivo quando accetta l'invito.
+     */
+    public function invite(InviteAdminRequest $request): JsonResponse
+    {
+        $invited = $this->users->inviteAdmin(
+            $request->string('name')->value(),
+            $request->string('email')->value(),
+            $this->actor($request),
+            $request,
+        );
+
+        return (new ManagedUserResource($invited->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function destroy(RevokeAdminRequest $request, User $user): JsonResponse|ManagedUserResource
