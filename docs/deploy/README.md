@@ -62,7 +62,7 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
   non accettati scaduti da oltre 30 giorni, eventi di sicurezza oltre `AUTH_EVENTS_RETENTION_DAYS`, default 180),
   `auth:clear-resets` (token di reset scaduti) e `queue:prune-failed --hours=720`. I comandi usano `onOneServer`:
   serve uno store cache con lock condiviso tra le istanze (database o redis).
-- Primo avvio: dopo `php artisan migrate`, eseguire `php artisan app:create-admin "Nome Cognome" email@azienda.it`: arriva
+- Primo avvio: dopo `php artisan migrate`, eseguire `php artisan app:create-admin Nome Cognome email@azienda.it` (nome e cognome separati, tra virgolette se composti: `Mario "De Rossi"`): arriva
   l'invito (72 ore) e l'admin sceglie la password dal link. L'invio è registrato in `auth_events` senza autore.
   - Invito non arrivato o scaduto: rilanciare lo stesso comando con la stessa email. Se l'admin non ha ancora attivato
     l'account parte un nuovo link e il precedente smette di valere.
