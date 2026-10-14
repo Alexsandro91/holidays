@@ -4,6 +4,7 @@
 - **Stato:** in revisione
 - **Spec principale:** `2026-09-30-fondamenta-autenticazione-design.md`. Vale tutto quello che dice, tranne i punti che questo documento cambia o aggiunge (segnati con **Novità** o **Cambia**).
 - **Branch:** `feature/auth-fase-3`, creato da `feature/auth-fase-2`.
+- **Aggiornata da:** `2026-10-14-utenti-tabella-permessi-design.md`. Il responsabile gestisce gli utenti tranne gli admin, un nuovo admin si può anche invitare e la tabella utenti ha filtri e ordinamento lato server. Dove i due documenti divergono vale quello del 14/10.
 
 ## 1. Obiettivo
 
