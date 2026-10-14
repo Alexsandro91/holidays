@@ -8,6 +8,7 @@ import { rememberedSessionEnd } from '@/lib/sessionEnd'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
+import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -110,7 +111,7 @@ describe('VerifyCodePage', () => {
     await vi.waitFor(() => expect(router.state.navigation.state).toBe('loading'))
     await user.keyboard('{Enter}')
     // Lascia il tempo a un eventuale secondo POST di arrivare al server finto
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(bodies).toEqual([{ code: '482913' }])
   })

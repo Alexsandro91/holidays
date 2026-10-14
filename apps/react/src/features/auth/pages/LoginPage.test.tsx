@@ -8,6 +8,7 @@ import { sessionEndKey, userQueryKey } from '@/lib/queryKeys'
 import { rememberedSessionEnd } from '@/lib/sessionEnd'
 import { adminUser } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
+import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -77,7 +78,7 @@ describe('LoginPage', () => {
     await waitFor(() => expect(router.state.navigation.state).toBe('loading'))
     // Un secondo login invierebbe un nuovo codice e il primo smetterebbe di valere
     await user.type(screen.getByLabelText('Password'), '{Enter}')
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })

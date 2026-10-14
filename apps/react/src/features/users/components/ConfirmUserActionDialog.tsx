@@ -133,11 +133,11 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
   if (user !== null && action !== null && (last?.user !== user || last.action !== action)) setLast({ user, action })
   const shown = open ? { user, action } : last
   // Conta le aperture: ogni apertura rimonta il corpo (anche se avviene durante l'animazione di chiusura)
-  const [session, setSession] = useState(0)
+  const [openCount, setOpenCount] = useState(0)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
-    if (open) setSession(session + 1)
+    if (open) setOpenCount(openCount + 1)
   }
   // Durante l'invio il dialog non si chiude (Escape, clic fuori): un errore sulla password non va perso
   const [busy, setBusy] = useState(false)
@@ -150,7 +150,7 @@ const ConfirmUserActionDialog = ({ user, action, onClose }: ConfirmUserActionDia
           focusTrigger(USER_TRIGGER_ATTRIBUTE, shown?.user.id ?? null)
         }}
       >
-        {shown && <ConfirmBody key={`${session}-${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}
+        {shown && <ConfirmBody key={`${openCount}-${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}
       </AlertDialogContent>
     </AlertDialog>
   )

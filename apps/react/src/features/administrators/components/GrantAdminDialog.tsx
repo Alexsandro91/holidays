@@ -182,14 +182,14 @@ const GrantAdminDialog = () => {
   // Durante l'invio il dialog non si chiude (Escape, clic fuori): un errore non va perso
   const [busy, setBusy] = useState(false)
   // Conta le aperture: ogni apertura rimonta il corpo (anche se avviene durante l'animazione di chiusura)
-  const [session, setSession] = useState(0)
+  const [openCount, setOpenCount] = useState(0)
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         if (!next && busy) return
-        if (next) setSession(session + 1)
+        if (next) setOpenCount(openCount + 1)
         setOpen(next)
       }}
     >
@@ -204,7 +204,7 @@ const GrantAdminDialog = () => {
           <DialogTitle>{t('administrators.grant.title')}</DialogTitle>
           <DialogDescription>{t('administrators.grant.description')}</DialogDescription>
         </DialogHeader>
-        <GrantBody key={session} onDone={() => setOpen(false)} onBusyChange={setBusy} />
+        <GrantBody key={openCount} onDone={() => setOpen(false)} onBusyChange={setBusy} />
       </DialogContent>
     </Dialog>
   )

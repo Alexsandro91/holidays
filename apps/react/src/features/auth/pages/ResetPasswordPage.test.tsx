@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import type { UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
@@ -7,6 +7,7 @@ import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
+import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -73,7 +74,7 @@ describe('ResetPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: 'Salva la password' }))
     await waitFor(() => expect(router.state.navigation.state).toBe('loading'))
     await user.click(screen.getByRole('button', { name: 'Salva la password' }))
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })

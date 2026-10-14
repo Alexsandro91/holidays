@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -7,6 +7,7 @@ import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, userListResponse } from '@/test/usersFixtures'
+import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -88,7 +89,7 @@ describe('UsersAdminPage', () => {
     await screen.findByText('Invito inviato a sara@holidays.test.')
     expect(dialog).toHaveAttribute('data-state', 'closed')
     await user.keyboard('{Enter}')
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
     expect(calls).toBe(1)
 
     // Riaperto, il dialog accetta un nuovo invito
@@ -174,7 +175,7 @@ describe('UsersAdminPage', () => {
     // Durante l'animazione di chiusura il pulsante è ancora lì: un secondo Invio non deve ripartire
     expect(dialog).toHaveAttribute('data-state', 'closed')
     await user.keyboard('{Enter}')
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })
@@ -235,7 +236,7 @@ describe('UsersAdminPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
     await screen.findByText('Ruolo di Marco Bianchi aggiornato.')
     await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })

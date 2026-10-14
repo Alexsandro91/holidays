@@ -7,6 +7,7 @@ import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, userListResponse } from '@/test/usersFixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
+import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -111,7 +112,7 @@ describe('AdministratorsPage', () => {
     // Durante l'animazione di chiusura il form è ancora lì: un Invio non deve ripetere la promozione
     expect(dialog).toHaveAttribute('data-state', 'closed')
     await user.keyboard('{Enter}')
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })
@@ -170,7 +171,7 @@ describe('AdministratorsPage', () => {
     expect(await screen.findByText('Bruno Admin non è più amministratore.')).toBeInTheDocument()
     expect(dialog).toHaveAttribute('data-state', 'closed')
     await user.keyboard('{Enter}')
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })
@@ -192,6 +193,8 @@ describe('AdministratorsPage', () => {
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' }))
     await screen.findByText('Bruno Admin non è più amministratore.')
+    // Guardia: il dialog deve essere ancora nel DOM in chiusura, altrimenti il test non prova la riapertura in animazione
+    expect(dialog).toHaveAttribute('data-state', 'closed')
     // Riapertura mentre il dialog si sta ancora chiudendo: la pagina sotto è ancora nascosta e senza puntatore
     const pageButton = screen.getAllByRole('button', { name: 'Revoca Bruno Admin', hidden: true }).find((button) => !dialog.contains(button))
     if (!pageButton) throw new Error('Pulsante di revoca della pagina mancante')

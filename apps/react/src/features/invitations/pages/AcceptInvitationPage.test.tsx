@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -6,6 +6,7 @@ import AcceptInvitationPage from '@/features/invitations/pages/AcceptInvitationP
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
+import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -76,7 +77,7 @@ describe('AcceptInvitationPage', () => {
     await user.click(screen.getByRole('button', { name: 'Attiva account' }))
     await waitFor(() => expect(router.state.navigation.state).toBe('loading'))
     await user.click(screen.getByRole('button', { name: 'Attiva account' }))
-    await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
+    await waitForStrayRequests()
 
     expect(calls).toBe(1)
   })

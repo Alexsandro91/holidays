@@ -143,11 +143,11 @@ const RevokeAdminDialog = ({ user, onClose }: RevokeAdminDialogProps) => {
   const shown = user ?? last
   // Conta le aperture: ogni apertura rimonta il corpo (anche se avviene durante l'animazione di chiusura)
   const open = user !== null
-  const [session, setSession] = useState(0)
+  const [openCount, setOpenCount] = useState(0)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
-    if (open) setSession(session + 1)
+    if (open) setOpenCount(openCount + 1)
   }
   // Durante l'invio il dialog non si chiude (Escape, clic fuori)
   const [busy, setBusy] = useState(false)
@@ -160,7 +160,7 @@ const RevokeAdminDialog = ({ user, onClose }: RevokeAdminDialogProps) => {
           focusTrigger(REVOKE_TRIGGER_ATTRIBUTE, shown?.id ?? null)
         }}
       >
-        {shown && <RevokeBody key={`${session}-${shown.id}`} user={shown} onClose={onClose} onBusyChange={setBusy} />}
+        {shown && <RevokeBody key={`${openCount}-${shown.id}`} user={shown} onClose={onClose} onBusyChange={setBusy} />}
       </AlertDialogContent>
     </AlertDialog>
   )
