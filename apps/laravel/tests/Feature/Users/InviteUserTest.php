@@ -174,6 +174,40 @@ class InviteUserTest extends TestCase
         ]);
     }
 
+    public function test_an_invited_user_whose_invitation_was_pruned_stays_manageable(): void
+    {
+        $this->actingAs($this->admin)->postJson('/api/users', $this->payload())->assertCreated();
+        $user = User::query()->where('email', 'sara@example.test')->firstOrFail();
+
+        // Invito mai accettato e scaduto da oltre 30 giorni: la pulizia giornaliera lo rimuove
+        $this->travel(InvitationService::TTL_HOURS)->hours();
+        $this->travel(31)->days();
+        $this->artisan('model:prune', ['--model' => [Invitation::class]])->assertSuccessful();
+        $this->assertDatabaseCount('invitations', 0);
+
+        $this->actingAs($this->admin)->getJson('/api/users?filter[status]=invited')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $user->id)
+            ->assertJsonPath('data.0.invitation_expires_at', null);
+        $this->actingAs($this->admin)->getJson('/api/administrators')->assertOk();
+
+        // Il reinvio crea un nuovo invito valido
+        $this->actingAs($this->admin)->postJson("/api/users/{$user->id}/invitation")->assertAccepted();
+        $invitation = Invitation::query()->sole();
+        $this->assertSame($user->id, $invitation->user_id);
+        $this->assertFalse($invitation->isExpired());
+        $this->assertTrue(app(InvitationService::class)->findByToken($this->lastInvitationToken())?->is($invitation));
+    }
+
+    public function test_an_invited_user_without_invitation_can_be_cancelled(): void
+    {
+        $user = User::factory()->invited()->create();
+
+        $this->actingAs($this->admin)->deleteJson("/api/users/{$user->id}/invitation")->assertNoContent();
+
+        $this->assertModelMissing($user);
+    }
+
     public function test_managers_can_be_invited(): void
     {
         $this->actingAs($this->admin)->postJson('/api/users', $this->payload(['role' => 'manager']))->assertCreated();

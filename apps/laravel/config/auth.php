@@ -120,4 +120,9 @@ return [
     */
     'password_uncompromised' => (bool) env('AUTH_PASSWORD_UNCOMPROMISED', true),
 
+    /*
+    | Giorni di conservazione degli eventi di sicurezza (auth_events), poi rimossi da `model:prune` (spec §7.3).
+    */
+    'events_retention_days' => (int) env('AUTH_EVENTS_RETENTION_DAYS', 180),
+
 ];
