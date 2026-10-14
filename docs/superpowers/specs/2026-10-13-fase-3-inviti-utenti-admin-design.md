@@ -12,7 +12,7 @@ gli utenti (reinvia, annulla, cambia ruolo, disattiva, riattiva) e, in una sezio
 admin con protezioni rafforzate. Il primo admin nasce da un comando artisan.
 
 **Fuori perimetro:** profilo e cambio password dal profilo, avviso di scadenza della sessione, pulizie programmate (tutto
-nella fase 4). Ferie, sedi e calendari restano nel sotto-progetto 3.
+nella fase 4). Ferie, sedi e calendari restano nel sotto-progetto 2.
 
 ## 2. Decisioni prese con l'utente (13/10/2026)
 
@@ -73,7 +73,7 @@ Tutte le rotte qui sotto richiedono `auth:sanctum`, l'utente attivo (`EnsureUser
   - Dopo 5 errori in 15 minuti per lo stesso admin: `429`.
   - Non si usa la conferma a sessione di Fortify (rotte spente nella fase 2).
 
-### 4.2 Pagine pubbliche dell'invito (gruppo `web`, `guest:web`, 10/min per IP)
+### 4.2 Pagine pubbliche dell'invito (gruppo `web`, `guest:web`, 30/min per IP)
 
 | Metodo e percorso | Esito |
 |---|---|

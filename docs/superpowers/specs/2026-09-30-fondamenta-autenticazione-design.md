@@ -16,12 +16,11 @@ autenticazione completa e sicura, gestione minima degli inviti, base UI con mult
 ### Roadmap dei sotto-progetti (ognuno con spec, piano e implementazione propri)
 
 1. **Fondamenta e autenticazione** — questo documento.
-2. **Secondo fattore forte**: app di autenticazione (TOTP) e passkey, almeno per HR/admin. **Obbligatorio prima della produzione.**
-3. **Gestione ferie e permessi** (dominio), incluse sedi facoltative.
-4. **LLM in piattaforma**, con gli obblighi di trasparenza dell'AI Act. L'AI non decide né suggerisce
+2. **Gestione ferie e permessi** (dominio), incluse sedi facoltative.
+3. **LLM in piattaforma**, con gli obblighi di trasparenza dell'AI Act. L'AI non decide né suggerisce
    approvazioni e non valuta i dipendenti (sarebbe rischio alto, Allegato III).
-5. **Server MCP per Claude** (strumenti, OAuth, MCP Apps per la UI dentro Claude).
-6. **Diritti GDPR**: export e cancellazione dell'account, registro dei trattamenti, responsabili esterni (mail, LLM).
+4. **Server MCP per Claude** (strumenti, OAuth, MCP Apps per la UI dentro Claude).
+5. **Diritti GDPR**: export e cancellazione dell'account, registro dei trattamenti, responsabili esterni (mail, LLM).
 
 ## 2. Perimetro
 
@@ -38,9 +37,9 @@ autenticazione completa e sicura, gestione minima degli inviti, base UI con mult
 - Servizi `queue` e `scheduler` in Sail.
 
 **Escluso** (sotto-progetti successivi o fuori ambito)
-- TOTP e passkey (sotto-progetto 2), SSO Microsoft/Google (predisposto, non implementato).
-- Sedi, ferie, calendari, approvazioni (sotto-progetto 3).
-- AI, MCP, export/cancellazione GDPR (sotto-progetti 4–6).
+- SSO Microsoft/Google (predisposto, non implementato).
+- Sedi, ferie, calendari, approvazioni (sotto-progetto 2).
+- AI, MCP, export/cancellazione GDPR (sotto-progetti 3–5).
 - Deploy di produzione: si documenta la configurazione del web server, non si esegue il deploy.
 
 ## 3. Criteri di successo
@@ -57,7 +56,7 @@ autenticazione completa e sicura, gestione minima degli inviti, base UI con mult
 | Tema | Decisione |
 |---|---|
 | Autenticazione | Sanctum SPA (sessione in cookie `httpOnly`) + Fortify headless. Token nel browser scartati (XSS) |
-| Secondo fattore | Codice 6 cifre via email a **ogni** login, senza "ricorda dispositivo". TOTP/passkey nel sotto-progetto 2 |
+| Secondo fattore | Codice 6 cifre via email a **ogni** login, senza "ricorda dispositivo" |
 | Account | Solo su invito HR; struttura pronta per SSO futuro (`password` nullable) |
 | Ruoli | `employee`, `manager`, `admin` (nomi inglesi nel codice e nel DB, etichette tradotte in UI) |
 | Azienda | Una sola; sedi facoltative, nessun multi-tenant |
@@ -135,7 +134,7 @@ Browser ──► localhost:5174 (Vite, React)
    email "password cambiata", poi parte subito il passo del codice come dopo le credenziali (challenge in sessione,
    codice via email) e la SPA va su `/login/verify`. Il reset non apre mai la sessione da solo: senza il codice non
    si entra (dal passo del codice si può tornare al login normale). Deciso il 13/10/2026: niente login automatico
-   dopo il reset, perché scavalcherebbe il secondo fattore (oggi il codice via email, domani TOTP/passkey).
+   dopo il reset, perché scavalcherebbe il secondo fattore (il codice via email).
 
 ### 6.4 Sessione, profilo, logout
 - Scadenza per inattività **2 ore** (`SESSION_LIFETIME=120`) e assoluta **12 ore** dal login
@@ -229,12 +228,16 @@ presenza/attività, accesso riservato all'admin. Questo limite vale anche per i 
 
 | Azione | Limite |
 |---|---|
-| Login | 5/min per email + IP, 20/min per IP |
-| Codice | 5 tentativi per challenge, 10/min per IP |
+| Login | 5/min per email + IP, 100/min per IP |
+| Codice | 5 tentativi per challenge, 60/min per IP |
 | Nuovo codice | 60 s di attesa, max 3 per challenge |
-| Recupero password | 3 ogni 15 min per email + IP, 20 ogni 15 min per IP; max 5 link all'ora per account (oltre: nessuna email, stessa risposta `202`). Chiavi dei limiti con l'email in minuscolo e senza accenti |
-| Reset password, accettazione invito | 10/min per IP |
+| Recupero password | 3 ogni 15 min per email + IP, 100 ogni 15 min per IP; max 5 link all'ora per account (oltre: nessuna email, stessa risposta `202`). Chiavi dei limiti con l'email in minuscolo e senza accenti |
+| Reset password, accettazione invito | 30/min per IP |
 | API autenticata | 60/min per utente |
+
+I tetti per solo IP sono larghi di proposito (deciso il 14/10/2026): l'ufficio esce su internet da un solo IP
+pubblico e non deve bloccarsi da solo. La protezione vera contro i tentativi resta sui limiti per email + IP, sui
+5 tentativi per codice e sui link di recupero per account.
 
 ### 8.2 Credenziali e sessioni
 - Password: Argon2id (verifica supporto nel container; ripiego bcrypt costo 12). Regole: `min:12`, `uncompromised()`.
@@ -263,7 +266,7 @@ presenza/attività, accesso riservato all'admin. Questo limite vale anche per i 
 
 ### 8.6 Rischi residui
 - **Codice via email:** non conforme a NIST SP 800-63B come secondo fattore e non resistente al phishing.
-  Accettato per questo sotto-progetto; il sotto-progetto 2 (TOTP/passkey) è **bloccante per la produzione**.
+  Accettato per questa versione: secondi fattori più forti non sono previsti e verranno valutati solo su richiesta.
 - **XSS:** mitigato da React, CSP, lint; resta possibile agire nella sessione aperta.
 - **Errori di implementazione:** mitigati da test su ogni caso negativo e audit prima del rilascio.
 
