@@ -221,6 +221,12 @@ il reset avviato da altri non blocca l'account e non chiude le sessioni.
     l'aspettavi, ignora questa email e avvisa un amministratore";
   - non riporta mai il nome di chi agisce.
 - **Risposta:** 202, senza corpo.
+- **Admin destinatario e nome di chi agisce:** l'admin destinatario riceve anche l'avviso agli admin
+  (`AdminChangeMail`), che contiene il nome di chi agisce, come per tutte le altre azioni sugli admin. Tra admin le
+  azioni sono sempre tracciabili. Solo l'email di reset non contiene il nome.
+- **Rischio residuo accettato:** chi conosce un'email può esaurire il tetto di 5 link l'ora con il link pubblico, e
+  per quell'ora blocca anche il reset dello staff. Lo stesso valeva già per il link pubblico. Il tetto serve a evitare
+  che una casella venga inondata di email, e lo staff vede il 429 con il tempo di attesa.
 
 ### 6.3 Interfaccia
 - **Utenti:** voce "Invia reset password" nel menu di riga degli utenti attivi, secondo `can.send_password_reset`.
