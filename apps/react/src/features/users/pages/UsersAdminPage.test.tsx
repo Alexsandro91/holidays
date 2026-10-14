@@ -6,7 +6,7 @@ import ChangeRoleDialog from '@/features/users/components/ChangeRoleDialog'
 import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
-import { managedUser, userListResponse } from '@/test/usersFixtures'
+import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -109,6 +109,26 @@ describe('UsersAdminPage', () => {
     expect(await screen.findByRole('menuitem', { name: 'Reinvia invito' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Annulla invito' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Disattiva' })).not.toBeInTheDocument()
+  })
+
+  it('shows only the actions the server allows on the row (can)', async () => {
+    listing([managedUser({ name: 'Luca Ferrari', can: { ...NO_ACTIONS, disable: true } })])
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Luca Ferrari')
+
+    expect(await screen.findByRole('menuitem', { name: 'Disattiva' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Cambia ruolo' })).not.toBeInTheDocument()
+  })
+
+  it('shows no menu on a row without allowed actions, like an admin seen by a manager', async () => {
+    listing([managedUser({ id: 5, name: 'Bruno Admin', role: 'admin', role_label: 'HR / Admin', can: NO_ACTIONS }), managedUser()])
+    renderRoutes(routes, ['/users'])
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText('Bruno Admin')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Azioni per Bruno Admin' })).not.toBeInTheDocument()
+    expect(within(table).getByRole('button', { name: 'Azioni per Marco Bianchi' })).toBeInTheDocument()
   })
 
   it('offers to resend an invitation without expiry', async () => {

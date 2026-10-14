@@ -2,13 +2,23 @@ import type { ManagedUser } from '@/features/users/api'
 
 export type UserAction = 'resend' | 'cancel' | 'changeRole' | 'disable' | 'enable'
 
-/** Azioni del menu di riga: solo quelle che il backend accetta per quello stato e quel ruolo. */
-export const availableActions = (user: ManagedUser): UserAction[] => {
-  if (user.is_current_user) return []
-  if (user.status === 'invited') return ['resend', 'cancel']
-  if (user.status === 'disabled') return ['enable']
-  // Il ruolo admin si gestisce solo nella sezione amministratori
-  return user.role === 'admin' ? ['disable'] : ['changeRole', 'disable']
+/**
+ * Azioni del menu di riga: quelle che il server permette a chi guarda (`can`) e che lo stato consente.
+ * Le regole dei ruoli (sé stessi, admin, responsabili) le decide solo il server.
+ */
+export const availableActions = ({ status, can }: ManagedUser): UserAction[] => {
+  const byStatus: Record<ManagedUser['status'], [UserAction, boolean][]> = {
+    invited: [
+      ['resend', can.resend_invitation],
+      ['cancel', can.cancel_invitation],
+    ],
+    active: [
+      ['changeRole', can.change_role],
+      ['disable', can.disable],
+    ],
+    disabled: [['enable', can.enable]],
+  }
+  return byStatus[status].filter(([, allowed]) => allowed).map(([action]) => action)
 }
 
 /** Disattivare o riattivare un admin chiede la password di chi agisce (spec fase 3 §5.6). */

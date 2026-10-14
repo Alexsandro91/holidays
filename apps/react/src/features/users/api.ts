@@ -13,6 +13,14 @@ export const managedUserSchema = z.object({
   status_label: z.string(),
   invitation_expires_at: z.string().nullable(),
   is_current_user: z.boolean(),
+  // Azioni permesse a chi guarda, calcolate dal server (spec §2): il frontend non ricalcola le regole dei ruoli
+  can: z.object({
+    resend_invitation: z.boolean(),
+    cancel_invitation: z.boolean(),
+    change_role: z.boolean(),
+    disable: z.boolean(),
+    enable: z.boolean(),
+  }),
 })
 
 export type ManagedUser = z.infer<typeof managedUserSchema>
