@@ -101,7 +101,8 @@
     "passwordMin": "Your password must be at least 12 characters long.",
     "passwordMismatch": "The passwords don’t match.",
     "firstNameRequired": "Enter the first name.",
-    "lastNameRequired": "Enter the last name."
+    "lastNameRequired": "Enter the last name.",
+    "currentPasswordRequired": "Enter your current password."
   },
   "errors": {
     "generic": "Something went wrong. Please try again shortly.",
@@ -123,7 +124,7 @@
     "administrators": "Administrators",
     "soon": "soon"
   },
-  "account": { "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
+  "account": { "profile": "Profile", "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
   "home": {
     "greeting": "Hi, {{name}}",
     "subtitle": "Here you’ll find leave, time off and the team calendar.",
@@ -303,12 +304,44 @@
       "home": "Go to the home page"
     }
   },
+  "profile": {
+    "title": "Profile",
+    "description": "Your details, password and Holidays preferences.",
+    "personal": {
+      "title": "Personal details",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "role": "Role",
+      "emailNote": "Only an administrator can change your email.",
+      "submit": "Save",
+      "done": "Details saved."
+    },
+    "password": {
+      "title": "Password",
+      "description": "Changing it signs out your other open sessions.",
+      "current": "Current password",
+      "new": "New password",
+      "confirmation": "Confirm new password",
+      "hint": "At least 12 characters. An easy-to-remember phrase works great.",
+      "submit": "Change password",
+      "done": "Password changed. Your other sessions have been signed out."
+    },
+    "preferences": {
+      "title": "Preferences",
+      "language": "Language",
+      "theme": "Theme",
+      "themeNote": "Applies to this device.",
+      "localeDone": "Language saved."
+    }
+  },
   "privacy": {
     "title": "Privacy notice",
     "back": "Back to Holidays",
     "placeholder": "Placeholder text: the final notice will be validated by the DPO before release. Holidays processes name, email, role and leave data to manage absences (art. 6.1.b GDPR); access logs are used only for security and kept for 180 days."
   },
   "titles": {
+    "profile": "Profile",
     "users": "Users",
     "administrators": "Administrators",
     "login": "Sign in",

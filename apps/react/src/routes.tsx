@@ -21,6 +21,7 @@ const AcceptInvitationPage = lazy(() => import('@/features/invitations/pages/Acc
 const UsersAdminPage = lazy(() => import('@/features/users/pages/UsersAdminPage'))
 const AdministratorsPage = lazy(() => import('@/features/administrators/pages/AdministratorsPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
+const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'))
 
 // Errore di una pagina (es. chunk non scaricato dopo un deploy) mostrato dentro il layout, con la ricarica
 const pageErrorElement = <RouteErrorState />
@@ -60,6 +61,8 @@ export const routes: RouteObject[] = [
                 errorElement: pageErrorElement,
                 children: [
                   { path: '/', element: <HomePage />, handle: { titleKey: 'titles.home' } },
+                  // Per tutti i ruoli: ognuno vede e modifica solo il proprio profilo
+                  { path: '/profile', element: <ProfilePage />, handle: { titleKey: 'titles.profile' } },
                   {
                     element: <RoleRoute roles={['manager', 'admin']} />,
                     children: [{ path: '/users', element: <UsersAdminPage />, handle: { titleKey: 'titles.users' } }],

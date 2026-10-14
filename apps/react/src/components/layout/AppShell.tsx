@@ -1,7 +1,7 @@
-import { CalendarDays, ChevronsUpDown, House, LogOut, ShieldCheck, Users } from 'lucide-react'
+import { CalendarDays, ChevronsUpDown, House, LogOut, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet } from 'react-router'
+import { Link, Outlet } from 'react-router'
 import { toast } from 'sonner'
 import Logo from '@/components/brand/Logo'
 import FullPageLoader from '@/components/layout/FullPageLoader'
@@ -125,6 +125,12 @@ const AppShell = () => {
                 <DropdownMenuContent side="top" align="start" className="min-w-56">
                   <DropdownMenuLabel className="truncate font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">
+                      <UserRound aria-hidden="true" />
+                      {t('account.profile')}
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() =>
                       logout.mutate(undefined, {

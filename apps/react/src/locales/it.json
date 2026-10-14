@@ -101,7 +101,8 @@
     "passwordMin": "La password deve avere almeno 12 caratteri.",
     "passwordMismatch": "Le due password non coincidono.",
     "firstNameRequired": "Inserisci il nome.",
-    "lastNameRequired": "Inserisci il cognome."
+    "lastNameRequired": "Inserisci il cognome.",
+    "currentPasswordRequired": "Inserisci la password attuale."
   },
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova tra poco.",
@@ -123,7 +124,7 @@
     "administrators": "Amministratori",
     "soon": "presto"
   },
-  "account": { "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
+  "account": { "profile": "Profilo", "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
   "home": {
     "greeting": "Ciao, {{name}}",
     "subtitle": "Qui troverai ferie, permessi e il calendario del team.",
@@ -303,12 +304,44 @@
       "home": "Vai alla home"
     }
   },
+  "profile": {
+    "title": "Profilo",
+    "description": "I tuoi dati, la password e le preferenze di Holidays.",
+    "personal": {
+      "title": "Dati personali",
+      "firstName": "Nome",
+      "lastName": "Cognome",
+      "email": "Email",
+      "role": "Ruolo",
+      "emailNote": "L’email la cambia un amministratore.",
+      "submit": "Salva",
+      "done": "Dati salvati."
+    },
+    "password": {
+      "title": "Password",
+      "description": "Cambiandola, le altre sessioni aperte si chiudono.",
+      "current": "Password attuale",
+      "new": "Nuova password",
+      "confirmation": "Conferma la nuova password",
+      "hint": "Almeno 12 caratteri. Una frase facile da ricordare va benissimo.",
+      "submit": "Cambia password",
+      "done": "Password cambiata. Le altre sessioni sono state chiuse."
+    },
+    "preferences": {
+      "title": "Preferenze",
+      "language": "Lingua",
+      "theme": "Tema",
+      "themeNote": "Vale per questo dispositivo.",
+      "localeDone": "Lingua salvata."
+    }
+  },
   "privacy": {
     "title": "Informativa privacy",
     "back": "Torna a Holidays",
     "placeholder": "Testo segnaposto: l’informativa definitiva sarà validata dal DPO prima del rilascio. Holidays tratta nome, email, ruolo e i dati di ferie e permessi per gestire le assenze (art. 6.1.b GDPR); i log di accesso servono solo alla sicurezza e si conservano 180 giorni."
   },
   "titles": {
+    "profile": "Profilo",
     "users": "Utenti",
     "administrators": "Amministratori",
     "login": "Accedi",
