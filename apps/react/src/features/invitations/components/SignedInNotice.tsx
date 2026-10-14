@@ -1,9 +1,9 @@
-import { CircleAlert, LoaderCircle, LogOut, UserRound } from 'lucide-react'
+import { LoaderCircle, LogOut, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import PageHeading from '@/components/layout/PageHeading'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertDescription, alertVariants } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isAlreadySignedOut, useLogout, type User } from '@/features/auth/api'
 
@@ -18,6 +18,7 @@ const SignedInNotice = ({ user }: SignedInNoticeProps) => {
   const [failed, setFailed] = useState(false)
 
   const onLogout = () => {
+    if (logout.isPending) return
     setFailed(false)
     // Uscita riuscita: l'utente in cache diventa null e la pagina carica l'invito
     logout.mutate(undefined, { onError: (error) => setFailed(!isAlreadySignedOut(error)) })
@@ -31,16 +32,16 @@ const SignedInNotice = ({ user }: SignedInNoticeProps) => {
         description={t('invitation.signedIn.description', { name: user.name, email: user.email })}
       />
       <div className="grid gap-4">
-        {/* Regione sempre presente: l'errore dell'uscita viene annunciato quando compare */}
+        {/* Unica live region, sempre presente: il messaggio ha lo stile di Alert senza role="alert" (letto una volta) */}
         <div aria-live="polite">
           {failed && (
-            <Alert variant="destructive">
-              <CircleAlert aria-hidden="true" />
+            <div data-slot="alert" className={alertVariants({ variant: 'destructive' })}>
               <AlertDescription>{t('account.logoutError')}</AlertDescription>
-            </Alert>
+            </div>
           )}
         </div>
-        <Button type="button" size="lg" className="w-full" disabled={logout.isPending} onClick={onLogout}>
+        {/* aria-disabled durante l'uscita: il pulsante resta focalizzato, anche se l'uscita fallisce */}
+        <Button type="button" size="lg" className="w-full" aria-disabled={logout.isPending || undefined} onClick={onLogout}>
           {logout.isPending ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <LogOut aria-hidden="true" />}
           {t('account.logout')}
         </Button>

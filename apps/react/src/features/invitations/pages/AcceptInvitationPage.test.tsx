@@ -233,8 +233,15 @@ describe('AcceptInvitationPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Esci' }))
 
-    expect(await screen.findByText('Uscita non riuscita. Riprova.')).toBeInTheDocument()
+    const message = await screen.findByText('Uscita non riuscita. Riprova.')
     expect(screen.getByRole('heading', { level: 1, name: 'Sei già connesso' })).toBeInTheDocument()
+    // Una sola regione live (polite), senza role="alert" annidato che farebbe leggere il messaggio due volte
+    expect(message.closest('[aria-live]')).toHaveAttribute('aria-live', 'polite')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Il pulsante non si disattiva durante l'uscita: il focus resta lì e non finisce sul body
+    const button = screen.getByRole('button', { name: 'Esci' })
+    expect(button).toBeEnabled()
+    expect(button).toHaveFocus()
   })
 
   it('shows the signed-in notice when the activation finds a session already open', async () => {
