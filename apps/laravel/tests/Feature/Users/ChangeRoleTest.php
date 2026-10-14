@@ -40,9 +40,9 @@ class ChangeRoleTest extends TestCase
         $this->actingAs($admin)->patchJson("/api/users/{$admin->id}/role", ['role' => 'employee'])->assertForbidden();
     }
 
-    public function test_non_admins_cannot_change_roles(): void
+    public function test_employees_cannot_change_roles(): void
     {
-        $this->actingAs(User::factory()->manager()->create())
+        $this->actingAs(User::factory()->create())
             ->patchJson('/api/users/'.User::factory()->create()->id.'/role', ['role' => 'manager'])
             ->assertForbidden();
     }

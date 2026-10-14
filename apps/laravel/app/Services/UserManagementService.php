@@ -9,6 +9,7 @@ use App\Enums\UserStatus;
 use App\Mail\AdminChangeMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
+use App\Services\Concerns\RechecksUserPermissions;
 use App\Support\AuthSession;
 use App\Support\Translate;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -21,22 +22,34 @@ use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
- * Ruoli e stato degli utenti. Le azioni sugli admin bloccano le righe degli admin attivi:
- * due richieste parallele non possono lasciare l'app senza amministratori.
+ * Ruoli e stato degli utenti. Ogni azione blocca prima le righe degli admin attivi (stesso ordine ovunque),
+ * poi chi agisce e infine il destinatario: due richieste parallele non possono lasciare l'app senza amministratori
+ * e i permessi si ricontrollano sulle righe rilette.
  */
 final class UserManagementService
 {
+    use RechecksUserPermissions;
+
     public function __construct(private readonly AuthEventLogger $events) {}
 
     public function changeRole(User $target, Role $role, User $actor, Request $request): User
     {
+        // Il ruolo admin si dà solo dalla sezione amministratori: lo garantisce la request, il servizio lo riverifica
+        if ($role === Role::Admin) {
+            throw new InvalidArgumentException('The admin role cannot be set by a role change.');
+        }
+
         return DB::transaction(function () use ($target, $role, $actor, $request): User {
-            $fresh = $this->lockTarget($target, $actor);
+            $this->lockActiveAdminIds();
+            $freshActor = $this->lockUserManager($actor);
+            $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
 
             // Un admin non cambia ruolo da qui: nel frattempo può essere stato promosso
             if ($fresh->isAdmin()) {
                 throw new ConflictHttpException(Translate::text('users.state_changed'));
             }
+
+            $this->ensureStillAllowed('changeRole', $freshActor, $fresh);
 
             $fresh->forceFill(['role' => $role])->save();
             $this->events->log(AuthEventType::RoleChanged, $request, $fresh, $actor);
@@ -51,8 +64,10 @@ final class UserManagementService
     public function disable(User $target, User $actor, Request $request, bool $expectAdmin): User
     {
         return DB::transaction(function () use ($target, $actor, $request, $expectAdmin): User {
-            $activeAdminIds = $this->lockActiveAdmins($actor);
+            $activeAdminIds = $this->lockActiveAdminIds();
+            $freshActor = $this->lockUserManager($actor);
             $fresh = $this->lockFreshTarget($target, $expectAdmin);
+            $this->ensureStillAllowed('disable', $freshActor, $fresh);
 
             if ($fresh->status !== UserStatus::Active) {
                 throw new ConflictHttpException(Translate::text('users.not_active'));
@@ -82,8 +97,10 @@ final class UserManagementService
     public function enable(User $target, User $actor, Request $request, bool $expectAdmin): User
     {
         return DB::transaction(function () use ($target, $actor, $request, $expectAdmin): User {
-            $this->lockActiveAdmins($actor);
+            $this->lockActiveAdminIds();
+            $freshActor = $this->lockUserManager($actor);
             $fresh = $this->lockFreshTarget($target, $expectAdmin);
+            $this->ensureStillAllowed('enable', $freshActor, $fresh);
 
             if ($fresh->status !== UserStatus::Disabled) {
                 throw new ConflictHttpException(Translate::text('users.not_disabled'));
@@ -152,13 +169,12 @@ final class UserManagementService
     }
 
     /**
-     * Ordine dei blocchi: prima gli admin attivi (verifica anche chi agisce), poi il bersaglio riletto.
+     * Chi agisce, bloccato e riletto dopo gli admin attivi: un'altra richiesta può avergli tolto il ruolo
+     * o l'account dopo il controllo della policy.
      */
-    private function lockTarget(User $target, User $actor): User
+    private function lockUserManager(User $actor): User
     {
-        $this->lockActiveAdmins($actor);
-
-        return User::query()->lockForUpdate()->findOrFail($target->id);
+        return $this->ensureStillManagesUsers(User::query()->lockForUpdate()->find($actor->id));
     }
 
     private function lockFreshTarget(User $target, bool $expectAdmin): User
@@ -174,11 +190,11 @@ final class UserManagementService
     }
 
     /**
-     * Blocca le righe degli admin attivi fino alla fine della transazione e verifica che chi agisce lo sia ancora.
+     * Blocca le righe degli admin attivi fino alla fine della transazione.
      *
      * @return Collection<int, int>
      */
-    private function lockActiveAdmins(User $actor): Collection
+    private function lockActiveAdminIds(): Collection
     {
         /** @var Collection<int, int> $ids */
         $ids = User::query()
@@ -186,6 +202,18 @@ final class UserManagementService
             ->where('status', UserStatus::Active)
             ->lockForUpdate()
             ->pluck('id');
+
+        return $ids;
+    }
+
+    /**
+     * Per le azioni riservate agli admin: blocca gli admin attivi e verifica che chi agisce lo sia ancora.
+     *
+     * @return Collection<int, int>
+     */
+    private function lockActiveAdmins(User $actor): Collection
+    {
+        $ids = $this->lockActiveAdminIds();
 
         // Un'altra richiesta può avergli tolto il ruolo dopo il controllo della policy
         if (! $ids->contains($actor->id)) {

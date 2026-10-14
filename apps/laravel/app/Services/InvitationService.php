@@ -8,6 +8,7 @@ use App\Enums\UserStatus;
 use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Services\Concerns\RechecksUserPermissions;
 use App\Support\Translate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,8 @@ use Symfony\Component\HttpKernel\Exception\GoneHttpException;
  */
 final class InvitationService
 {
+    use RechecksUserPermissions;
+
     public const TTL_HOURS = 72;
 
     public const RESEND_COOLDOWN_SECONDS = 60;
@@ -87,6 +90,7 @@ final class InvitationService
     {
         DB::transaction(function () use ($user, $actor, $request): void {
             $fresh = $this->lockPendingInvitation($user);
+            $this->ensureStillAllowed('resendInvitation', $this->freshActor($actor), $fresh);
             $this->send($fresh, $actor);
             $this->events->log(AuthEventType::InvitationSent, $request, $fresh, $actor);
         });
@@ -98,7 +102,9 @@ final class InvitationService
     public function cancel(User $user, User $actor, Request $request): void
     {
         DB::transaction(function () use ($user, $actor, $request): void {
-            $this->lockPendingInvitation($user)->delete();
+            $fresh = $this->lockPendingInvitation($user);
+            $this->ensureStillAllowed('cancelInvitation', $this->freshActor($actor), $fresh);
+            $fresh->delete();
             $this->events->log(AuthEventType::InvitationCancelled, $request, null, $actor);
         });
     }
@@ -150,6 +156,15 @@ final class InvitationService
         }
 
         return $fresh;
+    }
+
+    /**
+     * Chi agisce, riletto senza blocco: bloccarlo dopo invito e utente invertirebbe l'ordine dei blocchi
+     * del servizio di gestione utenti (admin, attore, destinatario) e rischierebbe un deadlock.
+     */
+    private function freshActor(User $actor): User
+    {
+        return $this->ensureStillManagesUsers(User::query()->find($actor->id));
     }
 
     public function findByToken(#[\SensitiveParameter] string $token): ?Invitation

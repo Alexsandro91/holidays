@@ -114,9 +114,9 @@ class InviteUserTest extends TestCase
         Mail::assertNothingQueued();
     }
 
-    public function test_non_admins_cannot_invite(): void
+    public function test_employees_cannot_invite(): void
     {
-        $this->actingAs(User::factory()->manager()->create())->postJson('/api/users', $this->payload())->assertForbidden();
+        $this->actingAs(User::factory()->create())->postJson('/api/users', $this->payload())->assertForbidden();
         Mail::assertNothingQueued();
     }
 

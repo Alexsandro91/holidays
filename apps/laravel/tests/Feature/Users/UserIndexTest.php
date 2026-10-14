@@ -11,11 +11,11 @@ class UserIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guests_get_401_and_non_admins_get_403(): void
+    public function test_guests_get_401_employees_403_and_managers_the_list(): void
     {
         $this->getJson('/api/users')->assertUnauthorized();
         $this->actingAs(User::factory()->create())->getJson('/api/users')->assertForbidden();
-        $this->actingAs(User::factory()->manager()->create())->getJson('/api/users')->assertForbidden();
+        $this->actingAs(User::factory()->manager()->create())->getJson('/api/users')->assertOk();
     }
 
     public function test_lists_users_with_exactly_the_managed_fields(): void

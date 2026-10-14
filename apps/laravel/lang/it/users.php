@@ -6,6 +6,7 @@ return [
     'not_disabled' => 'L’utente non è disattivato.',
     'last_admin' => 'Serve almeno un amministratore attivo: questa azione lo lascerebbe senza.',
     'no_longer_admin' => 'Non sei più amministratore.',
+    'no_longer_allowed' => 'Non hai più i permessi per gestire gli utenti.',
     'not_promotable' => 'Si possono promuovere solo utenti attivi che non sono già amministratori.',
     'not_on_yourself' => 'Non puoi fare questa azione sul tuo account.',
     'not_admin' => 'Questo utente non è un amministratore.',

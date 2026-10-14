@@ -9,7 +9,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Matrice di accesso di tutte le rotte di amministrazione (spec §8.1): ospite 401, dipendente e responsabile 403,
+ * Matrice di accesso di tutte le rotte di amministrazione (spec §8.1, aggiornata dalla spec del 14/10): ospite 401,
+ * dipendente 403 ovunque, responsabile 403 sulla sezione Amministratori e sulle azioni verso un admin,
  * id inesistente 404; blocco della password di conferma condiviso tra le azioni sugli admin.
  */
 class AdminRouteAccessTest extends TestCase
@@ -39,6 +40,30 @@ class AdminRouteAccessTest extends TestCase
     }
 
     /**
+     * Rotte della sezione Amministratori, riservate all'admin.
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function administratorRoutes(): array
+    {
+        return [
+            'lista amministratori' => ['GET', '/api/administrators'],
+            'promozione' => ['POST', '/api/administrators'],
+            'revoca admin' => ['DELETE', '/api/administrators/{user}'],
+        ];
+    }
+
+    /**
+     * Azioni della gestione utenti sulla singola persona.
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function personRoutes(): array
+    {
+        return array_diff_key(self::userRoutes(), ['revoca admin' => true]);
+    }
+
+    /**
      * @return array<string, array{string, string}>
      */
     public static function userRoutes(): array
@@ -51,14 +76,6 @@ class AdminRouteAccessTest extends TestCase
             'riattivazione' => ['POST', '/api/users/{user}/enable'],
             'revoca admin' => ['DELETE', '/api/administrators/{user}'],
         ];
-    }
-
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function nonAdminRoles(): array
-    {
-        return ['dipendente' => ['employee'], 'responsabile' => ['manager']];
     }
 
     private function uri(string $template, int $userId): string
@@ -75,15 +92,32 @@ class AdminRouteAccessTest extends TestCase
     }
 
     #[DataProvider('adminRoutes')]
-    public function test_employees_and_managers_get_403(string $method, string $template): void
+    public function test_employees_get_403(string $method, string $template): void
     {
         $target = User::factory()->create();
 
-        foreach (array_column(self::nonAdminRoles(), 0) as $role) {
-            $actor = User::factory()->create(['role' => $role]);
+        $this->actingAs(User::factory()->create())
+            ->json($method, $this->uri($template, $target->id), ['current_password' => 'password'])
+            ->assertForbidden();
+    }
 
-            $this->actingAs($actor)
-                ->json($method, $this->uri($template, $target->id), ['current_password' => 'password'])
+    #[DataProvider('administratorRoutes')]
+    public function test_managers_get_403_on_the_administrators_section(string $method, string $template): void
+    {
+        $target = User::factory()->admin()->create();
+        $employee = User::factory()->create();
+
+        $this->actingAs(User::factory()->manager()->create())
+            ->json($method, $this->uri($template, $target->id), ['user_id' => $employee->id, 'role' => 'employee', 'current_password' => 'password'])
+            ->assertForbidden();
+    }
+
+    #[DataProvider('personRoutes')]
+    public function test_managers_get_403_on_an_admin(string $method, string $template): void
+    {
+        foreach ([User::factory()->admin()->create(), User::factory()->admin()->invited()->create(), User::factory()->admin()->disabled()->create()] as $target) {
+            $this->actingAs(User::factory()->manager()->create())
+                ->json($method, $this->uri($template, $target->id), ['role' => 'employee', 'current_password' => 'password'])
                 ->assertForbidden();
         }
     }

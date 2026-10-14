@@ -42,6 +42,20 @@ class UserManagementServiceTest extends TestCase
         }
     }
 
+    public function test_a_role_change_never_sets_the_admin_role(): void
+    {
+        $actor = User::factory()->manager()->create();
+        $target = User::factory()->create();
+
+        try {
+            $this->service->changeRole($target, Role::Admin, $actor, Request::create('/'));
+            $this->fail('Il cambio ruolo non può dare il ruolo admin');
+        } catch (InvalidArgumentException) {
+            $this->assertSame(Role::Employee, $target->fresh()?->role);
+            $this->assertDatabaseCount('auth_events', 0);
+        }
+    }
+
     public function test_an_admin_cannot_revoke_themselves(): void
     {
         $actor = User::factory()->admin()->create();

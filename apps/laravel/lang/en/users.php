@@ -6,6 +6,7 @@ return [
     'not_disabled' => 'This user is not disabled.',
     'last_admin' => 'At least one active admin is required: this action would leave none.',
     'no_longer_admin' => 'You are no longer an admin.',
+    'no_longer_allowed' => 'You are no longer allowed to manage users.',
     'not_promotable' => 'Only active users who are not admins yet can be promoted.',
     'not_on_yourself' => 'You cannot do this on your own account.',
     'not_admin' => 'This user is not an admin.',
