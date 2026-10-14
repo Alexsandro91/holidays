@@ -15,6 +15,8 @@ return [
     'email_locked' => 'L’email si può cambiare solo finché l’invito non è stato accettato: dopo l’attivazione è l’indirizzo con cui la persona accede.',
     'name_characters' => 'Il nome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
     'last_name_characters' => 'Il cognome non può contenere parentesi quadre, i segni < > o caratteri di controllo.',
+    'reset_link_throttled' => 'Un link è stato inviato da poco a questo utente. Riprova tra :seconds secondi.',
+    'reset_link_cap' => 'Troppi link inviati a questo utente nell’ultima ora. Riprova tra :minutes minuti.',
     'password_locked' => 'Troppi tentativi con la password. Riprova tra :minutes minuti.',
     'mail' => [
         'admin_change' => [
@@ -24,6 +26,7 @@ return [
                 'disabled' => 'Holidays: amministratore disattivato',
                 'enabled' => 'Holidays: amministratore riattivato',
                 'invited' => 'Holidays: nuovo amministratore invitato',
+                'password_reset_sent' => 'Holidays: reset password di un amministratore',
                 'email_changed' => 'Holidays: email di un amministratore invitato modificata',
             ],
             'body' => [
@@ -32,6 +35,7 @@ return [
                 'disabled' => ':actor ha disattivato l’amministratore :target il :date.',
                 'enabled' => ':actor ha riattivato l’amministratore :target il :date.',
                 'invited' => ':actor ha invitato :target come amministratore il :date. L’account sarà attivo quando :target accetterà l’invito.',
+                'password_reset_sent' => ':actor ha inviato a :target il link per reimpostare la password il :date. La password attuale resta valida finché non viene cambiata.',
                 'email_changed' => ':actor ha cambiato l’email dell’amministratore invitato :target il :date: il nuovo link d’invito è partito verso il nuovo indirizzo.',
             ],
             'unexpected' => 'Se non era previsto, avvisa subito il responsabile IT.',

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdministratorController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserInvitationController;
+use App\Http\Controllers\Admin\UserPasswordResetController;
 use App\Http\Controllers\Admin\UserRoleController;
 use App\Http\Controllers\Admin\UserStatusController;
 use App\Http\Controllers\Auth\CurrentUserController;
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('/users/{user}', [UserController::class, 'update'])->can('update', 'user')->name('users.update');
     Route::patch('/users/{user}/role', UserRoleController::class)->can('changeRole', 'user')->name('users.role');
     Route::post('/users/{user}/disable', [UserStatusController::class, 'disable'])->can('disable', 'user')->name('users.disable');
+    Route::post('/users/{user}/password-reset', UserPasswordResetController::class)->can('sendPasswordReset', 'user')->name('users.password-reset');
     Route::post('/users/{user}/enable', [UserStatusController::class, 'enable'])->can('enable', 'user')->name('users.enable');
 
     // Sezione Amministratori: solo admin

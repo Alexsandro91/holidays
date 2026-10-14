@@ -5,11 +5,14 @@ namespace App\Services;
 use App\Enums\AuthEventType;
 use App\Enums\UserStatus;
 use App\Mail\PasswordChangedMail;
+use App\Mail\ResetPasswordMail;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Support\AuthSession;
 use App\Support\EmailKey;
+use App\Support\Translate;
 use Illuminate\Auth\Passwords\PasswordBroker;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -58,6 +61,50 @@ final class PasswordResetService
                 }
             }, report: true);
         }, self::MIN_LINK_DURATION_MICROSECONDS);
+    }
+
+    /**
+     * Link avviato da admin o responsabile per un utente attivo: stessi limiti e stesso contatore del link pubblico,
+     * ma chi agisce è autenticato, quindi un limite superato si comunica (429 con Retry-After) invece di tacere.
+     * L'email parte dopo il commit della transazione in corso, solo all'indirizzo registrato.
+     *
+     * @throws ThrottleRequestsException
+     */
+    public function sendLinkFor(User $user, bool $requestedByStaff): void
+    {
+        $capKey = 'reset-link:'.EmailKey::from($user->email);
+
+        if (RateLimiter::tooManyAttempts($capKey, self::MAX_LINKS_PER_HOUR)) {
+            $seconds = RateLimiter::availableIn($capKey);
+
+            throw new ThrottleRequestsException(
+                Translate::text('users.reset_link_cap', ['minutes' => (int) ceil($seconds / 60)]),
+                null,
+                ['Retry-After' => (string) $seconds],
+            );
+        }
+
+        $status = $this->broker()->sendResetLink(
+            ['email' => $user->email, 'status' => UserStatus::Active->value],
+            function (User $recipient, #[\SensitiveParameter] string $token) use ($requestedByStaff): void {
+                DB::afterCommit(fn () => rescue(
+                    fn () => Mail::to($recipient)->send(new ResetPasswordMail($recipient->email, $token, $requestedByStaff)),
+                    report: true,
+                ));
+            },
+        );
+
+        if ($status === PasswordBroker::RESET_THROTTLED) {
+            $seconds = (int) config('auth.passwords.'.config('fortify.passwords').'.throttle', 60);
+
+            throw new ThrottleRequestsException(
+                Translate::text('users.reset_link_throttled', ['seconds' => $seconds]),
+                null,
+                ['Retry-After' => (string) $seconds],
+            );
+        }
+
+        RateLimiter::hit($capKey, self::LINK_CAP_DECAY_SECONDS);
     }
 
     /**

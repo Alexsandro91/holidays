@@ -51,6 +51,14 @@ final class UserPolicy
         return $this->mayActOn($actor, $target) && ! $actor->is($target);
     }
 
+    /**
+     * Link di reset della password a un utente attivo: stesse regole di `disable` (mai su sé stessi, per sé c'è il profilo).
+     */
+    public function sendPasswordReset(User $actor, User $target): bool
+    {
+        return $this->mayActOn($actor, $target) && ! $actor->is($target);
+    }
+
     public function enable(User $actor, User $target): bool
     {
         return $this->mayActOn($actor, $target);

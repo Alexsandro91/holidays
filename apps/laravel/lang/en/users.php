@@ -15,6 +15,8 @@ return [
     'email_locked' => 'The email can be changed only until the invitation is accepted: after activation it is the address used to sign in.',
     'name_characters' => 'The first name cannot contain square brackets, < > signs or control characters.',
     'last_name_characters' => 'The last name cannot contain square brackets, < > signs or control characters.',
+    'reset_link_throttled' => 'A link was sent to this user a moment ago. Try again in :seconds seconds.',
+    'reset_link_cap' => 'Too many links sent to this user in the last hour. Try again in :minutes minutes.',
     'password_locked' => 'Too many password attempts. Try again in :minutes minutes.',
     'mail' => [
         'admin_change' => [
@@ -24,6 +26,7 @@ return [
                 'disabled' => 'Holidays: admin disabled',
                 'enabled' => 'Holidays: admin enabled again',
                 'invited' => 'Holidays: new admin invited',
+                'password_reset_sent' => 'Holidays: password reset for an admin',
                 'email_changed' => 'Holidays: email of an invited admin changed',
             ],
             'body' => [
@@ -32,6 +35,7 @@ return [
                 'disabled' => ':actor disabled the admin :target on :date.',
                 'enabled' => ':actor enabled the admin :target again on :date.',
                 'invited' => ':actor invited :target as an admin on :date. The account will be active once :target accepts the invitation.',
+                'password_reset_sent' => ':actor sent :target the link to reset the password on :date. The current password stays valid until it is changed.',
                 'email_changed' => ':actor changed the email of the invited admin :target on :date: the new invitation link went to the new address.',
             ],
             'unexpected' => 'If this was not expected, tell the IT manager right away.',

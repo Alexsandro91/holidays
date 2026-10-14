@@ -42,6 +42,7 @@ final class UserManagementService
     public function __construct(
         private readonly AuthEventLogger $events,
         private readonly InvitationService $invitations,
+        private readonly PasswordResetService $passwordResets,
     ) {}
 
     public function changeRole(User $target, Role $role, User $actor, Request $request): User
@@ -161,6 +162,33 @@ final class UserManagementService
             }
 
             return $fresh;
+        }, self::TRANSACTION_ATTEMPTS);
+    }
+
+    /**
+     * Invia il link di reset a un utente attivo. La password attuale resta valida e le sessioni restano aperte.
+     * Un altro admin come destinatario avvisa gli altri admin attivi dopo il commit.
+     *
+     * @param  bool  $expectAdmin  se il bersaglio era un admin quando la richiesta è stata validata (decide la password)
+     */
+    public function sendPasswordReset(User $target, User $actor, Request $request, bool $expectAdmin): void
+    {
+        DB::transaction(function () use ($target, $actor, $request, $expectAdmin): void {
+            $this->lockActiveAdminIds();
+            $freshActor = $this->lockUserManager($actor);
+            $fresh = $this->lockFreshTarget($target, $expectAdmin);
+            $this->ensureStillAllowed('sendPasswordReset', $actor, $freshActor, $fresh);
+
+            if ($fresh->status !== UserStatus::Active) {
+                throw new ConflictHttpException(Translate::text('users.not_active'));
+            }
+
+            $this->passwordResets->sendLinkFor($fresh, requestedByStaff: true);
+            $this->events->log(AuthEventType::PasswordResetSent, $request, $fresh, $actor);
+
+            if ($fresh->isAdmin()) {
+                $this->notifyAdmins(AdminChange::PasswordResetSent, $fresh, $actor);
+            }
         }, self::TRANSACTION_ATTEMPTS);
     }
 

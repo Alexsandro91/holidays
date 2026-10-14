@@ -10,4 +10,5 @@ enum AdminChange: string
     case Enabled = 'enabled';
     case Invited = 'invited';
     case EmailChanged = 'email_changed';
+    case PasswordResetSent = 'password_reset_sent';
 }

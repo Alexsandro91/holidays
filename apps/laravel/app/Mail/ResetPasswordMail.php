@@ -19,6 +19,7 @@ class ResetPasswordMail extends Mailable implements ShouldBeEncrypted, ShouldQue
     public function __construct(
         public readonly string $email,
         #[\SensitiveParameter] public readonly string $token,
+        public readonly bool $requestedByStaff = false,
     ) {}
 
     /**
@@ -44,6 +45,8 @@ class ResetPasswordMail extends Mailable implements ShouldBeEncrypted, ShouldQue
             with: [
                 'url' => $this->url(),
                 'minutes' => (int) config('auth.passwords.users.expire'),
+                // Mai il nome di chi ha chiesto il link: la riga dice solo che l'ha chiesto qualcun altro
+                'requestedByStaff' => $this->requestedByStaff,
             ],
         );
     }

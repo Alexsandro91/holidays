@@ -12,6 +12,7 @@ return [
             'action' => 'Scegli una nuova password',
             'expiry' => 'Il link vale :minutes minuti e si può usare una sola volta.',
             'not_you' => 'Se non hai chiesto tu il link, ignora questa email: la password attuale resta valida.',
+            'requested_by_staff' => 'Il link è stato richiesto da un amministratore o dal tuo responsabile: se non te l’aspettavi, ignora questa email e avvisa un amministratore.',
             'fallback' => 'Se il pulsante non funziona, copia questo indirizzo nel browser: :url',
         ],
         'changed' => [

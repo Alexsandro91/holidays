@@ -8,7 +8,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Disattivare o riattivare un admin chiede la password di chi agisce; per gli altri utenti basta la conferma in UI.
+ * Disattivare, riattivare o inviare il link di reset a un admin chiede la password di chi agisce; per gli altri utenti basta la conferma in UI.
  */
 class UserStatusRequest extends FormRequest
 {
