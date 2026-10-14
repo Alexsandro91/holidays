@@ -120,7 +120,7 @@ const AdministratorsPage = () => {
                           {admin.can.disable && (
                             <Button
                               variant="outline"
-                              className="text-destructive hover:text-destructive"
+                              className="text-danger-soft-foreground hover:bg-danger-soft hover:text-danger-soft-foreground"
                               aria-label={t('administrators.disableFor', { name: admin.name })}
                               {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'disable') }}
                               onClick={() => setConfirming({ user: admin, action: 'disable' })}

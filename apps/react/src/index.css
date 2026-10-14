@@ -20,6 +20,8 @@
   --color-status-invited-foreground: var(--status-invited-foreground);
   --color-status-disabled: var(--status-disabled);
   --color-status-disabled-foreground: var(--status-disabled-foreground);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-soft-foreground: var(--danger-soft-foreground);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -187,6 +189,25 @@
   h2,
   h3 {
     text-wrap: balance;
+  }
+  /* Tailwind 4 lascia il cursore di default sui pulsanti: la manina dice "si può cliccare" su pulsanti, tab,
+     voci di menu, opzioni e radio. I pulsanti bloccati (disabled o aria-disabled durante un limite) mostrano il divieto */
+  button,
+  [role='button'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='menuitemradio'],
+  [role='option'],
+  [role='radio'],
+  [role='checkbox'],
+  input[type='search']::-webkit-search-cancel-button {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role='button']:disabled,
+  [aria-disabled='true'],
+  [data-disabled] {
+    cursor: not-allowed;
   }
 }
 
