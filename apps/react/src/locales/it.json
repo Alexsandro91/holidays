@@ -241,6 +241,10 @@
     "editFor": "Modifica {{name}}",
     "cancel": "Annulla invito",
     "cancelFor": "Annulla invito di {{name}}",
+    "disable": "Disattiva",
+    "disableFor": "Disattiva {{name}}",
+    "enable": "Riattiva",
+    "enableFor": "Riattiva {{name}}",
     "onlyYou": "Sei l’unico amministratore. Aggiungine un altro prima di lasciare il ruolo: serve sempre almeno un amministratore.",
     "loadError": "Non è stato possibile caricare gli amministratori.",
     "grant": {

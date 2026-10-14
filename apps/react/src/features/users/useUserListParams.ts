@@ -12,7 +12,7 @@ import {
 } from '@/features/users/api'
 
 const STATUSES: UserStatusFilter[] = ['all', 'active', 'invited', 'disabled']
-const ROLES: UserRoleFilter[] = ['all', 'employee', 'manager', 'admin']
+const ROLES: UserRoleFilter[] = ['all', 'employee', 'manager']
 export const USER_SORT_FIELDS: UserSortField[] = ['last_name', 'first_name', 'email', 'role', 'status']
 
 export const isStatusFilter = (value: string | null): value is UserStatusFilter => value !== null && STATUSES.some((status) => status === value)

@@ -15,15 +15,18 @@ import type { ManagedUser } from '@/features/users/api'
 import { useInvitationDetail } from '@/features/users/useInvitationDetail'
 import { INVITATION_TRIGGER_ATTRIBUTE, REVOKE_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
-/** Valore dell'attributo di focus di un pulsante dell'invito: uno per azione, così il focus torna su quello giusto */
+/** Valore dell'attributo di focus di un pulsante di riga: uno per azione, così il focus torna su quello giusto */
 const invitationTriggerKey = (user: ManagedUser, action: string): string => `${user.id}-${action}`
+
+type ConfirmedAction = 'resend' | 'cancel' | 'disable' | 'enable'
 
 const AdministratorsPage = () => {
   const { t } = useTranslation()
   const administrators = useAdministrators()
   const [revoking, setRevoking] = useState<ManagedUser | null>(null)
-  // Reinvio o annullamento dell'invito di un admin non ancora attivo (endpoint di /api/users, spec §4)
-  const [invitation, setInvitation] = useState<{ user: ManagedUser; action: 'resend' | 'cancel' } | null>(null)
+  // Azioni con conferma sugli endpoint di /api/users: invito di un admin non ancora attivo (spec §4), disattivazione
+  // e riattivazione senza togliere il ruolo (spec §7.6, con la password come nella fase 3)
+  const [confirming, setConfirming] = useState<{ user: ManagedUser; action: ConfirmedAction } | null>(null)
   const [editing, setEditing] = useState<ManagedUser | null>(null)
   const invitationDetail = useInvitationDetail()
   // Contano solo gli admin attivi: uno disattivato non può subentrare
@@ -80,7 +83,7 @@ const AdministratorsPage = () => {
                             variant="outline"
                             aria-label={t('administrators.resendFor', { name: admin.name })}
                             {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'resend') }}
-                            onClick={() => setInvitation({ user: admin, action: 'resend' })}
+                            onClick={() => setConfirming({ user: admin, action: 'resend' })}
                           >
                             {t('administrators.resend')}
                           </Button>
@@ -100,18 +103,42 @@ const AdministratorsPage = () => {
                             variant="outline"
                             aria-label={t('administrators.cancelFor', { name: admin.name })}
                             {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'cancel') }}
-                            onClick={() => setInvitation({ user: admin, action: 'cancel' })}
+                            onClick={() => setConfirming({ user: admin, action: 'cancel' })}
                           >
                             {t('administrators.cancel')}
                           </Button>
                         )}
                       </>
-                    ) : (
-                      // Revoca solo degli admin attivi: per gli altri il server risponde 409 (spec §7.5)
-                      admin.status === 'active' &&
+                    ) : admin.status === 'active' ? (
+                      // Revoca solo degli admin attivi: per gli altri il server risponde 409 (spec §7.5). Disattivare
+                      // lascia il ruolo: l'admin resta in questa pagina e si può riattivare (spec §7.6)
                       !admin.is_current_user && (
-                        <Button variant="outline" aria-label={t('administrators.revokeFor', { name: admin.name })} {...{ [REVOKE_TRIGGER_ATTRIBUTE]: admin.id }} onClick={() => setRevoking(admin)}>
-                          {t('administrators.revoke')}
+                        <>
+                          <Button variant="outline" aria-label={t('administrators.revokeFor', { name: admin.name })} {...{ [REVOKE_TRIGGER_ATTRIBUTE]: admin.id }} onClick={() => setRevoking(admin)}>
+                            {t('administrators.revoke')}
+                          </Button>
+                          {admin.can.disable && (
+                            <Button
+                              variant="outline"
+                              className="text-destructive hover:text-destructive"
+                              aria-label={t('administrators.disableFor', { name: admin.name })}
+                              {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'disable') }}
+                              onClick={() => setConfirming({ user: admin, action: 'disable' })}
+                            >
+                              {t('administrators.disable')}
+                            </Button>
+                          )}
+                        </>
+                      )
+                    ) : (
+                      admin.can.enable && (
+                        <Button
+                          variant="outline"
+                          aria-label={t('administrators.enableFor', { name: admin.name })}
+                          {...{ [INVITATION_TRIGGER_ATTRIBUTE]: invitationTriggerKey(admin, 'enable') }}
+                          onClick={() => setConfirming({ user: admin, action: 'enable' })}
+                        >
+                          {t('administrators.enable')}
                         </Button>
                       )
                     )}
@@ -124,9 +151,9 @@ const AdministratorsPage = () => {
       </div>
       <RevokeAdminDialog user={revoking} onClose={() => setRevoking(null)} />
       <ConfirmUserActionDialog
-        user={invitation?.user ?? null}
-        action={invitation?.action ?? null}
-        onClose={() => setInvitation(null)}
+        user={confirming?.user ?? null}
+        action={confirming?.action ?? null}
+        onClose={() => setConfirming(null)}
         triggerAttribute={INVITATION_TRIGGER_ATTRIBUTE}
         triggerKey={invitationTriggerKey}
       />

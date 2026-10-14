@@ -230,7 +230,7 @@ test('employees do not see the management group and get the forbidden page on /u
   }
 })
 
-test('managers see Users but not Administrators, without actions on admins', async () => {
+test('managers see Users without admins and do not see Administrators', async () => {
   await clearInbox()
   const context = await newContext()
   try {
@@ -251,8 +251,9 @@ test('managers see Users but not Administrators, without actions on admins', asy
       await expect(row).toBeVisible()
       return row
     }
-    // Il responsabile vede anche gli admin, ma senza azioni su di loro
-    await expect((await rowFor('admin@holidays.test')).getByRole('button', { name: 'Azioni per Giulia Rossi' })).toHaveCount(0)
+    // Gli admin non sono nella sezione Utenti (si gestiscono solo in Amministratori), neppure cercandoli per email
+    await page.goto(`/users?email=${encodeURIComponent('admin@holidays.test')}`)
+    await expect(page.getByRole('main').getByText('Nessun utente trovato.')).toBeVisible()
     // Su sé stesso può solo modificare nome e cognome
     await (await rowFor('manager@holidays.test')).getByRole('button', { name: 'Azioni per Marco Bianchi' }).click()
     await expect(page.getByRole('menuitem')).toHaveText(['Modifica'])

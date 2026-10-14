@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { UserRoleFilter } from '@/features/users/api'
 import { isRoleFilter } from '@/features/users/useUserListParams'
 
-const ROLES: UserRoleFilter[] = ['all', 'employee', 'manager', 'admin']
+const ROLES: UserRoleFilter[] = ['all', 'employee', 'manager']
 
 interface RoleFilterProps {
   value: UserRoleFilter

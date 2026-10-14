@@ -136,6 +136,18 @@ describe('UsersPage', () => {
     expect(screen.getByRole('combobox', { name: 'Ruolo' })).toHaveTextContent('Responsabile')
   })
 
+  it('has no admin role: admins live only in the Administrators page (an old role=admin link shows every role)', async () => {
+    const urls: URL[] = []
+    respondWith((url) => urls.push(url))
+    const { user } = renderRoutes(routes, ['/users?role=admin'])
+
+    await screen.findByRole('table')
+    expect(urls.at(-1)?.searchParams.has('filter[role]')).toBe(false)
+    await user.click(screen.getByRole('button', { name: /Filtri/ }))
+    await user.click(screen.getByRole('combobox', { name: 'Ruolo' }))
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Tutti i ruoli', 'Dipendente', 'Responsabile'])
+  })
+
   it('ignores unknown values in the URL and cuts texts over 100 characters', async () => {
     const urls: URL[] = []
     respondWith((url) => urls.push(url))

@@ -618,6 +618,77 @@ describe('AdministratorsPage', () => {
     expect(screen.queryByRole('button', { name: 'Revoca Carla Admin' })).not.toBeInTheDocument()
   })
 
+  it('disables an active administrator with your password, keeping the role and the row', async () => {
+    admins()
+    let body: unknown = null
+    server.use(
+      http.post('/api/users/3/disable', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: { ...bruno, status: 'disabled', status_label: 'Disattivato' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const trigger = await screen.findByRole('button', { name: 'Disattiva Bruno Admin' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('alertdialog', { name: 'Disattivare Bruno Admin?' })
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Disattiva Bruno Admin' }))
+
+    expect(await screen.findByText('Bruno Admin è stato disattivato.')).toBeInTheDocument()
+    expect(body).toEqual({ current_password: 'password' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('shows a wrong password under the field when disabling an administrator', async () => {
+    admins()
+    server.use(http.post('/api/users/3/disable', () => HttpResponse.json({ message: 'Errore', errors: { current_password: ['La password non è corretta.'] } }, { status: 422 })))
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Disattiva Bruno Admin' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Disattivare Bruno Admin?' })
+    await user.type(within(dialog).getByLabelText('La tua password'), 'sbagliata')
+    await user.click(within(dialog).getByRole('button', { name: 'Disattiva Bruno Admin' }))
+
+    expect(await within(dialog).findByText('La password non è corretta.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('La tua password')).toHaveFocus()
+  })
+
+  it('re-enables a disabled administrator with your password', async () => {
+    const carla = managedUser({ id: 4, name: 'Carla Admin', role: 'admin', role_label: 'HR / Admin', status: 'disabled', status_label: 'Disattivato' })
+    admins([me, carla])
+    let body: unknown = null
+    server.use(
+      http.post('/api/users/4/enable', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: { ...carla, status: 'active', status_label: 'Attivo' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Riattiva Carla Admin' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Riattivare Carla Admin?' })
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Riattiva Carla Admin' }))
+
+    expect(await screen.findByText('Carla Admin è stato riattivato.')).toBeInTheDocument()
+    expect(body).toEqual({ current_password: 'password' })
+  })
+
+  it('offers disable and enable only where the server allows them, never on yourself', async () => {
+    admins([
+      me,
+      managedUser({ id: 3, name: 'Bruno Admin', role: 'admin', can: { ...NO_ACTIONS, update: true } }),
+      managedUser({ id: 4, name: 'Carla Admin', role: 'admin', status: 'disabled', status_label: 'Disattivato', can: NO_ACTIONS }),
+    ])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    expect(await screen.findByRole('button', { name: 'Revoca Bruno Admin' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Disattiva Bruno Admin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Riattiva Carla Admin' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Disattiva Anna Admin' })).not.toBeInTheDocument()
+  })
+
   it('returns the focus to "Annulla invito" when its dialog is closed without cancelling', async () => {
     admins([me, managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato' })])
     const { user } = renderRoutes(routes, ['/admin/administrators'])

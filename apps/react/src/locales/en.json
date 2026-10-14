@@ -241,6 +241,10 @@
     "editFor": "Edit {{name}}",
     "cancel": "Cancel invitation",
     "cancelFor": "Cancel {{name}}’s invitation",
+    "disable": "Disable",
+    "disableFor": "Disable {{name}}",
+    "enable": "Enable",
+    "enableFor": "Enable {{name}}",
     "onlyYou": "You are the only administrator. Add another one before giving up the role: at least one administrator is always required.",
     "loadError": "Administrators couldn’t be loaded.",
     "grant": {

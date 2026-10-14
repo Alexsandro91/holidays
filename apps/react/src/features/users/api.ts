@@ -32,7 +32,8 @@ export type ManagedUser = z.infer<typeof managedUserSchema>
 export type UserRole = ManagedUser['role']
 export type UserStatus = ManagedUser['status']
 export type UserStatusFilter = 'all' | UserStatus
-export type UserRoleFilter = 'all' | UserRole
+/** Gli admin non sono nella lista Utenti (si gestiscono in Amministratori): il filtro ha solo gli altri ruoli */
+export type UserRoleFilter = 'all' | Exclude<UserRole, 'admin'>
 export type UserSortField = 'last_name' | 'first_name' | 'email' | 'role' | 'status'
 /** Campo di ordinamento, con il prefisso `-` per l'ordine decrescente (contratto API, spec §7.2) */
 export type UserSort = UserSortField | `-${UserSortField}`
