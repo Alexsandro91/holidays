@@ -110,6 +110,12 @@
   --status-invited-foreground: hsl(32 92% 28%);
   --status-disabled: hsl(185 16% 93%);
   --status-disabled-foreground: hsl(200 9% 36%);
+  /* Bordi e rosso degli esiti nei toast (sonner.tsx): riuscito come "Attivo", errore rosso, avviso come "Invitato" */
+  --status-active-border: hsl(150 40% 76%);
+  --status-invited-border: hsl(38 80% 74%);
+  --danger-soft: hsl(0 80% 95%);
+  --danger-soft-foreground: hsl(0 70% 36%);
+  --danger-soft-border: hsl(0 70% 84%);
   --sidebar-border: hsl(190 14% 87%);
   --sidebar-ring: hsl(177 72% 30%);
 }
@@ -158,6 +164,11 @@
   --status-invited-foreground: hsl(38 90% 65%);
   --status-disabled: hsl(200 16% 15%);
   --status-disabled-foreground: hsl(190 10% 68%);
+  --status-active-border: hsl(150 35% 30%);
+  --status-invited-border: hsl(38 50% 32%);
+  --danger-soft: hsl(0 40% 16%);
+  --danger-soft-foreground: hsl(0 85% 78%);
+  --danger-soft-border: hsl(0 40% 32%);
   --sidebar-border: hsl(200 14% 20%);
   --sidebar-ring: hsl(174 58% 55%);
 }

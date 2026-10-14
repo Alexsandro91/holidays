@@ -11,7 +11,7 @@ const RootLayout = () => (
     <Suspense fallback={<FullPageLoader />}>
       <Outlet />
     </Suspense>
-    <Toaster position="bottom-right" />
+    <Toaster />
   </>
 )
 

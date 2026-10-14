@@ -48,6 +48,8 @@ const PAIRS: [string, string, number][] = [
   ['status-active-foreground', 'status-active', 4.5],
   ['status-invited-foreground', 'status-invited', 4.5],
   ['status-disabled-foreground', 'status-disabled', 4.5],
+  // Toast di errore (quelli riusciti e di avviso usano i token dei badge qui sopra)
+  ['danger-soft-foreground', 'danger-soft', 4.5],
 ]
 
 const THEMES: (':root' | '.dark')[] = [':root', '.dark']

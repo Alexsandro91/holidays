@@ -27,7 +27,7 @@ export const renderRoutes = (routes: RouteObject[], initialEntries: Entry[] = ['
         <TooltipProvider>
           <RouterProvider router={router} />
           {/* Nell'app il Toaster sta in RootLayout: le route di test non lo includono */}
-          {options.toaster !== false && <Toaster position="bottom-right" />}
+          {options.toaster !== false && <Toaster />}
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>,
