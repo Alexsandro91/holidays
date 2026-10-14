@@ -458,6 +458,103 @@ describe('UsersAdminPage', () => {
     expect(calls).toBe(1)
   })
 
+  it('asks for your password to edit another admin and shows a wrong password under the field', async () => {
+    listing([managedUser({ name: 'Bruno Admin', email: 'bruno@holidays.test', role: 'admin', role_label: 'HR / Admin' })])
+    const bodies: unknown[] = []
+    server.use(
+      http.patch('/api/users/2', async ({ request }) => {
+        bodies.push(await request.json())
+        return bodies.length === 1
+          ? HttpResponse.json({ message: 'x', errors: { current_password: ['La password non è corretta.'] } }, { status: 422 })
+          : HttpResponse.json({ data: managedUser({ name: 'Bruno Admin', role: 'admin' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Bruno Admin')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Bruno Admin' })
+    const password = within(dialog).getByLabelText('La tua password')
+    expect(password).toHaveAttribute('autocomplete', 'current-password')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    expect(await within(dialog).findByText('Inserisci la password.')).toBeInTheDocument()
+    expect(bodies).toHaveLength(0)
+
+    await user.type(password, 'sbagliata')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    expect(await within(dialog).findByText('La password non è corretta.')).toBeInTheDocument()
+    expect(password).toHaveFocus()
+
+    await user.clear(password)
+    await user.type(password, 'giusta')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    expect(await screen.findByText('Dati di Bruno Admin aggiornati.')).toBeInTheDocument()
+    expect(bodies).toEqual([
+      { first_name: 'Bruno', last_name: 'Admin', current_password: 'sbagliata' },
+      { first_name: 'Bruno', last_name: 'Admin', current_password: 'giusta' },
+    ])
+  })
+
+  it('keeps the edit of an admin blocked but focusable after too many wrong passwords', async () => {
+    listing([managedUser({ name: 'Bruno Admin', role: 'admin', role_label: 'HR / Admin' })])
+    let calls = 0
+    server.use(
+      http.patch('/api/users/2', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'Troppi tentativi con la password. Riprova tra 15 minuti.' }, { status: 429, headers: { 'Retry-After': '900' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Bruno Admin')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Bruno Admin' })
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await within(dialog).findByText('Troppi tentativi con la password. Riprova tra 15 minuti.')).toBeInTheDocument()
+    const button = within(dialog).getByRole('button', { name: 'Salva' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await waitForStrayRequests()
+    expect(calls).toBe(1)
+  })
+
+  it('closes the edit with the server message when the person became an admin meanwhile (409)', async () => {
+    listing([managedUser()])
+    server.use(http.patch('/api/users/2', () => HttpResponse.json({ message: 'La situazione è cambiata: ricarica e riprova.' }, { status: 409 })))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('La situazione è cambiata: ricarica e riprova.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('does not ask for the password to edit yourself or a non-admin', async () => {
+    listing([
+      managedUser({ id: 1, name: 'Anna Admin', email: 'anna@holidays.test', role: 'admin', is_current_user: true, can: { ...NO_ACTIONS, update: true } }),
+      managedUser(),
+    ])
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Anna Admin')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const own = await screen.findByRole('dialog', { name: 'Modifica Anna Admin' })
+    expect(within(own).queryByLabelText('La tua password')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const other = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    expect(within(other).queryByLabelText('La tua password')).not.toBeInTheDocument()
+  })
+
   it('has no accessibility violations with the edit dialog open', async () => {
     listing([managedUser()])
     const { user, baseElement } = renderRoutes(routes, ['/users'])

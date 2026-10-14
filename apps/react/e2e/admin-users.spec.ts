@@ -291,6 +291,8 @@ test('an admin invites a new administrator, edits the email of the invitation, t
   await row.getByRole('button', { name: `Modifica ${NEW_ADMIN_NAME}` }).click()
   const edit = admin.getByRole('dialog', { name: `Modifica ${NEW_ADMIN_NAME}` })
   await edit.getByLabel('Email aziendale').fill(NEW_ADMIN_EMAIL_CHANGED)
+  // Modificare un altro admin chiede la password di chi agisce
+  await edit.getByLabel('La tua password').fill(PASSWORD)
   await edit.getByRole('button', { name: 'Salva' }).click()
   await expect(admin.getByText(`Dati aggiornati. Nuovo invito inviato a ${NEW_ADMIN_EMAIL_CHANGED}.`)).toBeVisible()
   await waitForInvitationLink(NEW_ADMIN_EMAIL_CHANGED)

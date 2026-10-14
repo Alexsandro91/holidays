@@ -213,6 +213,7 @@
       "email": "Work email",
       "emailLocked": "The email can only change until the invitation is accepted: it’s now the address this person signs in with.",
       "emailInvited": "If you change it, the invitation link is sent to the new address and the old one stops working.",
+      "password": "Your password",
       "submit": "Save",
       "done": "{{name}}’s details updated.",
       "reinvited": "Details updated. New invitation sent to {{email}}."

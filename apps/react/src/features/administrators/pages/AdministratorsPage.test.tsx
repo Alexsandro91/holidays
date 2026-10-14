@@ -647,10 +647,12 @@ describe('AdministratorsPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Modifica Sara Colombo' })
     await user.clear(within(dialog).getByLabelText('Email aziendale'))
     await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara.colombo@holidays.test')
+    // È un altro admin: serve la password di chi agisce
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
 
     expect(await screen.findByText('Dati aggiornati. Nuovo invito inviato a sara.colombo@holidays.test.')).toBeInTheDocument()
-    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara.colombo@holidays.test' })
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara.colombo@holidays.test', current_password: 'password' })
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 

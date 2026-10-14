@@ -213,6 +213,7 @@
       "email": "Email aziendale",
       "emailLocked": "L’email si può cambiare solo finché l’invito non è stato accettato: ora è l’indirizzo con cui la persona accede.",
       "emailInvited": "Se la cambi, il link dell’invito viene inviato al nuovo indirizzo e quello vecchio smette di funzionare.",
+      "password": "La tua password",
       "submit": "Salva",
       "done": "Dati di {{name}} aggiornati.",
       "reinvited": "Dati aggiornati. Nuovo invito inviato a {{email}}."

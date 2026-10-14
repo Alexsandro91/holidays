@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import PasswordInput from '@/components/PasswordInput'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -16,16 +17,18 @@ import { useUpdateUser, type ManagedUser } from '@/features/users/api'
 import { isApiError } from '@/lib/api'
 import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
-const createSchema = (t: TFunction) =>
+// La password di chi agisce serve solo per modificare un altro admin (fix di sicurezza sul backend)
+const createSchema = (t: TFunction, askPassword: boolean) =>
   z.object({
     firstName: z.string().trim().min(1, t('validation.firstNameRequired')),
     lastName: z.string().trim().min(1, t('validation.lastNameRequired')),
     email: emailField(t),
+    currentPassword: askPassword ? z.string().min(1, t('validation.passwordRequired')) : z.string(),
   })
 
 type EditValues = z.infer<ReturnType<typeof createSchema>>
 
-const FIELDS: (keyof EditValues)[] = ['firstName', 'lastName', 'email']
+const FIELDS: (keyof EditValues)[] = ['firstName', 'lastName', 'email', 'currentPassword']
 
 interface EditUserDialogProps {
   user: ManagedUser | null
@@ -48,10 +51,13 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
   const update = useUpdateUser()
   // L'email si cambia solo finché l'invito non è accettato (spec §7.3): per gli altri è l'indirizzo di accesso
   const emailEditable = user.status === 'invited'
-  const schema = useMemo(() => createSchema(t), [t])
+  // Modificare un altro admin chiede la password di chi agisce, come promozione e revoca
+  const askPassword = user.role === 'admin' && !user.is_current_user
+  const schema = useMemo(() => createSchema(t, askPassword), [t, askPassword])
+  // La password vive solo nel form: si smonta alla chiusura e la mutation ha gcTime 0
   const form = useForm<EditValues>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: user.first_name, lastName: user.last_name, email: user.email },
+    defaultValues: { firstName: user.first_name, lastName: user.last_name, email: user.email, currentPassword: '' },
   })
   const { errors } = form.formState
   // Messaggio del server mostrato nel dialog (troppe richieste, errori senza campo)
@@ -61,13 +67,19 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
   // durante l'animazione di chiusura il form è ancora nel DOM
   const submitting = useRef(false)
 
-  const submit = async ({ firstName, lastName, email }: EditValues) => {
+  const submit = async ({ firstName, lastName, email, currentPassword }: EditValues) => {
     if (submitting.current) return
     submitting.current = true
     setNotice(null)
     onBusyChange(true)
     try {
-      await update.mutateAsync({ id: user.id, firstName, lastName, email: emailEditable ? email : undefined })
+      await update.mutateAsync({
+        id: user.id,
+        firstName,
+        lastName,
+        email: emailEditable ? email : undefined,
+        currentPassword: askPassword ? currentPassword : undefined,
+      })
     } catch (error) {
       submitting.current = false
       if (isApiError(error, 'validation')) {
@@ -75,6 +87,7 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
           firstName: error.fieldErrors.first_name?.[0],
           lastName: error.fieldErrors.last_name?.[0],
           email: error.fieldErrors.email?.[0],
+          currentPassword: error.fieldErrors.current_password?.[0],
         }
         FIELDS.forEach((field) => {
           const message = messages[field]
@@ -88,7 +101,7 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
         setNotice(error.message)
         setLocked(true)
       } else {
-        // 403 e 409: il messaggio del server è già tradotto, la lista si ricarica
+        // 403 e 409 (es. users.state_changed): il messaggio del server è già tradotto, la lista si ricarica
         toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
         onClose()
       }
@@ -153,6 +166,19 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
           <FieldDescription id="edit-email-hint">{emailEditable ? t('users.editDialog.emailInvited') : t('users.editDialog.emailLocked')}</FieldDescription>
           <FieldError id="edit-email-error">{errors.email?.message}</FieldError>
         </Field>
+        {askPassword && (
+          <Field data-invalid={errors.currentPassword ? true : undefined}>
+            <FieldLabel htmlFor="edit-password">{t('users.editDialog.password')}</FieldLabel>
+            <PasswordInput
+              id="edit-password"
+              autoComplete="current-password"
+              aria-invalid={errors.currentPassword ? true : undefined}
+              aria-describedby={errors.currentPassword ? 'edit-password-error' : undefined}
+              {...form.register('currentPassword')}
+            />
+            <FieldError id="edit-password-error">{errors.currentPassword?.message}</FieldError>
+          </Field>
+        )}
         {notice && (
           <Alert variant="destructive" role="alert">
             <AlertDescription>{notice}</AlertDescription>

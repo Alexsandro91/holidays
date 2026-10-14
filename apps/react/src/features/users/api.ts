@@ -149,14 +149,17 @@ export interface UpdateUserInput {
   lastName: string
   /** Solo per gli utenti invitati: per gli altri l'email non cambia (spec §7.3) */
   email?: string
+  /** Solo per modificare un altro admin */
+  currentPassword?: string
 }
 
 export const useUpdateUser = () =>
-  useAdminMutation(({ id, firstName, lastName, email }: UpdateUserInput) =>
+  useAdminMutation(({ id, firstName, lastName, email, currentPassword }: UpdateUserInput) =>
     requestData('PATCH', `/api/users/${id}`, userResourceSchema, {
       first_name: firstName,
       last_name: lastName,
       ...(email === undefined ? {} : { email }),
+      ...(currentPassword === undefined ? {} : { current_password: currentPassword }),
     }),
   )
 
