@@ -16,7 +16,7 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
 - Header `Content-Security-Policy` su tutte le pagine della SPA (una riga sola):
 
   ```
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-n/psEl/11gdD2U8t7eb56eCJRGOMplCZzuupMahdT2w='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-n/psEl/11gdD2U8t7eb56eCJRGOMplCZzuupMahdT2w='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
   ```
 
   - L'hash autorizza l'unico script inline, quello del tema in `apps/react/index.html` (applica il tema scuro prima del
@@ -27,7 +27,12 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
     inseriscono elementi `<style>` a runtime. Gli stili impostati da JavaScript (`element.style`) non dipendono dalla CSP.
   - Font e bundle sono serviti dalla stessa origine (`default-src 'self'`); le API stanno sulla stessa origine della SPA
     (`connect-src 'self'`). Se le API vengono servite da un'altra origine, aggiungerla a `connect-src`.
-  - Prima di attivarla si può provare con `Content-Security-Policy-Report-Only` e controllare la console del browser.
+  - Niente `'unsafe-eval'`: Zod 4 proverebbe a compilare gli schemi con `new Function()`, ma l'app lo configura in
+    modalità `jitless` (`src/lib/zodConfig.ts`), quindi la console non deve mostrare violazioni `unsafe-eval`.
+  - `object-src 'none'`: nessun plugin o `<object>`; è coperto anche da `default-src`, ma è quello che si aspettano gli
+    strumenti di valutazione delle CSP.
+  - Prima di attivarla si può provare con `Content-Security-Policy-Report-Only` e controllare la console del browser:
+    non devono comparire violazioni.
 
 ## Proxy e load balancer
 - Le richieste `DELETE` devono arrivare a Laravel con il corpo: la revoca di un amministratore
