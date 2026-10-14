@@ -12,7 +12,13 @@ const ProtectedRoute = () => {
   const queryClient = useQueryClient()
 
   if (isPending) return <FullPageLoader />
-  if (user === null) return <Navigate to="/login?reason=logged-out" replace />
+  if (user === null) {
+    // null con un motivo conservato: sessione scaduta per il client (avviso di scadenza), non un logout
+    const ended = rememberedSessionEnd(queryClient)
+    if (!ended) return <Navigate to="/login?reason=logged-out" replace />
+    const params = new URLSearchParams({ redirect: `${location.pathname}${location.search}`, reason: ended })
+    return <Navigate to={`/login?${params.toString()}`} replace />
+  }
   // Errore di rete/5xx: pagina d'errore solo senza utente in cache; altrimenti si tengono i dati (e lo stato della pagina)
   if (error && !user && !isApiError(error, 'unauthenticated')) {
     return <ServerErrorState isNetworkError={isApiError(error, 'network')} onRetry={() => void refetch()} />

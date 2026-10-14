@@ -335,6 +335,16 @@
       "localeDone": "Language saved."
     }
   },
+  "sessionExpiry": {
+    "title": "Your session is about to expire",
+    "idleDescription": "For security, the session closes after a period of inactivity. Do you want to stay signed in?",
+    "absoluteDescription": "You’ll need to sign in again shortly: save your work.",
+    "timeLeft": "Time left",
+    "stay": "Stay signed in",
+    "gotIt": "Got it",
+    "announceOpen": "Your session expires in less than 2 minutes.",
+    "announce30": "30 seconds left before your session expires."
+  },
   "privacy": {
     "title": "Privacy notice",
     "back": "Back to Holidays",

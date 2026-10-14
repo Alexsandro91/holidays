@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import i18n from '@/lib/i18n'
+import { recordActivity } from '@/lib/sessionActivity'
 
 export type ApiErrorKind = 'unauthenticated' | 'forbidden' | 'csrf' | 'validation' | 'throttled' | 'network' | 'server'
 
@@ -137,7 +138,11 @@ export const request = async (method: HttpMethod, path: string, body?: unknown):
   }
 
   const payload = await readJson(response)
-  if (response.ok) return payload
+  if (response.ok) {
+    // Ogni risposta riuscita rinnova la sessione per inattività: l'avviso di scadenza riparte da qui
+    recordActivity()
+    return payload
+  }
 
   const parsed = errorBodySchema.safeParse(payload)
   const data: z.infer<typeof errorBodySchema> = parsed.success ? parsed.data : {}

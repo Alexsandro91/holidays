@@ -1,7 +1,7 @@
 import { type QueryClient, skipToken, useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { isApiError } from '@/lib/api'
-import { isUserQuery, sessionEndKey } from '@/lib/queryKeys'
+import { isUserQuery, sessionEndKey, userQueryKey } from '@/lib/queryKeys'
 
 /** Motivo della chiusura della sessione da parte del server, come compare nell'avviso del login (`?reason=`). */
 export type SessionEndReason = 'disabled' | 'expired'
@@ -40,6 +40,17 @@ export const rememberSessionEnd = (client: QueryClient, error: unknown): void =>
   if (!reason) return
   clearSessionData(client)
   client.setQueryData(sessionEndKey, reason)
+}
+
+/**
+ * Scadenza calcolata dal client (avviso di scadenza, spec fase 4 §3.3): stessa fine di un 401 con `session_expired`,
+ * senza chiamare il server. L'utente diventa null come al logout, ma con il motivo conservato: le route protette
+ * mandano al login con "Sessione scaduta" e il ritorno alla pagina di partenza.
+ */
+export const expireSession = (client: QueryClient): void => {
+  clearSessionData(client)
+  client.setQueryData(sessionEndKey, 'expired')
+  client.setQueryData(userQueryKey, null)
 }
 
 export const rememberedSessionEnd = (client: QueryClient): SessionEndReason | null => {

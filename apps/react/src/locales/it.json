@@ -335,6 +335,16 @@
       "localeDone": "Lingua salvata."
     }
   },
+  "sessionExpiry": {
+    "title": "La sessione sta per scadere",
+    "idleDescription": "Per sicurezza, senza attività la sessione si chiude. Vuoi restare collegato?",
+    "absoluteDescription": "Tra poco dovrai accedere di nuovo: salva il lavoro.",
+    "timeLeft": "Tempo rimasto",
+    "stay": "Resta collegato",
+    "gotIt": "Ho capito",
+    "announceOpen": "La sessione scade tra meno di 2 minuti.",
+    "announce30": "Mancano 30 secondi alla scadenza della sessione."
+  },
   "privacy": {
     "title": "Informativa privacy",
     "back": "Torna a Holidays",

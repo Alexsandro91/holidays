@@ -5,6 +5,7 @@ import { Link, Outlet } from 'react-router'
 import { toast } from 'sonner'
 import Logo from '@/components/brand/Logo'
 import FullPageLoader from '@/components/layout/FullPageLoader'
+import SessionExpiryDialog from '@/components/layout/SessionExpiryDialog'
 import SidebarNavLink from '@/components/layout/SidebarNavLink'
 import SkipLink from '@/components/layout/SkipLink'
 import LanguageMenu from '@/components/preferences/LanguageMenu'
@@ -54,6 +55,8 @@ const AppShell = () => {
   return (
     <SidebarProvider>
       <SkipLink />
+      {/* Avviso di scadenza della sessione (WCAG 2.2.1): uno solo per tutta l'area riservata */}
+      <SessionExpiryDialog session={user.session} />
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex h-12 items-center gap-2.5 px-1">
