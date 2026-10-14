@@ -18,11 +18,12 @@ import { isApiError } from '@/lib/api'
 import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
 // La password di chi agisce serve solo per modificare un altro admin (fix di sicurezza sul backend)
-const createSchema = (t: TFunction, askPassword: boolean) =>
+// L'email si valida solo se si può cambiare: un indirizzo storico in sola lettura non blocca il salvataggio del nome
+const createSchema = (t: TFunction, askPassword: boolean, emailEditable: boolean) =>
   z.object({
     firstName: z.string().trim().min(1, t('validation.firstNameRequired')),
     lastName: z.string().trim().min(1, t('validation.lastNameRequired')),
-    email: emailField(t),
+    email: emailEditable ? emailField(t) : z.string(),
     currentPassword: askPassword ? z.string().min(1, t('validation.passwordRequired')) : z.string(),
   })
 
@@ -53,7 +54,7 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
   const emailEditable = user.status === 'invited'
   // Modificare un altro admin chiede la password di chi agisce, come promozione e revoca
   const askPassword = user.role === 'admin' && !user.is_current_user
-  const schema = useMemo(() => createSchema(t, askPassword), [t, askPassword])
+  const schema = useMemo(() => createSchema(t, askPassword, emailEditable), [t, askPassword, emailEditable])
   // La password vive solo nel form: si smonta alla chiusura e la mutation ha gcTime 0
   const form = useForm<EditValues>({
     resolver: zodResolver(schema),
@@ -72,14 +73,15 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
     submitting.current = true
     setNotice(null)
     onBusyChange(true)
+    let updated: ManagedUser
     try {
-      await update.mutateAsync({
+      updated = (await update.mutateAsync({
         id: user.id,
         firstName,
         lastName,
         email: emailEditable ? email : undefined,
         currentPassword: askPassword ? currentPassword : undefined,
-      })
+      })).data
     } catch (error) {
       submitting.current = false
       if (isApiError(error, 'validation')) {
@@ -100,17 +102,22 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
       } else if (isApiError(error, 'throttled')) {
         setNotice(error.message)
         setLocked(true)
-      } else {
-        // 403 e 409 (es. users.state_changed): il messaggio del server è già tradotto, la lista si ricarica
-        toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
+      } else if (isApiError(error) && (error.status === 403 || error.status === 409)) {
+        // 403 e 409 (es. users.state_changed): non si può più fare, il dialog si chiude e la lista si ricarica
+        // (invalidazione in useAdminMutation). Il messaggio del server è già tradotto
+        toast.error(error.message)
         onClose()
+      } else {
+        // Rete o errore del server: il dialog resta aperto con i dati scritti, si può riprovare
+        toast.error(isApiError(error, 'network') ? t('errors.network') : t('errors.generic'))
       }
       return
     } finally {
       onBusyChange(false)
     }
-    const emailChanged = emailEditable && email !== user.email
-    toast.success(emailChanged ? t('users.editDialog.reinvited', { email }) : t('users.editDialog.done', { name: `${firstName} ${lastName}` }))
+    // Esito secondo il server: per lui l'email cambia solo dopo la normalizzazione (es. maiuscole), e solo allora rimanda l'invito
+    const emailChanged = updated.email !== user.email
+    toast.success(emailChanged ? t('users.editDialog.reinvited', { email: updated.email }) : t('users.editDialog.done', { name: updated.name }))
     onClose()
   }
 

@@ -120,7 +120,7 @@ export interface InviteUserInput {
 const userResourceSchema = z.object({ data: managedUserSchema })
 
 /** Dopo ogni modifica si ricaricano tutte le query admin (lista utenti, amministratori, conteggi). */
-const useAdminMutation = <TInput>(mutationFn: (input: TInput) => Promise<unknown>) => {
+const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,

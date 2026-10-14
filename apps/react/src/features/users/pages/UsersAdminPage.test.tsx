@@ -466,7 +466,7 @@ describe('UsersAdminPage', () => {
         bodies.push(await request.json())
         return bodies.length === 1
           ? HttpResponse.json({ message: 'x', errors: { current_password: ['La password non è corretta.'] } }, { status: 422 })
-          : HttpResponse.json({ data: managedUser({ name: 'Bruno Admin', role: 'admin' }) })
+          : HttpResponse.json({ data: managedUser({ name: 'Bruno Admin', email: 'bruno@holidays.test', role: 'admin' }) })
       }),
     )
     const { user } = renderRoutes(routes, ['/users'])
@@ -553,6 +553,85 @@ describe('UsersAdminPage', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
     const other = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
     expect(within(other).queryByLabelText('La tua password')).not.toBeInTheDocument()
+  })
+
+  it('says a new invitation was sent only when the server changed the email', async () => {
+    listing([managedUser({ name: 'Luca Ferrari', email: 'luca@holidays.test', status: 'invited', status_label: 'Invitato' })])
+    // Il server normalizza l'email in minuscolo: per lui non è cambiata e non manda nessun invito
+    server.use(http.patch('/api/users/2', () => HttpResponse.json({ data: managedUser({ name: 'Luca Ferrari', email: 'luca@holidays.test', status: 'invited' }) })))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Luca Ferrari')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Luca Ferrari' })
+    await user.clear(within(dialog).getByLabelText('Email aziendale'))
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'Luca@holidays.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Dati di Luca Ferrari aggiornati.')).toBeInTheDocument()
+    expect(screen.queryByText(/Nuovo invito inviato/)).not.toBeInTheDocument()
+  })
+
+  it('neither validates nor sends the read-only email of a user who is not invited', async () => {
+    listing([managedUser({ email: 'marco@vecchio' })])
+    let body: unknown = null
+    server.use(
+      http.patch('/api/users/2', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ email: 'marco@vecchio' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Dati di Marco Bianchi aggiornati.')).toBeInTheDocument()
+    expect(body).toEqual({ first_name: 'Marco', last_name: 'Bianchi' })
+  })
+
+  it.each([
+    ['a network error', () => HttpResponse.error()],
+    ['a server error', () => HttpResponse.json({ message: 'Server Error' }, { status: 500 })],
+  ])('keeps the edit dialog open with the data after %s', async (_label, respond) => {
+    listing([managedUser()])
+    server.use(http.patch('/api/users/2', respond))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.clear(within(dialog).getByLabelText('Cognome'))
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Bianco')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText(/Impossibile contattare il server|Qualcosa non ha funzionato/)).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Modifica Marco Bianchi' })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Cognome')).toHaveValue('Bianco')
+  })
+
+  it('closes the edit dialog on a 403 and reloads the list', async () => {
+    let listCalls = 0
+    server.use(
+      http.get('/api/users', () => {
+        listCalls += 1
+        return HttpResponse.json(userListResponse([managedUser()]))
+      }),
+      http.patch('/api/users/2', () => HttpResponse.json({ message: 'Non puoi modificare questo utente.' }, { status: 403 })),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    const before = listCalls
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Non puoi modificare questo utente.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(listCalls).toBeGreaterThan(before))
   })
 
   it('has no accessibility violations with the edit dialog open', async () => {
