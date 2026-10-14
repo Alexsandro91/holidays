@@ -151,7 +151,8 @@ test('admin pages have no WCAG violations in light and dark mode', async () => {
 
   await admin.goto('/admin/administrators')
   await expect(admin.getByRole('heading', { name: 'Amministratori', level: 1 })).toBeVisible()
-  await expect(admin.getByText('Giulia Rossi')).toBeVisible()
+  // Solo nel contenuto: il nome c'è anche nel menu account, che basterebbe a far passare il controllo a lista vuota
+  await expect(admin.getByRole('main').getByText('Giulia Rossi')).toBeVisible()
   await expectNoViolationsInBothSchemes(admin)
 
   await admin.goto('/privacy')
