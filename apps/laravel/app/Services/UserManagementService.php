@@ -22,7 +22,6 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 /**
  * Ruoli e stato degli utenti. Ogni azione blocca prima le righe degli admin attivi (stesso ordine ovunque),
@@ -87,9 +86,8 @@ final class UserManagementService
             $this->lockActiveAdminIds();
             $freshActor = $this->lockUserManager($actor);
             // Invito prima dell'utente, come in accettazione, reinvio e annullamento
-            $invitation = Invitation::query()->where('user_id', $target->id)->lockForUpdate()->first();
+            Invitation::query()->where('user_id', $target->id)->lockForUpdate()->first();
             $fresh = User::query()->lockForUpdate()->findOrFail($target->id);
-            $fresh->setRelation('invitation', $invitation);
             $this->ensureStillAllowed('update', $actor, $freshActor, $fresh);
             $targetIsAnotherAdmin = $fresh->isAdmin() && ! $fresh->is($actor);
 
@@ -103,13 +101,6 @@ final class UserManagementService
             // Nel frattempo l'invito può essere stato accettato: l'email ora è quella di accesso
             if ($changeEmail && $fresh->status !== UserStatus::Invited) {
                 throw ValidationException::withMessages(['email' => [Translate::text('users.email_locked')]]);
-            }
-
-            // Un cambio di email è un nuovo invio: stessa attesa del reinvio, niente raffiche di inviti
-            $wait = $changeEmail ? $this->invitations->secondsUntilResend($fresh) : 0;
-
-            if ($wait > 0) {
-                throw new TooManyRequestsHttpException($wait, Translate::text('invitations.resend_wait', ['seconds' => $wait]));
             }
 
             $fresh->forceFill([

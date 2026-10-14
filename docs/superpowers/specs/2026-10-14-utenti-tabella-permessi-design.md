@@ -136,8 +136,10 @@ Comportamento dopo l'invio:
 - **Endpoint:** `PATCH /api/users/{user}` con `first_name`, `last_name` ed `email` facoltativa.
   - L'email si può cambiare solo per gli utenti `invited`: si aggiorna, si rigenera il link d'invito con l'invio al
     nuovo indirizzo e il vecchio link smette di valere.
-  - Il cambio di email è un nuovo invio: rispetta la stessa attesa del reinvio (60 secondi dall'ultimo invio), altrimenti
-    429 con `Retry-After` e `meta.retry_after`, come il reinvio.
+  - Il cambio di email non ha l'attesa di 60 secondi del reinvio. Il caso d'uso principale è correggere un indirizzo
+    sbagliato subito dopo l'invito, e bloccarlo sarebbe un difetto. Il nuovo link va a un indirizzo diverso, quindi lo
+    stesso destinatario non riceve una raffica di inviti, e resta il limite API di 60 richieste al minuto per utente.
+    L'attesa vale solo per "Reinvia".
   - Per gli altri stati un'email diversa da quella attuale dà 422 sul campo, con un testo che spiega il motivo.
   - Email unica.
 - **Permesso `update`:** l'admin su chiunque, sé stesso compreso; il responsabile su chi non è admin, sé stesso

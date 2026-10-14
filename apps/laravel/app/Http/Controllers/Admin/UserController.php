@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 final class UserController extends Controller
 {
@@ -105,28 +104,17 @@ final class UserController extends Controller
         return (new ManagedUserResource($user->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
     }
 
-    public function update(UpdateUserRequest $request, User $user, UserManagementService $users): JsonResponse|ManagedUserResource
+    public function update(UpdateUserRequest $request, User $user, UserManagementService $users): ManagedUserResource
     {
-        try {
-            $updated = $users->update(
-                $user,
-                $request->string('first_name')->value(),
-                $request->string('last_name')->value(),
-                $request->newEmail(),
-                $this->actor($request),
-                $request,
-                passwordConfirmed: $request->targetIsAnotherAdmin(),
-            );
-        } catch (TooManyRequestsHttpException $exception) {
-            // Stessa risposta del reinvio dell'invito: il frontend legge meta.retry_after
-            $wait = (int) ($exception->getHeaders()['Retry-After'] ?? 0);
-
-            return response()->json(
-                ['message' => $exception->getMessage(), 'meta' => ['retry_after' => $wait]],
-                Response::HTTP_TOO_MANY_REQUESTS,
-                ['Retry-After' => (string) $wait],
-            );
-        }
+        $updated = $users->update(
+            $user,
+            $request->string('first_name')->value(),
+            $request->string('last_name')->value(),
+            $request->newEmail(),
+            $this->actor($request),
+            $request,
+            passwordConfirmed: $request->targetIsAnotherAdmin(),
+        );
 
         return new ManagedUserResource($updated->load('invitation'));
     }
