@@ -49,7 +49,7 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
   const submitting = useRef(false)
 
   const submit = async ({ currentPassword }: PasswordValues) => {
-    if (submitting.current || locked) return
+    if (submitting.current) return
     submitting.current = true
     setPending(true)
     setNotice(null)
@@ -79,7 +79,14 @@ const RevokeBody = ({ user, onClose, onBusyChange }: RevokeBodyProps) => {
     onClose()
   }
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => form.handleSubmit(submit)(event)
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    // Bloccato (invio in corso o 429): l'Invio non fa nulla, nemmeno la validazione del campo password
+    if (submitting.current || locked) {
+      event.preventDefault()
+      return
+    }
+    return form.handleSubmit(submit)(event)
+  }
 
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-4">

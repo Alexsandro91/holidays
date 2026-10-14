@@ -217,6 +217,38 @@ describe('AdministratorsPage', () => {
     const button = within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' })
     expectBlockedButFocusable(button)
     expect(button).toHaveFocus()
+
+    // Bloccato: anche con la password cancellata l'Invio sul pulsante non valida il form e non sposta il focus
+    await user.clear(within(dialog).getByLabelText('La tua password'))
+    act(() => button.focus())
+    await user.keyboard('{Enter}')
+    expect(button).toHaveFocus()
+  })
+
+  it('keeps the focus on the promote button after too many wrong passwords', async () => {
+    admins()
+    let calls = 0
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([managedUser({ id: 7, name: 'Marco Bianchi' })]))),
+      http.post('/api/administrators', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'Troppi tentativi con la password. Riprova tra 15 minuti.' }, { status: 429, headers: { 'Retry-After': '900' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    await user.click(await within(dialog).findByRole('radio', { name: /Marco Bianchi/ }))
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Rendi amministratore' }))
+
+    expect(await within(dialog).findByText('Troppi tentativi con la password. Riprova tra 15 minuti.')).toBeInTheDocument()
+    const button = within(dialog).getByRole('button', { name: 'Rendi amministratore' })
+    expectBlockedButFocusable(button)
+    expect(button).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(calls).toBe(1)
   })
 
   it('shows both the missing user and missing password errors', async () => {
