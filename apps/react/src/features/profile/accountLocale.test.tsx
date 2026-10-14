@@ -193,4 +193,37 @@ describe('account language', () => {
 
     expect(await screen.findByText('Language saved.')).toBeInTheDocument()
   })
+
+  it('stays on the last choice when the answer to an earlier save arrives (it, en, it in a row)', async () => {
+    signedIn('it')
+    const gates: (() => void)[] = []
+    server.use(
+      http.patch('/api/profile', async ({ request }) => {
+        const body = await request.json()
+        const locale = typeof body === 'object' && body !== null && 'locale' in body && body.locale === 'en' ? 'en' : 'it'
+        // Ogni risposta parte solo quando il test la rilascia
+        await new Promise<void>((resolve) => gates.push(resolve))
+        return HttpResponse.json(currentUserResponse({ ...adminUser, locale }))
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/'], { toaster: false })
+    await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+
+    await user.click(screen.getByRole('button', { name: 'Lingua: Italiano' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'English' }))
+    await user.click(screen.getByRole('button', { name: 'Language: English' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Italiano' }))
+    await waitFor(() => expect(gates).toHaveLength(1))
+
+    // Arriva la risposta del primo salvataggio (inglese): l'utente in cache dice "en", ma la scelta era "it"
+    act(() => gates[0]?.())
+    await waitFor(() => expect(gates).toHaveLength(2))
+    await waitForStrayRequests()
+    expect(i18n.language).toBe('it')
+    expect(screen.getByRole('heading', { level: 1, name: 'Ciao, Giulia' })).toBeInTheDocument()
+
+    act(() => gates[1]?.())
+    await waitForStrayRequests()
+    expect(i18n.language).toBe('it')
+  })
 })
