@@ -54,4 +54,16 @@ describe('query client', () => {
 
     expect(rememberedSessionEnd(client)).toBeNull()
   })
+
+  it('re-checks the current user when a guest-only request finds a session already open', async () => {
+    const client = createQueryClient({ retry: false })
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    const conflict = new ApiError({ status: 409, kind: 'server', message: 'x', meta: { reason: 'already_authenticated' } })
+
+    await client.getMutationCache().build(client, { mutationFn: () => Promise.reject(conflict) }).execute(undefined).catch(() => undefined)
+    await client.fetchQuery({ queryKey: ['invitation', 'abc'], queryFn: () => Promise.reject(conflict) }).catch(() => undefined)
+
+    expect(invalidate).toHaveBeenCalledTimes(2)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: userQueryKey })
+  })
 })

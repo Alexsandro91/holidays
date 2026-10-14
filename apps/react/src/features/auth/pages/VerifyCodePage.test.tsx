@@ -86,6 +86,18 @@ describe('VerifyCodePage', () => {
     expect(rememberedSessionEnd(queryClient)).toBeNull()
   })
 
+  it('goes to the destination when a session is already open', async () => {
+    server.use(
+      http.post('/api/auth/two-factor', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
+      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+    )
+    const { user } = renderRoutes(routes, [entry])
+
+    await user.type(await screen.findByLabelText('Codice di verifica'), '482913')
+
+    expect(await screen.findByText('home-page')).toBeInTheDocument()
+  })
+
   it('never sends an accepted code again while the next page is loading', async () => {
     const bodies: unknown[] = []
     acceptCode((body) => bodies.push(body))

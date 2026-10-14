@@ -4,12 +4,14 @@ import type { RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
 const routes: RouteObject[] = [
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/login', element: <p>login-page</p> },
+  { path: '/', element: <p>home-page</p> },
 ]
 
 const SENT = { message: 'ok' }
@@ -25,6 +27,19 @@ const acceptRequests = (onRequest: (body: unknown) => void = () => undefined) =>
 describe('ForgotPasswordPage', () => {
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('goes to the home page when a session is already open', async () => {
+    server.use(
+      http.post('/api/auth/forgot-password', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
+      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+    )
+    const { user } = renderRoutes(routes, ['/forgot-password'])
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.click(screen.getByRole('button', { name: 'Invia il link' }))
+
+    expect(await screen.findByText('home-page')).toBeInTheDocument()
   })
 
   it('validates the email before calling the API', async () => {

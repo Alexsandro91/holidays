@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLogin } from '@/features/auth/api'
+import { useResumeSession } from '@/features/auth/useResumeSession'
 import { emailField, emailStateSchema } from '@/features/auth/validation'
 import { useCountdown } from '@/hooks/useCountdown'
-import { isApiError } from '@/lib/api'
+import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
 
 type Notice = 'expired' | 'disabled' | 'logged-out' | 'restart'
 
@@ -35,6 +36,7 @@ const LoginPage = () => {
   const [searchParams] = useSearchParams()
   const location = useLocation()
   const login = useLogin()
+  const resumeSession = useResumeSession()
   const lock = useCountdown()
   const [formError, setFormError] = useState<string | null>(null)
   // secondi iniziali del blocco: testo costante per gli screen reader, così non è riannunciato a ogni tick
@@ -59,6 +61,8 @@ const LoginPage = () => {
     try {
       await login.mutateAsync(values)
     } catch (error) {
+      // Sessione già aperta (es. da un'altra scheda): niente errore, si va alla destinazione e il blocco resta
+      if (isAlreadyAuthenticated(error) && (await resumeSession(redirect))) return
       submitting.current = false
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60

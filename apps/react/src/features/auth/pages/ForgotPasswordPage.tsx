@@ -12,9 +12,10 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useForgotPassword } from '@/features/auth/api'
+import { useResumeSession } from '@/features/auth/useResumeSession'
 import { emailField, emailStateSchema } from '@/features/auth/validation'
 import { useCountdown } from '@/hooks/useCountdown'
-import { isApiError } from '@/lib/api'
+import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
 
 // Il broker di Laravel ignora un nuovo link per lo stesso utente entro 60 s
 const RESEND_COOLDOWN_SECONDS = 60
@@ -29,6 +30,7 @@ const ForgotPasswordPage = () => {
   const { t } = useTranslation()
   const location = useLocation()
   const forgot = useForgotPassword()
+  const resumeSession = useResumeSession()
   const cooldown = useCountdown()
   const lock = useCountdown()
   // minuti iniziali del blocco: testo costante per gli screen reader, così non è riannunciato a ogni tick
@@ -60,6 +62,8 @@ const ForgotPasswordPage = () => {
       cooldown.start(RESEND_COOLDOWN_SECONDS)
       if (isResend) setInfo(t('forgot.resent'))
     } catch (error) {
+      // Sessione già aperta: il recupero non serve, si va alla home
+      if (isAlreadyAuthenticated(error) && (await resumeSession(null))) return
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? RESEND_COOLDOWN_SECONDS
         setLockedFor(seconds)

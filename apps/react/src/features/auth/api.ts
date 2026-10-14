@@ -37,6 +37,12 @@ const fetchCurrentUser = async (): Promise<User> => (await requestData('GET', '/
 export const useCurrentUser = () =>
   useQuery<User | null>({ queryKey: userQueryKey, queryFn: fetchCurrentUser, retry: false, staleTime: 5 * 60_000 })
 
+/** Rilegge subito l'utente corrente (anche senza componenti che lo osservano) e aggiorna la cache. */
+export const useRefreshCurrentUser = () => {
+  const queryClient = useQueryClient()
+  return () => queryClient.fetchQuery({ queryKey: userQueryKey, queryFn: fetchCurrentUser, staleTime: 0 })
+}
+
 export const useLogin = () => useMutation({ mutationFn: (input: LoginInput) => request('POST', '/api/auth/login', input) })
 
 export const useVerifyCode = () => {

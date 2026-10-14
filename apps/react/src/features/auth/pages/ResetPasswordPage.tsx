@@ -13,8 +13,9 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useResetPassword } from '@/features/auth/api'
+import { useResumeSession } from '@/features/auth/useResumeSession'
 import { useCountdown } from '@/hooks/useCountdown'
-import { isApiError } from '@/lib/api'
+import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
 
 const MIN_PASSWORD_LENGTH = 12
 
@@ -33,6 +34,7 @@ const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams()
   const email = searchParams.get('email') ?? ''
   const reset = useResetPassword()
+  const resumeSession = useResumeSession()
   const lock = useCountdown()
   // secondi iniziali del blocco: testo costante per gli screen reader
   const [lockedFor, setLockedFor] = useState(0)
@@ -59,6 +61,8 @@ const ResetPasswordPage = () => {
     try {
       await reset.mutateAsync({ token, email, password, password_confirmation: confirmation })
     } catch (error) {
+      // Sessione già aperta: il link non serve, si va alla home e il blocco resta
+      if (isAlreadyAuthenticated(error) && (await resumeSession(null))) return
       submitting.current = false
       if (isApiError(error, 'throttled')) {
         const seconds = error.retryAfter ?? 60

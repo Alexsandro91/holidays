@@ -5,6 +5,7 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -13,6 +14,7 @@ const routes: RouteObject[] = [
   { path: '/login', element: <p>login-page</p> },
   { path: '/login/verify', element: <p>verify-page</p> },
   { path: '/forgot-password', element: <p>forgot-page</p> },
+  { path: '/', element: <p>home-page</p> },
 ]
 
 const LINK = '/reset-password/abc123?email=giulia%2Bhr%40example.test'
@@ -73,6 +75,19 @@ describe('ResetPasswordPage', () => {
     await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
 
     expect(calls).toBe(1)
+  })
+
+  it('goes to the home page when a session is already open', async () => {
+    server.use(
+      http.post('/api/auth/reset-password', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
+      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+    )
+    const { user } = renderRoutes(routes, [LINK])
+
+    await fillPasswords(user)
+    await user.click(screen.getByRole('button', { name: 'Salva la password' }))
+
+    expect(await screen.findByText('home-page')).toBeInTheDocument()
   })
 
   it('asks to confirm the password with the right hints', async () => {

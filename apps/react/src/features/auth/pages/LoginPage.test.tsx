@@ -4,6 +4,8 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import LoginPage from '@/features/auth/pages/LoginPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { userQueryKey } from '@/lib/queryKeys'
+import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -11,6 +13,7 @@ const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
   { path: '/login/verify', element: <p>verify-page</p> },
   { path: '/forgot-password', element: <p>forgot-page</p> },
+  { path: '/admin', element: <p>admin-page</p> },
 ]
 
 describe('LoginPage', () => {
@@ -75,6 +78,34 @@ describe('LoginPage', () => {
     await act(() => new Promise((resolve) => window.setTimeout(resolve, 100)))
 
     expect(calls).toBe(1)
+  })
+
+  it('goes to the destination when a session is already open (e.g. signed in from another tab)', async () => {
+    server.use(
+      http.post('/api/auth/login', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
+      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+    )
+    const { user, router, queryClient } = renderRoutes(routes, ['/login?redirect=%2Fadmin'])
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.type(screen.getByLabelText('Password'), 'segreta')
+    await user.click(screen.getByRole('button', { name: 'Continua' }))
+
+    expect(await screen.findByText('admin-page')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/admin')
+    expect(queryClient.getQueryData(userQueryKey)).toMatchObject({ email: 'admin@holidays.test' })
+  })
+
+  it('shows a generic error when the open session cannot be read back', async () => {
+    server.use(http.post('/api/auth/login', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })))
+    const { user } = renderRoutes(routes, ['/login'])
+
+    await user.type(await screen.findByLabelText('Email'), 'admin@holidays.test')
+    await user.type(screen.getByLabelText('Password'), 'segreta')
+    await user.click(screen.getByRole('button', { name: 'Continua' }))
+
+    expect(await screen.findByText('Qualcosa non ha funzionato. Riprova tra poco.')).toBeInTheDocument()
+    expect(screen.queryByText('Hai già una sessione aperta.')).not.toBeInTheDocument()
   })
 
   it('shows a generic error and clears the password on wrong credentials', async () => {

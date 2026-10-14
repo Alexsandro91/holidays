@@ -36,6 +36,12 @@ export class ApiError extends Error {
 export const isApiError = (error: unknown, kind?: ApiErrorKind): error is ApiError =>
   error instanceof ApiError && (kind === undefined || error.kind === kind)
 
+const alreadyAuthenticatedMetaSchema = z.object({ reason: z.literal('already_authenticated') })
+
+/** 409 delle rotte per ospiti (accesso, codice, recupero password, inviti) chiamate con una sessione già aperta. */
+export const isAlreadyAuthenticated = (error: unknown): boolean =>
+  isApiError(error) && error.status === 409 && alreadyAuthenticatedMetaSchema.safeParse(error.meta).success
+
 const errorBodySchema = z.object({
   message: z.string().optional(),
   errors: z.record(z.string(), z.array(z.string())).optional(),

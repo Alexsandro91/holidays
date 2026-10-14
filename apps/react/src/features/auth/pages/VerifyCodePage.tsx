@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
 import { codeErrorMetaSchema, useResendCode, useVerifyCode } from '@/features/auth/api'
+import { useResumeSession } from '@/features/auth/useResumeSession'
 import { useCountdown } from '@/hooks/useCountdown'
-import { isApiError } from '@/lib/api'
+import { isAlreadyAuthenticated, isApiError } from '@/lib/api'
 import { safeRedirect } from '@/lib/safeRedirect'
 
 const RESEND_COOLDOWN_SECONDS = 60
@@ -35,6 +36,7 @@ const VerifyCodePage = () => {
   const [searchParams] = useSearchParams()
   const verify = useVerifyCode()
   const resend = useResendCode()
+  const resumeSession = useResumeSession()
   const cooldown = useCountdown(RESEND_COOLDOWN_SECONDS)
   // Blocco dopo un 429 sulla verifica: niente invii finché non passano i secondi di Retry-After
   const lock = useCountdown()
@@ -77,6 +79,8 @@ const VerifyCodePage = () => {
         restartLogin()
         return
       }
+      // Sessione già aperta (es. codice inserito in un'altra scheda): si va alla destinazione
+      if (isAlreadyAuthenticated(caught) && (await resumeSession(redirect))) return
       submitting.current = false
       if (isApiError(caught, 'throttled')) {
         const seconds = caught.retryAfter ?? RESEND_COOLDOWN_SECONDS
@@ -110,6 +114,7 @@ const VerifyCodePage = () => {
         restartLogin()
         return
       }
+      if (isAlreadyAuthenticated(caught) && (await resumeSession(redirect))) return
       if (meta.success && meta.data.limit_reached) {
         setResendBlocked(true)
         setInfo(t('verify.resendLimit'))
