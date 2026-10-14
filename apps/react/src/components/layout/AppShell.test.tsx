@@ -115,6 +115,19 @@ describe('AppShell', () => {
     expect(screen.queryByRole('link', { name: 'Amministratori' })).not.toBeInTheDocument()
   })
 
+  it('marks the current page in the menu with aria-current and the active style', async () => {
+    signedIn()
+    renderRoutes(routes, ['/'], { toaster: false })
+
+    const home = await screen.findByRole('link', { name: 'Home' })
+    expect(home).toHaveAttribute('aria-current', 'page')
+    // Stile attivo (sfondo pieno, grassetto e barra a sinistra) legato a data-active della voce
+    expect(home).toHaveAttribute('data-active', 'true')
+    const users = screen.getByRole('link', { name: 'Utenti' })
+    expect(users).not.toHaveAttribute('aria-current')
+    expect(users).toHaveAttribute('data-active', 'false')
+  })
+
   it('logging out drops every cached admin query', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))

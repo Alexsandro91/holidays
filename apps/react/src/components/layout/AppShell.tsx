@@ -1,10 +1,11 @@
 import { CalendarDays, ChevronsUpDown, House, LogOut, ShieldCheck, Users } from 'lucide-react'
 import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet } from 'react-router'
+import { Outlet } from 'react-router'
 import { toast } from 'sonner'
 import Logo from '@/components/brand/Logo'
 import FullPageLoader from '@/components/layout/FullPageLoader'
+import SidebarNavLink from '@/components/layout/SidebarNavLink'
 import SkipLink from '@/components/layout/SkipLink'
 import LanguageMenu from '@/components/preferences/LanguageMenu'
 import ThemeMenu from '@/components/preferences/ThemeMenu'
@@ -65,12 +66,7 @@ const AppShell = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip={t('nav.home')}>
-                      <NavLink to="/" end>
-                        <House aria-hidden="true" />
-                        <span>{t('nav.home')}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
+                    <SidebarNavLink to="/" end label={t('nav.home')} icon={<House aria-hidden="true" />} />
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton disabled aria-disabled="true" tooltip={t('nav.leave')}>
@@ -88,20 +84,10 @@ const AppShell = () => {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip={t('nav.users')}>
-                        <NavLink to="/admin/users">
-                          <Users aria-hidden="true" />
-                          <span>{t('nav.users')}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
+                      <SidebarNavLink to="/admin/users" label={t('nav.users')} icon={<Users aria-hidden="true" />} />
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip={t('nav.administrators')}>
-                        <NavLink to="/admin/administrators">
-                          <ShieldCheck aria-hidden="true" />
-                          <span>{t('nav.administrators')}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
+                      <SidebarNavLink to="/admin/administrators" label={t('nav.administrators')} icon={<ShieldCheck aria-hidden="true" />} />
                     </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
