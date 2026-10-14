@@ -7,6 +7,7 @@ use App\Http\Requests\Concerns\ConfirmsCurrentPassword;
 use App\Support\Translate;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -46,16 +47,31 @@ class ChangePasswordRequest extends FormRequest
     {
         return [
             'current_password' => $this->currentPasswordRules(),
-            'password' => [
-                'required', 'string', 'max:255', 'confirmed', Password::defaults(),
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    $current = $this->user()?->getAuthPassword();
+            'password' => ['required', 'string', 'max:255', 'confirmed', Password::defaults()],
+        ];
+    }
 
-                    if (is_string($value) && is_string($current) && Hash::check($value, $current)) {
-                        $fail(Translate::text('profile.password_unchanged'));
-                    }
-                },
-            ],
+    /**
+     * "Diversa dall'attuale" si controlla solo con la password attuale verificata: altrimenti il confronto direbbe
+     * se una password candidata è quella giusta, senza consumare tentativi.
+     *
+     * @return list<Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->hasAny(['current_password', 'password'])) {
+                    return;
+                }
+
+                $current = $this->user()?->getAuthPassword();
+                $password = $this->input('password');
+
+                if (is_string($password) && is_string($current) && Hash::check($password, $current)) {
+                    $validator->errors()->add('password', Translate::text('profile.password_unchanged'));
+                }
+            },
         ];
     }
 }

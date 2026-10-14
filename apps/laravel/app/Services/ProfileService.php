@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AuthEventType;
+use App\Models\LoginChallenge;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,8 +48,9 @@ final class ProfileService
     }
 
     /**
-     * Nuova password: chiude le altre sessioni (non quella corrente), annulla i link di recupero, registra l'evento
-     * e avvisa l'utente nella sua lingua dopo il commit. Rigenerare l'id della sessione corrente tocca al chiamante.
+     * Nuova password: chiude le altre sessioni (non quella corrente) e i login in attesa del codice, annulla i link di
+     * recupero, registra l'evento e avvisa l'utente nella sua lingua dopo il commit. Rigenerare l'id della sessione
+     * corrente tocca al chiamante.
      */
     public function changePassword(User $user, #[\SensitiveParameter] string $password, Request $request): void
     {
@@ -61,6 +63,8 @@ final class ProfileService
                 ->when($request->hasSession(), fn ($query) => $query->where('id', '!=', $request->session()->getId()))
                 ->delete();
 
+            // Come il reset: un login rimasto al passo del codice con la vecchia password non si può più completare
+            LoginChallenge::query()->where('user_id', $fresh->id)->delete();
             $this->passwordResets->forgetResetTokens($fresh);
             $this->events->log(AuthEventType::PasswordChanged, $request, $fresh, $fresh);
             $this->passwordResets->queueChangedMail($fresh, $request);

@@ -5,6 +5,7 @@ namespace Tests\Feature\Profile;
 use App\Enums\AuthEventType;
 use App\Mail\PasswordChangedMail;
 use App\Models\AuthEvent;
+use App\Models\LoginChallenge;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -196,6 +197,33 @@ class ChangePasswordTest extends TestCase
         $this->actingAs(User::factory()->create(['password' => 'vecchia-password-lunga']))->fromFrontend()
             ->putJson('/api/profile/password', $this->payload(['current_password' => 'vecchia-password-lunga', 'password' => 'vecchia-password-lunga', 'password_confirmation' => 'vecchia-password-lunga']))
             ->assertUnprocessable()->assertJsonValidationErrors(['password']);
+    }
+
+    /**
+     * Senza la password attuale giusta il confronto con la nuova non deve rispondere: sarebbe un modo per provare
+     * password candidate senza consumare tentativi.
+     */
+    public function test_the_same_password_check_is_no_oracle_without_the_right_current_password(): void
+    {
+        $user = User::factory()->create(['password' => 'vecchia-password-lunga']);
+        $same = ['password' => 'vecchia-password-lunga', 'password_confirmation' => 'vecchia-password-lunga'];
+
+        foreach ([['current_password' => ''], ['current_password' => 'sbagliata-di-sicuro']] as $current) {
+            $response = $this->actingAs($user)->fromFrontend()
+                ->putJson('/api/profile/password', $this->payload([...$current, ...$same]))
+                ->assertUnprocessable();
+            $this->assertArrayNotHasKey('password', $response->json('errors'));
+        }
+    }
+
+    public function test_pending_login_challenges_are_revoked(): void
+    {
+        $user = User::factory()->create();
+        LoginChallenge::query()->create(['user_id' => $user->id, 'code_hash' => str_repeat('a', 64), 'expires_at' => now()->addMinutes(10), 'attempts' => 0, 'resend_count' => 0, 'last_sent_at' => now()]);
+
+        $this->actingAs($user)->fromFrontend()->putJson('/api/profile/password', $this->payload())->assertNoContent();
+
+        $this->assertDatabaseMissing('login_challenges', ['user_id' => $user->id]);
     }
 
     public function test_the_same_password_message_is_in_the_user_language(): void
