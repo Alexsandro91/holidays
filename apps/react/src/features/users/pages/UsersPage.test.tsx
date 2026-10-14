@@ -127,7 +127,7 @@ describe('UsersPage', () => {
     expect(last?.searchParams.get('sort')).toBe('-email')
     expect(last?.searchParams.get('page')).toBe('2')
     expect(last?.searchParams.get('per_page')).toBe('10')
-    expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue('rossi mario')
+    expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveValue('rossi mario')
     // Filtri del pannello nell'URL: il pannello è già aperto
     expect(screen.getByRole('button', { name: /Filtri/ })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue('ma')
@@ -158,8 +158,8 @@ describe('UsersPage', () => {
       advanceTimers: vi.advanceTimersByTime,
     })
 
-    const search = await screen.findByRole('searchbox', { name: 'Cerca' })
-    expect(search).toHaveAttribute('placeholder', 'Nome, cognome o email')
+    const search = await screen.findByRole('searchbox', { name: 'Cerca per nome, cognome o email' })
+    expect(search).toHaveAttribute('placeholder', 'Es. Rossi Mario')
     await user.type(search, 'rossi mario')
     expect(router.state.location.search).toBe('?page=3')
     vi.advanceTimersByTime(300)
@@ -247,10 +247,10 @@ describe('UsersPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Azzera filtri' }))
 
     expect(router.state.location.search).toBe('?sort=-email')
-    expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue('')
+    expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveValue('')
     expect(screen.getByRole('searchbox', { name: 'Nome' })).toHaveValue('')
     expect(screen.getByRole('searchbox', { name: 'Email' })).toHaveValue('')
-    expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveFocus()
+    expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveFocus()
   })
 
   it('drops the text still in debounce when "Azzera filtri" is pressed', async () => {
@@ -268,6 +268,62 @@ describe('UsersPage', () => {
     expect(screen.getByRole('searchbox', { name: 'Nome', hidden: true })).toHaveValue('')
     vi.advanceTimersByTime(300)
     expect(router.state.location.search).toBe('')
+  })
+
+  it('never loses a text in debounce: typing in Nome then Cognome within 300 ms applies both', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const urls: URL[] = []
+    respondWith((url) => urls.push(url))
+    const { user, router } = renderRoutes(routes, ['/users'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Filtri' }))
+    await user.type(screen.getByRole('searchbox', { name: 'Nome' }), 'Marco')
+    vi.advanceTimersByTime(200)
+    await user.type(screen.getByRole('searchbox', { name: 'Cognome' }), 'Bi')
+    // Scatta il debounce di Nome: porta con sé anche il testo già scritto in Cognome
+    vi.advanceTimersByTime(150)
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?first_name=Marco&last_name=Bi'))
+    expect(screen.getByRole('searchbox', { name: 'Cognome' })).toHaveValue('Bi')
+
+    await user.type(screen.getByRole('searchbox', { name: 'Cognome' }), 'anchi')
+    vi.advanceTimersByTime(300)
+    await vi.waitFor(() => expect(router.state.location.search).toBe('?first_name=Marco&last_name=Bianchi'))
+    await vi.waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[last_name]')).toBe('Bianchi'))
+    expect(urls.at(-1)?.searchParams.get('filter[first_name]')).toBe('Marco')
+  })
+
+  it('applies the search still in debounce together with a status tab clicked within 300 ms', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    respondWith()
+    const { user, router } = renderRoutes(routes, ['/users?page=2'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
+
+    await user.type(await screen.findByRole('searchbox', { name: 'Cerca per nome, cognome o email' }), 'Ros')
+    await user.click(screen.getByRole('tab', { name: /Attivi/ }))
+
+    // Una sola voce nuova della cronologia, con la ricerca e la scheda, e di nuovo pagina 1
+    expect(router.state.location.search).toBe('?search=Ros&status=active')
+    expect(router.state.historyAction).toBe('PUSH')
+    expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveValue('Ros')
+    vi.advanceTimersByTime(300)
+    expect(router.state.location.search).toBe('?search=Ros&status=active')
+  })
+
+  it('applies the text in debounce before sorting', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    respondWith()
+    const { user, router } = renderRoutes(routes, ['/users'], {
+      advanceTimers: vi.advanceTimersByTime,
+    })
+
+    await screen.findByRole('table')
+    await user.type(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' }), 'Ros')
+    await user.click(within(columnHeader('Email')).getByRole('button', { name: 'Email' }))
+
+    expect(router.state.location.search).toBe('?search=Ros&sort=email')
   })
 
   it('offers "Azzera filtri" only when a filter is active', async () => {
@@ -368,7 +424,7 @@ describe('UsersPage', () => {
     })
     await act(() => router.navigate('/users?status=active'))
 
-    await user.type(await screen.findByRole('searchbox', { name: 'Cerca' }), 'mar')
+    await user.type(await screen.findByRole('searchbox', { name: 'Cerca per nome, cognome o email' }), 'mar')
     vi.advanceTimersByTime(300)
     await vi.waitFor(() => expect(router.state.location.search).toBe('?search=mar&status=active'))
     // la vista segue l'URL: attendo che la ricerca sia davvero partita
@@ -376,12 +432,12 @@ describe('UsersPage', () => {
 
     await act(() => router.navigate(-1))
     await vi.waitFor(() => expect(router.state.location.search).toBe(''))
-    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue(''))
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveValue(''))
     vi.advanceTimersByTime(300)
     expect(router.state.location.search).toBe('')
 
     await act(() => router.navigate(1))
-    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue('mar'))
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveValue('mar'))
   })
 
   it('drops the text still in debounce when going back', async () => {
@@ -392,11 +448,11 @@ describe('UsersPage', () => {
     })
     await act(() => router.navigate('/users?status=active'))
 
-    await user.type(await screen.findByRole('searchbox', { name: 'Cerca' }), 'ma')
+    await user.type(await screen.findByRole('searchbox', { name: 'Cerca per nome, cognome o email' }), 'ma')
     await act(() => router.navigate(-1))
     vi.advanceTimersByTime(300)
 
-    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca' })).toHaveValue(''))
+    await vi.waitFor(() => expect(screen.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' })).toHaveValue(''))
     expect(router.state.location.search).toBe('')
   })
 

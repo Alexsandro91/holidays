@@ -140,8 +140,8 @@
     "invite": "Invita utente",
     "filters": {
       "label": "Cerca e filtra gli utenti",
-      "search": "Cerca",
-      "searchPlaceholder": "Nome, cognome o email",
+      "search": "Cerca per nome, cognome o email",
+      "searchPlaceholder": "Es. Rossi Mario",
       "toggle": "Filtri",
       "activeCount_one": "{{count}} filtro attivo",
       "activeCount_other": "{{count}} filtri attivi",

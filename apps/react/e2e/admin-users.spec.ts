@@ -325,7 +325,7 @@ test('the users table searches, filters from the panel and sorts by email', asyn
   }
 
   // Ricerca generale sempre visibile: cognome + nome nell'ordine inverso
-  await expectList(() => admin.getByRole('searchbox', { name: 'Cerca' }).fill('Bianchi Marco'), 'filter[search]', 'Bianchi Marco')
+  await expectList(() => admin.getByRole('searchbox', { name: 'Cerca per nome, cognome o email' }).fill('Bianchi Marco'), 'filter[search]', 'Bianchi Marco')
   await expect(admin).toHaveURL(/[?&]search=Bianchi\+Marco/)
   await expect(managerRow).toBeVisible()
   await expect(employeeRow).toHaveCount(0)

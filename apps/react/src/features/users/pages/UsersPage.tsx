@@ -1,6 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation } from 'react-router'
 import PageHeading from '@/components/layout/PageHeading'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,6 +8,7 @@ import UsersFilters from '@/features/users/components/UsersFilters'
 import UsersSortSelect from '@/features/users/components/UsersSortSelect'
 import UsersTable from '@/features/users/components/UsersTable'
 import UserStatusTabs from '@/features/users/components/UserStatusTabs'
+import { useTextDrafts } from '@/features/users/useTextDrafts'
 import { CLEARED_FILTERS, hasAnyFilter, useUserListParams } from '@/features/users/useUserListParams'
 
 interface UsersPageProps {
@@ -22,7 +22,9 @@ interface UsersPageProps {
 const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
   const { t } = useTranslation()
   const { params, setParams } = useUserListParams()
-  const location = useLocation()
+  // Testi in debounce: ogni modifica dell'URL passa da apply e li porta con sé (vedi useTextDrafts)
+  const drafts = useTextDrafts(params, setParams)
+  const apply = drafts.apply
   const users = useManagedUsers(params)
 
   // Pagina oltre l'ultima (es. dopo una disattivazione): si torna all'ultima disponibile
@@ -35,6 +37,7 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
   const filtered = hasAnyFilter(params)
 
   const clearFilters = () => {
+    drafts.discard()
     setParams(CLEARED_FILTERS)
     // Il pulsante sparisce senza filtri: il focus va alla ricerca, sempre visibile, invece di perdersi sul body
     document.getElementById('users-search')?.focus()
@@ -50,7 +53,7 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
         <PageHeading title={t('users.title')} description={t('users.subtitle')} className="mb-0" />
         {headerAction}
       </div>
-      <UsersFilters params={params} setParams={setParams} onClear={clearFilters} syncKey={location.key} />
+      <UsersFilters params={params} setParams={apply} onClear={clearFilters} onDraft={drafts.track} resetKey={drafts.resetKey} />
       {/* Live region stabile: montata sempre, fuori dai rami di caricamento, errore e lista vuota */}
       <p role="status" className="sr-only">
         {result}
@@ -58,9 +61,9 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
       <UserStatusTabs
         value={params.status}
         counts={users.data?.meta.counts}
-        onChange={(status) => setParams({ status, page: 1 })}
+        onChange={(status) => apply({ status, page: 1 })}
         // Su mobile le schede non hanno intestazioni da cliccare: l'ordinamento passa da una select
-        toolbar={<UsersSortSelect value={params.sort} onChange={(sort) => setParams({ sort, page: 1 })} className="md:hidden" />}
+        toolbar={<UsersSortSelect value={params.sort} onChange={(sort) => apply({ sort, page: 1 })} className="md:hidden" />}
       >
         {users.isPending ? (
           <div className="grid gap-2" role="status" aria-busy="true" aria-label={t('common.loading')}>
@@ -88,7 +91,7 @@ const UsersPage = ({ headerAction, renderActions }: UsersPageProps) => {
         ) : (
           // Durante il caricamento della vista nuova restano i dati precedenti (keepPreviousData)
           <div aria-busy={users.isPlaceholderData || undefined}>
-            <UsersTable list={users.data} sort={params.sort} page={params.page} perPage={params.perPage} onChange={setParams} renderActions={renderActions} />
+            <UsersTable list={users.data} sort={params.sort} page={params.page} perPage={params.perPage} onChange={apply} renderActions={renderActions} />
           </div>
         )}
       </UserStatusTabs>

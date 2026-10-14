@@ -140,8 +140,8 @@
     "invite": "Invite user",
     "filters": {
       "label": "Search and filter users",
-      "search": "Search",
-      "searchPlaceholder": "First name, last name or email",
+      "search": "Search by first name, last name or email",
+      "searchPlaceholder": "E.g. Smith John",
       "toggle": "Filters",
       "activeCount_one": "{{count}} active filter",
       "activeCount_other": "{{count}} active filters",

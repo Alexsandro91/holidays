@@ -5,21 +5,23 @@ import { Button } from '@/components/ui/button'
 import type { UserListParams } from '@/features/users/api'
 import RoleFilter from '@/features/users/components/RoleFilter'
 import TextFilter from '@/features/users/components/TextFilter'
+import type { TextFilterField } from '@/features/users/useTextDrafts'
 import { countPanelFilters, hasAnyFilter } from '@/features/users/useUserListParams'
 
 interface UsersFiltersProps {
   params: UserListParams
   setParams: (next: Partial<UserListParams>, options?: { replace?: boolean }) => void
   onClear: () => void
-  /** location.key: vedi TextFilter */
-  syncKey: string
+  /** Testi in sospeso (vedi useTextDrafts) */
+  onDraft: (field: TextFilterField, value: string) => void
+  resetKey: number
 }
 
 /**
  * Ricerca generale sempre visibile e pulsante "Filtri" che apre il pannello con nome, cognome, email, ruolo e
  * "Azzera filtri" (spec §7.2). Il pannello si apre da solo quando l'URL ha filtri del pannello attivi.
  */
-const UsersFilters = ({ params, setParams, onClear, syncKey }: UsersFiltersProps) => {
+const UsersFilters = ({ params, setParams, onClear, onDraft, resetKey }: UsersFiltersProps) => {
   const { t } = useTranslation()
   const active = countPanelFilters(params)
   const [open, setOpen] = useState(active > 0)
@@ -45,7 +47,8 @@ const UsersFilters = ({ params, setParams, onClear, syncKey }: UsersFiltersProps
           placeholder={t('users.filters.searchPlaceholder')}
           value={params.search}
           onCommit={commitSearch}
-          syncKey={syncKey}
+          onDraft={(value) => onDraft('search', value)}
+          resetKey={resetKey}
           className="min-w-0 flex-1 basis-60 sm:max-w-md"
         />
         <Button variant="outline" aria-expanded={open} aria-controls="users-filters-panel" onClick={() => setOpen(!open)}>
@@ -65,9 +68,30 @@ const UsersFilters = ({ params, setParams, onClear, syncKey }: UsersFiltersProps
       {/* Sempre nel DOM (hidden quando è chiuso): aria-controls punta a un elemento che esiste e i campi non perdono lo stato */}
       <div id="users-filters-panel" hidden={!open} className="rounded-lg border bg-card p-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,14rem)] lg:items-end">
-          <TextFilter id="users-filter-first-name" label={t('users.filters.firstName')} value={params.firstName} onCommit={commitFirstName} syncKey={syncKey} />
-          <TextFilter id="users-filter-last-name" label={t('users.filters.lastName')} value={params.lastName} onCommit={commitLastName} syncKey={syncKey} />
-          <TextFilter id="users-filter-email" label={t('users.filters.email')} value={params.email} onCommit={commitEmail} syncKey={syncKey} />
+          <TextFilter
+            id="users-filter-first-name"
+            label={t('users.filters.firstName')}
+            value={params.firstName}
+            onCommit={commitFirstName}
+            onDraft={(value) => onDraft('firstName', value)}
+            resetKey={resetKey}
+          />
+          <TextFilter
+            id="users-filter-last-name"
+            label={t('users.filters.lastName')}
+            value={params.lastName}
+            onCommit={commitLastName}
+            onDraft={(value) => onDraft('lastName', value)}
+            resetKey={resetKey}
+          />
+          <TextFilter
+            id="users-filter-email"
+            label={t('users.filters.email')}
+            value={params.email}
+            onCommit={commitEmail}
+            onDraft={(value) => onDraft('email', value)}
+            resetKey={resetKey}
+          />
           <RoleFilter value={params.role} onChange={(role) => setParams({ role, page: 1 })} />
         </div>
         {/* Solo con un filtro attivo: senza filtri il pulsante non farebbe nulla */}
