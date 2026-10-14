@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest'
 import { routes } from '@/routes'
 import { expectNoA11yViolations } from '@/test/axe'
 import { userQueryKey } from '@/lib/queryKeys'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { userListResponse } from '@/test/usersFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
-const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })))
+const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))))
 
 describe('AppShell', () => {
   it('greets the user, sets the page title and focuses the heading', async () => {
@@ -52,7 +52,7 @@ describe('AppShell', () => {
     let expired = false
     server.use(
       http.get('/api/auth/user', () =>
-        expired ? HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }) : HttpResponse.json({ data: adminUser }),
+        expired ? HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }) : HttpResponse.json(currentUserResponse(adminUser)),
       ),
       http.post('/api/auth/logout', () => {
         // La sessione era già scaduta sul server: anche l'utente corrente risponde 401
@@ -109,7 +109,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: 'Amministratori' })).toHaveAttribute('href', '/admin/administrators')
     first.unmount()
 
-    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'manager', role_label: 'Responsabile' } })))
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'manager', role_label: 'Responsabile' }))))
     const second = renderRoutes(routes, ['/'], { toaster: false })
 
     expect(await screen.findByRole('link', { name: 'Utenti' })).toHaveAttribute('href', '/users')
@@ -117,7 +117,7 @@ describe('AppShell', () => {
     expect(screen.queryByRole('link', { name: 'Amministratori' })).not.toBeInTheDocument()
     second.unmount()
 
-    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'employee', role_label: 'Dipendente' } })))
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'employee', role_label: 'Dipendente' }))))
     renderRoutes(routes, ['/'], { toaster: false })
 
     await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
@@ -138,14 +138,14 @@ describe('AppShell', () => {
   })
 
   it('shows the forbidden page to employees on /users', async () => {
-    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'employee', role_label: 'Dipendente' } })))
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'employee', role_label: 'Dipendente' }))))
     renderRoutes(routes, ['/users'], { toaster: false })
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Non hai i permessi per questa pagina' })).toBeInTheDocument()
   })
 
   it('shows the forbidden page to managers on the administrators page', async () => {
-    server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role: 'manager', role_label: 'Responsabile' } })))
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'manager', role_label: 'Responsabile' }))))
     renderRoutes(routes, ['/admin/administrators'], { toaster: false })
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Non hai i permessi per questa pagina' })).toBeInTheDocument()

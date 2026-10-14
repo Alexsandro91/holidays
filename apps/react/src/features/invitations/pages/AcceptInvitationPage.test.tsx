@@ -4,7 +4,7 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import AcceptInvitationPage from '@/features/invitations/pages/AcceptInvitationPage'
 import { expectNoA11yViolations } from '@/test/axe'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
@@ -22,7 +22,7 @@ const PASSWORD = 'una-frase-lunga-e-nuova'
 const validInvitation = () =>
   server.use(http.get('/api/invitations/abc', () => HttpResponse.json({ data: { name: 'Sara Colombo', email: 'sara@holidays.test', expires_at: '2099-01-01T00:00:00+00:00' } })))
 
-const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })))
+const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))))
 
 const fillForm = async (user: ReturnType<typeof renderRoutes>['user']) => {
   await user.type(await screen.findByLabelText('Password', { exact: true }), PASSWORD)
@@ -211,7 +211,7 @@ describe('AcceptInvitationPage', () => {
   it('loads the invitation after signing out from the notice', async () => {
     let signedOut = false
     server.use(
-      http.get('/api/auth/user', () => (signedOut ? HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }) : HttpResponse.json({ data: adminUser }))),
+      http.get('/api/auth/user', () => (signedOut ? HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }) : HttpResponse.json(currentUserResponse(adminUser)))),
       http.post('/api/auth/logout', () => {
         signedOut = true
         return new HttpResponse(null, { status: 204 })
@@ -249,7 +249,7 @@ describe('AcceptInvitationPage', () => {
     validInvitation()
     let sessionOpen = false
     server.use(
-      http.get('/api/auth/user', () => (sessionOpen ? HttpResponse.json({ data: adminUser }) : HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }))),
+      http.get('/api/auth/user', () => (sessionOpen ? HttpResponse.json(currentUserResponse(adminUser)) : HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 }))),
       http.post('/api/invitations/abc/accept', () => {
         // Accesso fatto nel frattempo in un'altra scheda
         sessionOpen = true

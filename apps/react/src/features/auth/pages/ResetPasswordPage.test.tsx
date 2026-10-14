@@ -5,7 +5,7 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
@@ -82,7 +82,7 @@ describe('ResetPasswordPage', () => {
   it('goes to the home page when a session is already open', async () => {
     server.use(
       http.post('/api/auth/reset-password', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
-      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))),
     )
     const { user } = renderRoutes(routes, [LINK])
 

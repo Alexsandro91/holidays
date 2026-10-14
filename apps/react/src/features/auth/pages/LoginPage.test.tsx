@@ -6,7 +6,7 @@ import LoginPage from '@/features/auth/pages/LoginPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { sessionEndKey, userQueryKey } from '@/lib/queryKeys'
 import { rememberedSessionEnd } from '@/lib/sessionEnd'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
@@ -86,7 +86,7 @@ describe('LoginPage', () => {
   it('goes to the destination when a session is already open (e.g. signed in from another tab)', async () => {
     server.use(
       http.post('/api/auth/login', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
-      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))),
     )
     const { user, router, queryClient } = renderRoutes(routes, ['/login?redirect=%2Fadmin'])
 
@@ -102,7 +102,7 @@ describe('LoginPage', () => {
   it('forgets the reason of a previous session when it resumes an open one', async () => {
     server.use(
       http.post('/api/auth/login', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
-      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))),
     )
     const { user, queryClient } = renderRoutes(routes, ['/login?redirect=%2Fadmin'])
     queryClient.setQueryData(sessionEndKey, 'expired')

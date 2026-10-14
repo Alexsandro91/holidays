@@ -764,7 +764,7 @@ describe('AdministratorsPage', () => {
       }),
     )
     const { user, queryClient } = renderRoutes(routes, ['/admin/administrators'])
-    const current: User = { id: 1, name: 'Anna Admin', email: me.email, role: 'admin', role_label: 'HR / Admin', status: 'active', locale: 'it', last_login_at: null }
+    const current: User = { id: 1, first_name: 'Anna', last_name: 'Admin', name: 'Anna Admin', email: me.email, role: 'admin', role_label: 'HR / Admin', status: 'active', locale: 'it', last_login_at: null }
     queryClient.setQueryData(userQueryKey, current)
 
     await user.click(await screen.findByRole('button', { name: 'Modifica Anna Admin' }))
@@ -777,6 +777,8 @@ describe('AdministratorsPage', () => {
     await waitFor(() => expect(body).toEqual({ first_name: 'Anna', last_name: 'Amministratrice' }))
     // Il nome nel menu account (sidebar) si aggiorna subito, senza ricaricare la pagina
     await waitFor(() => expect(queryClient.getQueryData<User>(userQueryKey)?.name).toBe('Anna Amministratrice'))
+    // Anche nome e cognome separati, che precompilano la pagina Profilo
+    expect(queryClient.getQueryData<User>(userQueryKey)?.last_name).toBe('Amministratrice')
   })
 
   it('offers edit in every state, next to the actions of that state', async () => {

@@ -168,7 +168,9 @@ export const useUpdateUser = () => {
       }),
     // Modificando sé stessi cambia anche il nome del menu account: si aggiorna subito l'utente corrente
     ({ data }) => {
-      queryClient.setQueryData<User | null>(userQueryKey, (current) => (current && current.id === data.id ? { ...current, name: data.name } : current))
+      queryClient.setQueryData<User | null>(userQueryKey, (current) =>
+        current && current.id === data.id ? { ...current, first_name: data.first_name, last_name: data.last_name, name: data.name } : current,
+      )
     },
   )
 }

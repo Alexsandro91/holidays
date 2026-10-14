@@ -6,7 +6,7 @@ import GuestRoute from '@/features/auth/GuestRoute'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import { ApiError } from '@/lib/api'
 import { userQueryKey } from '@/lib/queryKeys'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -21,7 +21,7 @@ const routes: RouteObject[] = [
   },
 ]
 
-const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })))
+const signedIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))))
 
 describe('route guards', () => {
   it('sends guests to the login page with a way back', async () => {

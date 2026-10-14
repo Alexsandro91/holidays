@@ -4,7 +4,7 @@ import type { RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
 import { expectNoA11yViolations } from '@/test/axe'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -33,7 +33,7 @@ describe('ForgotPasswordPage', () => {
   it('goes to the home page when a session is already open', async () => {
     server.use(
       http.post('/api/auth/forgot-password', () => HttpResponse.json({ message: 'Hai già una sessione aperta.', meta: { reason: 'already_authenticated' } }, { status: 409 })),
-      http.get('/api/auth/user', () => HttpResponse.json({ data: adminUser })),
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))),
     )
     const { user } = renderRoutes(routes, ['/forgot-password'])
 

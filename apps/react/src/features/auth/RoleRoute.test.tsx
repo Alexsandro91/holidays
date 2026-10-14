@@ -4,13 +4,13 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import type { User } from '@/features/auth/api'
 import RoleRoute from '@/features/auth/RoleRoute'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
 const routes: RouteObject[] = [{ element: <RoleRoute roles={['manager', 'admin']} />, children: [{ path: '/users', element: <p>users-page</p> }] }]
 
-const signedInAs = (role: User['role']) => server.use(http.get('/api/auth/user', () => HttpResponse.json({ data: { ...adminUser, role } })))
+const signedInAs = (role: User['role']) => server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role }))))
 
 describe('RoleRoute', () => {
   it('lets the listed roles through', async () => {

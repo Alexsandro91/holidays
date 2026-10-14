@@ -6,6 +6,9 @@ import { clearSessionData, forgetSessionEnd } from '@/lib/sessionEnd'
 
 export const userSchema = z.object({
   id: z.number(),
+  first_name: z.string(),
+  last_name: z.string(),
+  // Nome completo ("Nome Cognome") per la visualizzazione
   name: z.string(),
   email: z.string(),
   role: z.enum(['employee', 'manager', 'admin']),
@@ -15,9 +18,31 @@ export const userSchema = z.object({
   last_login_at: z.string().nullable(),
 })
 
-export type User = z.infer<typeof userSchema>
+/** Limiti della sessione in millisecondi del dispositivo, ricavati da `meta.session` alla lettura (spec fase 4 §3.3). */
+export interface SessionLimits {
+  idleTimeoutMs: number
+  /** Istante (`Date.now()`) della scadenza assoluta: lettura + secondi restanti, così l'orologio misura solo il tempo trascorso */
+  absoluteDeadline: number
+}
+
+/** Utente corrente. `session` c'è solo dopo una lettura di `/api/auth/user` o `/api/profile` (la risposta del codice non la ha). */
+export type User = z.infer<typeof userSchema> & { session?: SessionLimits }
 
 const userResponseSchema = z.object({ data: userSchema })
+
+/** Risposta di `GET /api/auth/user` e `PATCH /api/profile`: l'utente con i limiti della sessione. */
+export const currentUserResponseSchema = z
+  .object({
+    data: userSchema,
+    meta: z.object({ session: z.object({ idle_timeout_seconds: z.number(), absolute_remaining_seconds: z.number() }) }),
+  })
+  .transform(({ data, meta }): User => ({
+    ...data,
+    session: {
+      idleTimeoutMs: meta.session.idle_timeout_seconds * 1000,
+      absoluteDeadline: Date.now() + Math.max(0, meta.session.absolute_remaining_seconds) * 1000,
+    },
+  }))
 
 /** Metadati degli errori sul codice restituiti da Laravel. */
 export const codeErrorMetaSchema = z.object({
@@ -31,7 +56,7 @@ export interface LoginInput {
   password: string
 }
 
-const fetchCurrentUser = async (): Promise<User> => (await requestData('GET', '/api/auth/user', userResponseSchema)).data
+const fetchCurrentUser = (): Promise<User> => requestData('GET', '/api/auth/user', currentUserResponseSchema)
 
 /** Utente corrente. `null` = logout esplicito; errore 401 = nessuna sessione (o sessione scaduta). */
 export const useCurrentUser = () =>
@@ -52,6 +77,8 @@ export const useVerifyCode = () => {
     onSuccess: (user) => {
       forgetSessionEnd(queryClient)
       queryClient.setQueryData(userQueryKey, user)
+      // La risposta del codice non ha i limiti della sessione: si rilegge l'utente per l'avviso di scadenza
+      void queryClient.invalidateQueries({ queryKey: userQueryKey })
     },
   })
 }
