@@ -186,6 +186,7 @@
     },
     "actions": {
       "menu": "Azioni per {{name}}",
+      "edit": "Modifica",
       "resend": "Reinvia invito",
       "cancel": "Annulla invito",
       "changeRole": "Cambia ruolo",
@@ -204,6 +205,18 @@
       "done": "Invito inviato a {{email}}."
     },
     "roles": { "employee": "Dipendente", "manager": "Responsabile", "admin": "HR / Admin" },
+    "editDialog": {
+      "title": "Modifica {{name}}",
+      "description": "Nome, cognome ed email di chi usa Holidays.",
+      "firstName": "Nome",
+      "lastName": "Cognome",
+      "email": "Email aziendale",
+      "emailLocked": "L’email si può cambiare solo finché l’invito non è stato accettato: ora è l’indirizzo con cui la persona accede.",
+      "emailInvited": "Se la cambi, il link dell’invito viene inviato al nuovo indirizzo e quello vecchio smette di funzionare.",
+      "submit": "Salva",
+      "done": "Dati di {{name}} aggiornati.",
+      "reinvited": "Dati aggiornati. Nuovo invito inviato a {{email}}."
+    },
     "roleDialog": { "title": "Cambia ruolo di {{name}}", "submit": "Salva ruolo", "done": "Ruolo di {{name}} aggiornato." },
     "confirm": {
       "resend": { "title": "Reinviare l’invito a {{name}}?", "description": "Il link precedente smetterà di funzionare.", "action": "Reinvia", "done": "Invito inviato di nuovo." },
@@ -223,6 +236,8 @@
     "revokeFor": "Revoca {{name}}",
     "resend": "Reinvia invito",
     "resendFor": "Reinvia invito a {{name}}",
+    "edit": "Modifica",
+    "editFor": "Modifica {{name}}",
     "cancel": "Annulla invito",
     "cancelFor": "Annulla invito di {{name}}",
     "onlyYou": "Sei l’unico amministratore. Aggiungine un altro prima di lasciare il ruolo: serve sempre almeno un amministratore.",

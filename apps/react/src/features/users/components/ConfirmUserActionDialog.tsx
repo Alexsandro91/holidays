@@ -21,6 +21,8 @@ interface ConfirmUserActionDialogProps {
   onClose: () => void
   /** Attributo dei pulsanti che aprono il dialog: alla chiusura il focus torna lì (vedi lib/focusTrigger) */
   triggerAttribute?: string
+  /** Valore dell'attributo del pulsante d'origine; di default l'id dell'utente (un solo pulsante per riga) */
+  triggerKey?: (user: ManagedUser, action: ConfirmAction) => string | number
 }
 
 interface PasswordValues {
@@ -128,7 +130,13 @@ const ConfirmBody = ({ user, action, onClose, onBusyChange }: ConfirmBodyProps) 
 }
 
 /** Conferma esplicita delle azioni di riga; per gli admin chiede la password di chi agisce. */
-const ConfirmUserActionDialog = ({ user, action, onClose, triggerAttribute = USER_TRIGGER_ATTRIBUTE }: ConfirmUserActionDialogProps) => {
+const ConfirmUserActionDialog = ({
+  user,
+  action,
+  onClose,
+  triggerAttribute = USER_TRIGGER_ATTRIBUTE,
+  triggerKey = (target) => target.id,
+}: ConfirmUserActionDialogProps) => {
   const open = user !== null && action !== null
   // Contenuto conservato durante l'animazione di chiusura
   const [last, setLast] = useState<{ user: ManagedUser; action: ConfirmAction } | null>(null)
@@ -149,7 +157,7 @@ const ConfirmUserActionDialog = ({ user, action, onClose, triggerAttribute = USE
       <AlertDialogContent
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          focusTrigger(triggerAttribute, shown?.user.id ?? null)
+          focusTrigger(triggerAttribute, shown ? triggerKey(shown.user, shown.action) : null)
         }}
       >
         {shown && <ConfirmBody key={`${openCount}-${shown.user.id}-${shown.action}`} user={shown.user} action={shown.action} onClose={onClose} onBusyChange={setBusy} />}

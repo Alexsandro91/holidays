@@ -1,10 +1,10 @@
 import type { ManagedUser } from '@/features/users/api'
 
 /** Nessuna azione permessa (es. la propria riga, o un admin visto da un responsabile). */
-export const NO_ACTIONS: ManagedUser['can'] = { resend_invitation: false, cancel_invitation: false, change_role: false, disable: false, enable: false }
+export const NO_ACTIONS: ManagedUser['can'] = { resend_invitation: false, cancel_invitation: false, change_role: false, disable: false, enable: false, update: false }
 
 /** Tutte le azioni permesse: lo stato decide poi quali compaiono. */
-export const ALL_ACTIONS: ManagedUser['can'] = { resend_invitation: true, cancel_invitation: true, change_role: true, disable: true, enable: true }
+export const ALL_ACTIONS: ManagedUser['can'] = { resend_invitation: true, cancel_invitation: true, change_role: true, disable: true, enable: true, update: true }
 
 /** Utente della lista; nome e cognome, se mancano, si ricavano da `name` dividendo al primo spazio (come la migration). */
 export const managedUser = (overrides: Partial<ManagedUser> = {}): ManagedUser => {

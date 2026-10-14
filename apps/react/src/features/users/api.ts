@@ -23,6 +23,7 @@ export const managedUserSchema = z.object({
     change_role: z.boolean(),
     disable: z.boolean(),
     enable: z.boolean(),
+    update: z.boolean(),
   }),
 })
 
@@ -141,6 +142,23 @@ export const useCancelInvitation = () => useAdminMutation((id: number) => reques
 
 export const useChangeRole = () =>
   useAdminMutation(({ id, role }: { id: number; role: ManagedRole }) => requestData('PATCH', `/api/users/${id}/role`, userResourceSchema, { role }))
+
+export interface UpdateUserInput {
+  id: number
+  firstName: string
+  lastName: string
+  /** Solo per gli utenti invitati: per gli altri l'email non cambia (spec §7.3) */
+  email?: string
+}
+
+export const useUpdateUser = () =>
+  useAdminMutation(({ id, firstName, lastName, email }: UpdateUserInput) =>
+    requestData('PATCH', `/api/users/${id}`, userResourceSchema, {
+      first_name: firstName,
+      last_name: lastName,
+      ...(email === undefined ? {} : { email }),
+    }),
+  )
 
 export interface UserStatusInput {
   id: number

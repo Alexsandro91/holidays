@@ -186,6 +186,7 @@
     },
     "actions": {
       "menu": "Actions for {{name}}",
+      "edit": "Edit",
       "resend": "Resend invitation",
       "cancel": "Cancel invitation",
       "changeRole": "Change role",
@@ -204,6 +205,18 @@
       "done": "Invitation sent to {{email}}."
     },
     "roles": { "employee": "Employee", "manager": "Manager", "admin": "HR / Admin" },
+    "editDialog": {
+      "title": "Edit {{name}}",
+      "description": "First name, last name and email of a Holidays user.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Work email",
+      "emailLocked": "The email can only change until the invitation is accepted: it’s now the address this person signs in with.",
+      "emailInvited": "If you change it, the invitation link is sent to the new address and the old one stops working.",
+      "submit": "Save",
+      "done": "{{name}}’s details updated.",
+      "reinvited": "Details updated. New invitation sent to {{email}}."
+    },
     "roleDialog": { "title": "Change {{name}}’s role", "submit": "Save role", "done": "{{name}}’s role updated." },
     "confirm": {
       "resend": { "title": "Resend the invitation to {{name}}?", "description": "The previous link will stop working.", "action": "Resend", "done": "Invitation sent again." },
@@ -223,6 +236,8 @@
     "revokeFor": "Revoke {{name}}",
     "resend": "Resend invitation",
     "resendFor": "Resend invitation to {{name}}",
+    "edit": "Edit",
+    "editFor": "Edit {{name}}",
     "cancel": "Cancel invitation",
     "cancelFor": "Cancel {{name}}’s invitation",
     "onlyYou": "You are the only administrator. Add another one before giving up the role: at least one administrator is always required.",

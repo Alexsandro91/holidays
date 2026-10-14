@@ -546,7 +546,7 @@ describe('AdministratorsPage', () => {
     expect(await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')).toBeInTheDocument()
   })
 
-  it('shows invited administrators with the expiry, resend and cancel instead of revoke', async () => {
+  it('shows invited administrators with the expiry, resend, edit and cancel instead of revoke', async () => {
     const invited = managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', role_label: 'HR / Admin', status: 'invited', status_label: 'Invitato', invitation_expires_at: '2099-10-16T10:00:00+00:00' })
     admins([me, bruno, invited])
     renderRoutes(routes, ['/admin/administrators'])
@@ -555,9 +555,56 @@ describe('AdministratorsPage', () => {
     if (!row) throw new Error('Riga di Sara Colombo mancante')
     expect(within(row).getByText('Invitato')).toBeInTheDocument()
     expect(within(row).getByText(/Invito scade il/)).toBeInTheDocument()
-    expect(within(row).getByRole('button', { name: 'Reinvia invito a Sara Colombo' })).toBeInTheDocument()
-    expect(within(row).getByRole('button', { name: 'Annulla invito di Sara Colombo' })).toBeInTheDocument()
-    expect(within(row).queryByRole('button', { name: 'Revoca Sara Colombo' })).not.toBeInTheDocument()
+    expect(within(row).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Reinvia invito a Sara Colombo',
+      'Modifica Sara Colombo',
+      'Annulla invito di Sara Colombo',
+    ])
+  })
+
+  it('offers revoke only on active administrators (the server answers 409 otherwise)', async () => {
+    admins([me, bruno, managedUser({ id: 4, name: 'Carla Admin', role: 'admin', status: 'disabled', status_label: 'Disattivato' })])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    expect(await screen.findByRole('button', { name: 'Revoca Bruno Admin' })).toBeInTheDocument()
+    expect(screen.getByText('Carla Admin')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Revoca Carla Admin' })).not.toBeInTheDocument()
+  })
+
+  it('returns the focus to "Annulla invito" when its dialog is closed without cancelling', async () => {
+    admins([me, managedUser({ id: 6, name: 'Sara Colombo', role: 'admin', status: 'invited', status_label: 'Invitato' })])
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const trigger = await screen.findByRole('button', { name: 'Annulla invito di Sara Colombo' })
+    await user.click(trigger)
+    await screen.findByRole('alertdialog')
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('edits an invited administrator and returns the focus to "Modifica"', async () => {
+    admins([me, managedUser({ id: 6, name: 'Sara Colombo', email: 'sara@holidays.test', role: 'admin', status: 'invited', status_label: 'Invitato' })])
+    let body: unknown = null
+    server.use(
+      http.patch('/api/users/6', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ id: 6, name: 'Sara Colombo', email: 'sara.colombo@holidays.test', role: 'admin', status: 'invited' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const trigger = await screen.findByRole('button', { name: 'Modifica Sara Colombo' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Sara Colombo' })
+    await user.clear(within(dialog).getByLabelText('Email aziendale'))
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara.colombo@holidays.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Dati aggiornati. Nuovo invito inviato a sara.colombo@holidays.test.')).toBeInTheDocument()
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara.colombo@holidays.test' })
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   it('hides resend and cancel when the server does not allow them', async () => {
@@ -567,6 +614,7 @@ describe('AdministratorsPage', () => {
 
     await screen.findByText('Sara Colombo')
     expect(screen.queryByRole('button', { name: 'Reinvia invito a Sara Colombo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Modifica Sara Colombo' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Annulla invito di Sara Colombo' })).toBeInTheDocument()
   })
 

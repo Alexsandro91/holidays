@@ -1,6 +1,6 @@
 import type { ManagedUser } from '@/features/users/api'
 
-export type UserAction = 'resend' | 'cancel' | 'changeRole' | 'disable' | 'enable'
+export type UserAction = 'edit' | 'resend' | 'cancel' | 'changeRole' | 'disable' | 'enable'
 
 /**
  * Azioni del menu di riga: quelle che il server permette a chi guarda (`can`) e che lo stato consente.
@@ -18,7 +18,9 @@ export const availableActions = ({ status, can }: ManagedUser): UserAction[] => 
     ],
     disabled: [['enable', can.enable]],
   }
-  return byStatus[status].filter(([, allowed]) => allowed).map(([action]) => action)
+  // Modifica (nome, cognome, email degli invitati) vale in ogni stato
+  const all: [UserAction, boolean][] = [['edit', can.update], ...byStatus[status]]
+  return all.filter(([, allowed]) => allowed).map(([action]) => action)
 }
 
 /** Disattivare o riattivare un admin chiede la password di chi agisce (spec fase 3 §5.6). */

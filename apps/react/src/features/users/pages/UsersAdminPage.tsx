@@ -3,16 +3,18 @@ import type { ManagedUser } from '@/features/users/api'
 import { availableActions, type UserAction } from '@/features/users/actions'
 import ChangeRoleDialog from '@/features/users/components/ChangeRoleDialog'
 import ConfirmUserActionDialog from '@/features/users/components/ConfirmUserActionDialog'
+import EditUserDialog from '@/features/users/components/EditUserDialog'
 import InviteUserDialog from '@/features/users/components/InviteUserDialog'
 import UserActionsMenu from '@/features/users/components/UserActionsMenu'
 import UsersPage from '@/features/users/pages/UsersPage'
 
-type ConfirmAction = Exclude<UserAction, 'changeRole'>
+type ConfirmAction = Exclude<UserAction, 'changeRole' | 'edit'>
 
 /** Pagina Utenti (responsabili e admin) con invito e azioni di riga. */
 const UsersAdminPage = () => {
   const [confirm, setConfirm] = useState<{ user: ManagedUser; action: ConfirmAction } | null>(null)
   const [roleTarget, setRoleTarget] = useState<ManagedUser | null>(null)
+  const [editTarget, setEditTarget] = useState<ManagedUser | null>(null)
 
   // Stabile: la Data Table ricrea le colonne solo quando cambia davvero
   const renderActions = useCallback(
@@ -22,6 +24,7 @@ const UsersAdminPage = () => {
           user={user}
           onSelect={(action: UserAction) => {
             if (action === 'changeRole') setRoleTarget(user)
+            else if (action === 'edit') setEditTarget(user)
             else setConfirm({ user, action })
           }}
         />
@@ -37,6 +40,7 @@ const UsersAdminPage = () => {
       />
       <ConfirmUserActionDialog user={confirm?.user ?? null} action={confirm?.action ?? null} onClose={() => setConfirm(null)} />
       <ChangeRoleDialog user={roleTarget} onClose={() => setRoleTarget(null)} />
+      <EditUserDialog user={editTarget} onClose={() => setEditTarget(null)} />
     </>
   )
 }

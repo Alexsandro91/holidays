@@ -8,15 +8,15 @@ describe('availableActions', () => {
   })
 
   it('offers resend and cancel to invited users when allowed', () => {
-    expect(availableActions(managedUser({ status: 'invited' }))).toEqual(['resend', 'cancel'])
+    expect(availableActions(managedUser({ status: 'invited' }))).toEqual(['edit', 'resend', 'cancel'])
   })
 
   it('offers role change and disable to active users when allowed', () => {
-    expect(availableActions(managedUser())).toEqual(['changeRole', 'disable'])
+    expect(availableActions(managedUser())).toEqual(['edit', 'changeRole', 'disable'])
   })
 
   it('offers enable to disabled users when allowed', () => {
-    expect(availableActions(managedUser({ status: 'disabled' }))).toEqual(['enable'])
+    expect(availableActions(managedUser({ status: 'disabled' }))).toEqual(['edit', 'enable'])
   })
 
   it('never offers an action the status does not allow, even if the server allows it', () => {
@@ -32,6 +32,7 @@ describe('availableActions', () => {
     expect(availableActions(managedUser({ status: 'invited', can: { ...NO_ACTIONS, resend_invitation: true } }))).toEqual(['resend'])
     expect(availableActions(managedUser({ status: 'invited', can: { ...NO_ACTIONS, cancel_invitation: true } }))).toEqual(['cancel'])
     expect(availableActions(managedUser({ status: 'disabled', can: NO_ACTIONS }))).toEqual([])
+    expect(availableActions(managedUser({ is_current_user: true, can: { ...NO_ACTIONS, update: true } }))).toEqual(['edit'])
   })
 })
 

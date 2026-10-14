@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import ChangeRoleDialog from '@/features/users/components/ChangeRoleDialog'
 import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { expectBlockedButFocusable } from '@/test/blocked'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
 import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
 import { waitForStrayRequests } from '@/test/network'
@@ -312,6 +313,159 @@ describe('UsersAdminPage', () => {
     await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Reinvia' }))
 
     expect(await screen.findByText('Attendi 42 secondi prima di inviare di nuovo l’invito.')).toBeInTheDocument()
+  })
+
+  it('offers "Modifica" only when the server allows it (can.update), on any status', async () => {
+    listing([
+      managedUser({ id: 2, name: 'Marco Bianchi', can: { ...NO_ACTIONS, update: true } }),
+      managedUser({ id: 3, name: 'Luca Ferrari', email: 'luca@holidays.test', status: 'invited', can: { ...NO_ACTIONS, resend_invitation: true } }),
+    ])
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    expect(await screen.findByRole('menuitem', { name: 'Modifica' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await openMenu(user, 'Luca Ferrari')
+    expect(await screen.findByRole('menuitem', { name: 'Reinvia invito' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Modifica' })).not.toBeInTheDocument()
+  })
+
+  it('edits first and last name of an active user, with the email read-only and explained', async () => {
+    listing([managedUser()])
+    let body: unknown = null
+    server.use(
+      http.patch('/api/users/2', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ name: 'Marco Bianco' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    expect(within(dialog).getByLabelText('Nome')).toHaveValue('Marco')
+    const email = within(dialog).getByLabelText('Email aziendale')
+    expect(email).toHaveValue('marco@holidays.test')
+    expect(email).toHaveAttribute('readonly')
+    expect(email).toHaveAccessibleDescription(/solo finché l’invito non è stato accettato/)
+    await user.clear(within(dialog).getByLabelText('Cognome'))
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Bianco')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Dati di Marco Bianco aggiornati.')).toBeInTheDocument()
+    expect(body).toEqual({ first_name: 'Marco', last_name: 'Bianco' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const trigger = within(screen.getByRole('table')).getByRole('button', { name: 'Azioni per Marco Bianchi' })
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('changes the email of an invited user and says the invitation goes to the new address', async () => {
+    listing([managedUser({ name: 'Luca Ferrari', email: 'luca@holidays.test', status: 'invited', status_label: 'Invitato' })])
+    let body: unknown = null
+    server.use(
+      http.patch('/api/users/2', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ name: 'Luca Ferrari', email: 'luca.ferrari@holidays.test', status: 'invited' }) })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Luca Ferrari')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Luca Ferrari' })
+    const email = within(dialog).getByLabelText('Email aziendale')
+    expect(email).not.toHaveAttribute('readonly')
+    expect(email).toHaveAccessibleDescription(/il link dell’invito viene inviato al nuovo indirizzo/)
+    await user.clear(email)
+    await user.type(email, 'luca.ferrari@holidays.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await screen.findByText('Dati aggiornati. Nuovo invito inviato a luca.ferrari@holidays.test.')).toBeInTheDocument()
+    expect(body).toEqual({ first_name: 'Luca', last_name: 'Ferrari', email: 'luca.ferrari@holidays.test' })
+  })
+
+  it('validates the edit form and shows the server errors under the fields, focusing the first', async () => {
+    listing([managedUser({ name: 'Luca Ferrari', status: 'invited' })])
+    let calls = 0
+    server.use(
+      http.patch('/api/users/2', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'x', errors: { email: ['L’email è già in uso.'] } }, { status: 422 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Luca Ferrari')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Luca Ferrari' })
+    await user.clear(within(dialog).getByLabelText('Nome'))
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    expect(await within(dialog).findByText('Inserisci il nome.')).toBeInTheDocument()
+    expect(calls).toBe(0)
+
+    await user.type(within(dialog).getByLabelText('Nome'), 'Luca')
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    expect(await within(dialog).findByText('L’email è già in uso.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Email aziendale')).toHaveFocus()
+  })
+
+  it('keeps the save blocked but focusable after a 429', async () => {
+    listing([managedUser()])
+    let calls = 0
+    server.use(
+      http.patch('/api/users/2', () => {
+        calls += 1
+        return HttpResponse.json({ message: 'Troppe richieste. Riprova tra un minuto.' }, { status: 429, headers: { 'Retry-After': '60' } })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    expect(await within(dialog).findByText('Troppe richieste. Riprova tra un minuto.')).toBeInTheDocument()
+    const button = within(dialog).getByRole('button', { name: 'Salva' })
+    expectBlockedButFocusable(button)
+    await user.click(button)
+    await waitForStrayRequests()
+    expect(calls).toBe(1)
+  })
+
+  it('never saves the edit twice while the dialog is closing', async () => {
+    holdDialogExitAnimation()
+    listing([managedUser()])
+    let calls = 0
+    server.use(
+      http.patch('/api/users/2', () => {
+        calls += 1
+        return HttpResponse.json({ data: managedUser() })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    expect(await screen.findByText('Dati di Marco Bianchi aggiornati.')).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('data-state', 'closed')
+    await user.keyboard('{Enter}')
+    await waitForStrayRequests()
+
+    expect(calls).toBe(1)
+  })
+
+  it('has no accessibility violations with the edit dialog open', async () => {
+    listing([managedUser()])
+    const { user, baseElement } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await expectNoA11yViolations(baseElement)
   })
 
   it('has no accessibility violations with the invite dialog open', async () => {
