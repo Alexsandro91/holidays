@@ -17,13 +17,10 @@ final class EnforceAbsoluteSessionLifetime
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() !== null && $request->hasSession()) {
-            $session = $request->session();
-            $loggedInAt = $session->get(AuthSession::LOGGED_IN_AT);
-
-            if (! is_int($loggedInAt)) {
+            if (! is_int($request->session()->get(AuthSession::LOGGED_IN_AT))) {
                 // Sessione senza timestamp (creata prima di questa regola o nei test): il conteggio parte ora
-                $session->put(AuthSession::LOGGED_IN_AT, now()->getTimestamp());
-            } elseif (now()->getTimestamp() - $loggedInAt > (int) config('session.absolute_lifetime') * 60) {
+                $request->session()->put(AuthSession::LOGGED_IN_AT, now()->getTimestamp());
+            } elseif (AuthSession::isPastAbsoluteLifetime($request)) {
                 AuthSession::end($request);
 
                 return response()->json([

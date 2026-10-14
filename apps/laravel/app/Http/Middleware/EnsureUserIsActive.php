@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Enums\AuthErrorReason;
-use App\Models\User;
 use App\Support\AuthSession;
 use App\Support\Translate;
 use Closure;
@@ -17,9 +16,7 @@ final class EnsureUserIsActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
-
-        if ($user instanceof User && ! $user->isActive()) {
+        if (AuthSession::userIsDisabled($request)) {
             AuthSession::end($request);
 
             return response()->json([

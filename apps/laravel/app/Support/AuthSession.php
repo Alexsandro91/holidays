@@ -19,6 +19,32 @@ final class AuthSession
     public const LOGGED_IN_AT = 'auth.logged_in_at';
 
     /**
+     * L'utente della sessione è stato disattivato: la sessione non vale più (EnsureUserIsActive).
+     */
+    public static function userIsDisabled(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user instanceof User && ! $user->isActive();
+    }
+
+    /**
+     * La sessione ha superato la durata assoluta dal login (EnforceAbsoluteSessionLifetime).
+     * Senza timestamp non è scaduta: lo registra il middleware alla prima richiesta API.
+     */
+    public static function isPastAbsoluteLifetime(Request $request): bool
+    {
+        if (! $request->hasSession()) {
+            return false;
+        }
+
+        $loggedInAt = $request->session()->get(self::LOGGED_IN_AT);
+
+        return is_int($loggedInAt)
+            && now()->getTimestamp() - $loggedInAt > (int) config('session.absolute_lifetime') * 60;
+    }
+
+    /**
      * Chiude la sessione corrente: logout, sessione invalidata e nuovo token CSRF.
      */
     public static function end(Request $request): void
