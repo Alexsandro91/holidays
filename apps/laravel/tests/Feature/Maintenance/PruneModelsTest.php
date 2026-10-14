@@ -9,6 +9,8 @@ use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Services\LoginChallengeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 /**
@@ -65,6 +67,27 @@ class PruneModelsTest extends TestCase
 
         $this->assertModelMissing($old);
         $this->assertModelExists($recent);
+    }
+
+    /**
+     * Un `AUTH_EVENTS_RETENTION_DAYS=` vuoto diventa 0: senza questa protezione la pulizia cancellerebbe tutto il log.
+     */
+    #[TestWith([0])]
+    #[TestWith([-5])]
+    #[TestWith([null])]
+    #[TestWith([''])]
+    public function test_an_invalid_retention_prunes_nothing_and_logs_a_warning(int|string|null $days): void
+    {
+        config(['auth.events_retention_days' => $days]);
+        Log::spy();
+        $event = $this->event(User::factory()->create(), now()->subYears(2));
+
+        $this->artisan('model:prune', ['--model' => [AuthEvent::class]])->assertSuccessful();
+
+        $this->assertModelExists($event);
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context): bool => $context === ['events_retention_days' => $days])
+            ->atLeast()->once();
     }
 
     public function test_the_retention_of_auth_events_defaults_to_180_days(): void

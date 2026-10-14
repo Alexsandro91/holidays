@@ -6,15 +6,15 @@ use App\Services\LoginChallengeService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['user_id', 'code_hash', 'expires_at', 'attempts', 'resend_count', 'last_sent_at'])]
 #[Hidden(['code_hash'])]
 class LoginChallenge extends Model
 {
-    use Prunable;
+    use MassPrunable;
 
     /**
      * Challenge morte: codice scaduto e login iniziato da oltre MAX_AGE_MINUTES, quindi nessun nuovo invio
