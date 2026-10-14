@@ -1,7 +1,8 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import i18n from '@/lib/i18n'
+import { userQueryKey } from '@/lib/queryKeys'
 import { routes } from '@/routes'
 import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { waitForStrayRequests } from '@/test/network'
@@ -96,5 +97,100 @@ describe('account language', () => {
     await waitForStrayRequests()
     expect(saves).toBe(0)
     expect(window.localStorage.getItem('holidays-locale')).toBe('en')
+  })
+
+  it('applies the account language once per session: a later reread does not bring it back', async () => {
+    signedIn('it')
+    server.use(http.patch('/api/profile', () => HttpResponse.json({ message: 'Server Error' }, { status: 500 })))
+    const { user, queryClient } = renderRoutes(routes, ['/'], { toaster: false })
+    await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+
+    await user.click(screen.getByRole('button', { name: 'Lingua: Italiano' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'English' }))
+    expect(await screen.findByText('The language was not saved to your account. Please try again.')).toBeInTheDocument()
+
+    // Rilettura dell'utente (focus della finestra, Resta collegato…): l'account dice ancora italiano
+    await act(() => queryClient.refetchQueries({ queryKey: userQueryKey }))
+    await waitForStrayRequests()
+
+    expect(i18n.language).toBe('en')
+    expect(screen.getByRole('heading', { level: 1, name: 'Hi, Giulia' })).toBeInTheDocument()
+  })
+
+  it('does not go back when a reread answers while the save is still in progress', async () => {
+    signedIn('it')
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.patch('/api/profile', async () => {
+        await gate
+        return HttpResponse.json(currentUserResponse({ ...adminUser, locale: 'en' }))
+      }),
+    )
+    const { user, queryClient } = renderRoutes(routes, ['/'], { toaster: false })
+    await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+
+    await user.click(screen.getByRole('button', { name: 'Lingua: Italiano' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'English' }))
+    await act(() => queryClient.refetchQueries({ queryKey: userQueryKey }))
+    act(release)
+    await waitForStrayRequests()
+
+    expect(i18n.language).toBe('en')
+  })
+
+  it('sends quick language changes one after the other, so the last choice wins on the account', async () => {
+    signedIn('it')
+    const received: unknown[] = []
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.patch('/api/profile', async ({ request }) => {
+        const body: unknown = await request.json()
+        received.push(body)
+        if (received.length === 1) await gate
+        return HttpResponse.json(currentUserResponse(adminUser))
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/'], { toaster: false })
+    await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+
+    await user.click(screen.getByRole('button', { name: 'Lingua: Italiano' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'English' }))
+    await user.click(screen.getByRole('button', { name: 'Language: English' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Italiano' }))
+    await waitForStrayRequests()
+    // Il secondo PATCH parte solo dopo la risposta al primo
+    expect(received).toEqual([{ locale: 'en' }])
+
+    act(release)
+    await waitFor(() => expect(received).toEqual([{ locale: 'en' }, { locale: 'it' }]))
+  })
+
+  it('confirms the language saved from the profile even after leaving the page', async () => {
+    signedIn('it')
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.patch('/api/profile', async () => {
+        await gate
+        return HttpResponse.json(currentUserResponse({ ...adminUser, locale: 'en' }))
+      }),
+    )
+    const { user, router } = renderRoutes(routes, ['/profile'], { toaster: false })
+    await screen.findByRole('heading', { level: 1, name: 'Profilo' })
+
+    await user.click(screen.getByRole('radio', { name: 'English' }))
+    await act(() => router.navigate('/'))
+    await screen.findByRole('heading', { level: 1, name: 'Hi, Giulia' })
+    act(release)
+
+    expect(await screen.findByText('Language saved.')).toBeInTheDocument()
   })
 })

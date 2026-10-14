@@ -47,7 +47,7 @@ const AppShell = () => {
   const logout = useLogout()
   const titleKey = useRouteTitleKey()
   const changeLocale = useChangeAccountLocale()
-  useSyncAccountLocale(user?.locale)
+  useSyncAccountLocale(user?.id, user?.locale)
 
   // ProtectedRoute garantisce l'utente: questo ramo copre solo l'istante del logout
   if (!user) return null

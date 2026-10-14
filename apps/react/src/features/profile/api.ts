@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { currentUserResponseSchema, type User } from '@/features/auth/api'
 import { request, requestData } from '@/lib/api'
-import type { Locale } from '@/lib/i18n'
+import { toast } from 'sonner'
+import i18n, { type Locale } from '@/lib/i18n'
 import { userQueryKey } from '@/lib/queryKeys'
 
 /** Campi di `PATCH /api/profile`, tutti facoltativi (spec fase 4 §2.2). */
@@ -18,7 +19,7 @@ export const useUpdateProfileName = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ firstName, lastName }: { firstName: string; lastName: string }) => updateProfile({ first_name: firstName, last_name: lastName }),
-    // Solo i campi del nome: la lingua in cache è quella scelta, anche se un suo salvataggio è ancora in corso
+    // Solo i campi del nome: la lingua ha il suo salvataggio, magari ancora in corso
     onSuccess: (updated) => {
       queryClient.setQueryData<User | null>(userQueryKey, (current) =>
         current ? { ...current, first_name: updated.first_name, last_name: updated.last_name, name: updated.name, session: updated.session } : current,
@@ -27,15 +28,29 @@ export const useUpdateProfileName = () => {
   })
 }
 
-/** Lingua dell'account. La cache si aggiorna prima della richiesta (vedi useAccountLocale). */
+export interface LocaleChange {
+  locale: Locale
+  /** Conferma con un toast verde (dalla pagina Profilo); dal menu in alto solo l'eventuale errore */
+  confirm: boolean
+}
+
+/**
+ * Lingua dell'account. `scope` mette i salvataggi in fila: con due cambi rapidi il secondo parte dopo la risposta al
+ * primo, così sull'account resta l'ultima scelta. Toast nelle opzioni della mutation e non di `mutate`: partono anche
+ * se chi ha cambiato lingua non è più montato (es. si è usciti dal profilo).
+ */
 export const useUpdateProfileLocale = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (locale: Locale) => updateProfile({ locale }),
-    // La risposta aggiorna solo i limiti della sessione: con due cambi rapidi una risposta in ritardo non riporta indietro la lingua
-    onSuccess: (updated) => {
-      queryClient.setQueryData<User | null>(userQueryKey, (current) => (current ? { ...current, session: updated.session } : current))
+    scope: { id: 'profile-locale' },
+    mutationFn: ({ locale }: LocaleChange) => updateProfile({ locale }),
+    onSuccess: (updated, { confirm }) => {
+      queryClient.setQueryData<User | null>(userQueryKey, (current) => (current ? { ...current, locale: updated.locale, session: updated.session } : current))
+      // i18n.t e non il t del render: il messaggio va nella lingua appena scelta
+      if (confirm) toast.success(i18n.t('profile.preferences.localeDone'))
     },
+    // Se il salvataggio fallisce l'interfaccia resta nella lingua scelta; al prossimo caricamento vince l'account
+    onError: () => toast.error(i18n.t('preferences.localeSaveError')),
   })
 }
 

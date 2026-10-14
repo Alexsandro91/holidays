@@ -1,44 +1,45 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
-import { toast } from 'sonner'
-import type { User } from '@/features/auth/api'
+import { useCallback, useEffect, useRef } from 'react'
 import { useUpdateProfileLocale } from '@/features/profile/api'
 import i18n, { setLocale, type Locale } from '@/lib/i18n'
-import { userQueryKey } from '@/lib/queryKeys'
 
 /**
- * Lingua dell'account come lingua dell'interfaccia (spec fase 4 §3.1): al caricamento con una sessione valida e dopo
- * l'accesso, se diversa da quella attiva, l'interfaccia la adotta e la salva anche nel browser.
+ * Lingua dell'account come lingua dell'interfaccia (spec fase 4 §3.1): una volta per sessione, al login o al primo
+ * caricamento, se diversa da quella attiva l'interfaccia la adotta e la salva anche nel browser. Le riletture successive
+ * dell'utente (focus della finestra, "Resta collegato") non la riportano indietro: dopo un cambio non salvato
+ * l'interfaccia resta nella lingua scelta fino al prossimo caricamento.
  */
-export const useSyncAccountLocale = (locale: Locale | undefined): void => {
+export const useSyncAccountLocale = (userId: number | undefined, locale: Locale | undefined): void => {
+  // Utente per cui la lingua è già stata applicata; si azzera quando la sessione finisce
+  const syncedUserId = useRef<number | null>(null)
+
   useEffect(() => {
-    if (locale && locale !== i18n.language) void setLocale(locale)
-  }, [locale])
+    if (userId === undefined || locale === undefined) {
+      syncedUserId.current = null
+      return
+    }
+    if (syncedUserId.current === userId) return
+    syncedUserId.current = userId
+    if (locale !== i18n.language) void setLocale(locale)
+  }, [userId, locale])
 }
 
 interface ChangeLocaleOptions {
-  onSuccess?: () => void
+  /** Toast verde a salvataggio riuscito (dalla pagina Profilo) */
+  confirm?: boolean
 }
 
 /**
  * Cambio di lingua da collegati: l'interfaccia cambia subito e la scelta si salva sull'account. Se il salvataggio
- * fallisce compare un errore e l'interfaccia resta nella lingua scelta; al caricamento successivo vince l'account.
+ * fallisce compare un errore e l'interfaccia resta nella lingua scelta (vedi useUpdateProfileLocale).
  */
 export const useChangeAccountLocale = () => {
-  const queryClient = useQueryClient()
   const { mutate } = useUpdateProfileLocale()
 
   return useCallback(
-    (locale: Locale, options: ChangeLocaleOptions = {}) => {
-      // Prima la cache: la sincronizzazione con l'account non deve riportare indietro la scelta
-      queryClient.setQueryData<User | null>(userQueryKey, (current) => (current ? { ...current, locale } : current))
+    (locale: Locale, { confirm = false }: ChangeLocaleOptions = {}) => {
       void setLocale(locale)
-      mutate(locale, {
-        onSuccess: options.onSuccess,
-        // i18n.t e non il t del render: il messaggio va nella lingua appena scelta
-        onError: () => toast.error(i18n.t('preferences.localeSaveError')),
-      })
+      mutate({ locale, confirm })
     },
-    [queryClient, mutate],
+    [mutate],
   )
 }

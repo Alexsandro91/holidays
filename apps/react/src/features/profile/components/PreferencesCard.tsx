@@ -1,11 +1,10 @@
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import ProfileCard from '@/features/profile/components/ProfileCard'
 import { useChangeAccountLocale } from '@/features/profile/useAccountLocale'
-import i18n, { isLocale, type Locale } from '@/lib/i18n'
+import { isLocale, type Locale } from '@/lib/i18n'
 
 interface LanguageOption {
   value: Locale
@@ -44,8 +43,7 @@ const PreferencesCard = () => {
           <RadioGroup
             value={locale}
             onValueChange={(value) => {
-              // Il toast di conferma è nella lingua appena scelta
-              if (isLocale(value)) changeLocale(value, { onSuccess: () => toast.success(i18n.t('profile.preferences.localeDone')) })
+              if (isLocale(value)) changeLocale(value, { confirm: true })
             }}
           >
             {LANGUAGES.map((language) => (
