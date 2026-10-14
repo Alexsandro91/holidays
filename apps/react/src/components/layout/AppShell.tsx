@@ -146,7 +146,8 @@ const AppShell = () => {
           <LanguageMenu />
           <ThemeMenu />
         </header>
-        <div className="w-full max-w-6xl flex-1 px-4 pt-6 pb-16 md:px-8 md:pt-8">
+        {/* Senza larghezza massima: le tabelle usano tutto lo spazio, le pagine di solo testo hanno la loro (es. HomePage) */}
+        <div className="w-full min-w-0 flex-1 px-4 pt-6 pb-16 md:px-8 md:pt-8">
           {/* Pagine caricate a richiesta (vedi routes.tsx): il loader resta dentro il layout */}
           <Suspense fallback={<FullPageLoader className="min-h-60" />}>
             <Outlet />

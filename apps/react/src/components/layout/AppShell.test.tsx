@@ -128,6 +128,17 @@ describe('AppShell', () => {
     expect(users).toHaveAttribute('data-active', 'false')
   })
 
+  it('lets the pages use the full width and keeps a reading width on the home page', async () => {
+    signedIn()
+    renderRoutes(routes, ['/'], { toaster: false })
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
+    // Il contenuto dell'area riservata non ha più un limite: le tabelle usano tutta la larghezza
+    expect(screen.getByRole('main').querySelector('.max-w-6xl')).toBeNull()
+    // Le pagine di solo testo tengono una larghezza di lettura propria
+    expect(heading.closest('.max-w-3xl')).not.toBeNull()
+  })
+
   it('logging out drops every cached admin query', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))

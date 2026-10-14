@@ -8,7 +8,8 @@ const PrivacyPage = () => {
   const { t } = useTranslation()
 
   return (
-    <>
+    // Larghezza di lettura propria, qualunque sia il layout che la contiene
+    <div className="max-w-prose">
       <PageHeading title={t('privacy.title')} />
       <div className="grid gap-4">
         <p className="text-[15px] leading-relaxed">{t('privacy.placeholder')}</p>
@@ -20,7 +21,7 @@ const PrivacyPage = () => {
           </Link>
         </Button>
       </div>
-    </>
+    </div>
   )
 }
 

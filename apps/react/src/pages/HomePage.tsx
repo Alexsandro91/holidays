@@ -10,7 +10,8 @@ const HomePage = () => {
   const firstName = user?.name.split(' ')[0] ?? ''
 
   return (
-    <div className="grid gap-6">
+    // Larghezza di lettura: il contenuto della shell occupa tutto lo spazio disponibile
+    <div className="grid max-w-3xl gap-6">
       <PageHeading title={t('home.greeting', { name: firstName })} description={t('home.subtitle')} />
       <Card>
         <CardContent className="flex items-start gap-3">
