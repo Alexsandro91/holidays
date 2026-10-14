@@ -3,7 +3,8 @@ import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
-import { userQueryKey } from '@/lib/queryKeys'
+import { sessionEndKey, userQueryKey } from '@/lib/queryKeys'
+import { rememberedSessionEnd } from '@/lib/sessionEnd'
 import { expectNoA11yViolations } from '@/test/axe'
 import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
@@ -72,6 +73,17 @@ describe('VerifyCodePage', () => {
     expect(await screen.findByText('home-page')).toBeInTheDocument()
     expect(bodies).toEqual([{ code: '482913' }])
     expect(queryClient.getQueryData(userQueryKey)).toMatchObject({ email: 'admin@holidays.test' })
+  })
+
+  it('forgets why the previous session ended once the new one starts', async () => {
+    acceptCode(() => undefined)
+    const { user, queryClient } = renderRoutes(routes, [entry])
+    queryClient.setQueryData(sessionEndKey, 'disabled')
+
+    await user.type(await screen.findByLabelText('Codice di verifica'), '482913')
+
+    expect(await screen.findByText('home-page')).toBeInTheDocument()
+    expect(rememberedSessionEnd(queryClient)).toBeNull()
   })
 
   it('never sends an accepted code again while the next page is loading', async () => {

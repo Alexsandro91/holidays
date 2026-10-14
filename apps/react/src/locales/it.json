@@ -34,6 +34,7 @@
     "noAccount": "Non hai un account? Chiedi un invito all’ufficio HR.",
     "notice": {
       "expired": "Sessione scaduta. Accedi di nuovo.",
+      "disabled": "Il tuo account è stato disattivato. Per informazioni rivolgiti all’amministratore.",
       "logged-out": "Sei uscito. A presto.",
       "restart": "Per sicurezza ricomincia l’accesso."
     },

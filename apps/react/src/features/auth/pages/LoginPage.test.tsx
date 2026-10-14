@@ -168,6 +168,12 @@ describe('LoginPage', () => {
     expect(await screen.findByText('Sessione scaduta. Accedi di nuovo.')).toBeInTheDocument()
   })
 
+  it('tells a disabled user to contact the administrator', async () => {
+    renderRoutes(routes, ['/login?reason=disabled'])
+
+    expect(await screen.findByText('Il tuo account è stato disattivato. Per informazioni rivolgiti all’amministratore.')).toBeInTheDocument()
+  })
+
   it('links to the forgot password page carrying the typed email', async () => {
     const { user, router } = renderRoutes(routes, ['/login'])
 

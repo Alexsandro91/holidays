@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { isApiError, request, requestData } from '@/lib/api'
 import { isUserQuery, userQueryKey } from '@/lib/queryKeys'
+import { forgetSessionEnd } from '@/lib/sessionEnd'
 
 export const userSchema = z.object({
   id: z.number(),
@@ -43,6 +44,7 @@ export const useVerifyCode = () => {
   return useMutation({
     mutationFn: async (code: string) => (await requestData('POST', '/api/auth/two-factor', userResponseSchema, { code })).data,
     onSuccess: (user) => {
+      forgetSessionEnd(queryClient)
       queryClient.setQueryData(userQueryKey, user)
     },
   })

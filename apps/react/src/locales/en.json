@@ -34,6 +34,7 @@
     "noAccount": "No account yet? Ask HR for an invitation.",
     "notice": {
       "expired": "Your session expired. Please sign in again.",
+      "disabled": "Your account has been disabled. For more information, contact your administrator.",
       "logged-out": "You signed out. See you soon.",
       "restart": "For your security, please sign in again."
     },

@@ -4,6 +4,7 @@ import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import GuestRoute from '@/features/auth/GuestRoute'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
+import { ApiError } from '@/lib/api'
 import { userQueryKey } from '@/lib/queryKeys'
 import { adminUser } from '@/test/fixtures'
 import { renderRoutes } from '@/test/render'
@@ -63,6 +64,42 @@ describe('route guards', () => {
 
     expect(await screen.findByText('login-page')).toBeInTheDocument()
     expect(router.state.location.search).toBe('?redirect=%2Fadmin&reason=expired')
+  })
+
+  it('tells a disabled user why they are back at the login, even after a reload', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ message: 'Unauthenticated.', meta: { reason: 'account_disabled' } }, { status: 401 })))
+    const { router } = renderRoutes(routes, ['/admin'])
+
+    expect(await screen.findByText('login-page')).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?redirect=%2Fadmin&reason=disabled')
+  })
+
+  it('marks the session as expired after a reload when the server says so', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ message: 'Unauthenticated.', meta: { reason: 'session_expired' } }, { status: 401 })))
+    const { router } = renderRoutes(routes, ['/'])
+
+    expect(await screen.findByText('login-page')).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?redirect=%2F&reason=expired')
+  })
+
+  it('keeps the reason of a 401 received by another request', async () => {
+    signedIn()
+    const { router, queryClient } = renderRoutes(routes, ['/admin'])
+    await screen.findByText('admin-page')
+
+    // La sessione è già chiusa: il nuovo controllo dell'utente risponde 401 senza motivo
+    server.use(http.get('/api/auth/user', () => HttpResponse.json({ message: 'Unauthenticated.' }, { status: 401 })))
+    await act(async () => {
+      await queryClient
+        .fetchQuery({
+          queryKey: ['admin', 'users'],
+          queryFn: () => Promise.reject(new ApiError({ status: 401, kind: 'unauthenticated', message: 'Unauthenticated.', meta: { reason: 'account_disabled' } })),
+        })
+        .catch(() => undefined)
+    })
+
+    expect(await screen.findByText('login-page')).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?redirect=%2Fadmin&reason=disabled')
   })
 
   it('shows the signed-out notice after a logout', async () => {
