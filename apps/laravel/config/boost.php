@@ -35,6 +35,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Agents
+    |--------------------------------------------------------------------------
+    |
+    | Le linee guida di Boost vanno solo in AGENTS.md: CLAUDE.md contiene le
+    | regole di progetto e le importa con @AGENTS.md. Senza questa opzione
+    | Boost le aggiunge in fondo a CLAUDE.md quando il file esiste.
+    |
+    */
+
+    'agents' => [
+        'claude_code' => [
+            'guidelines_path' => 'AGENTS.md',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Excluded Guidelines
     |--------------------------------------------------------------------------
     |
