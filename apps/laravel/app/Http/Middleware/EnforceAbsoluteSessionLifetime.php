@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AuthErrorReason;
 use App\Support\AuthSession;
 use App\Support\Translate;
 use Closure;
@@ -25,7 +26,10 @@ final class EnforceAbsoluteSessionLifetime
             } elseif (now()->getTimestamp() - $loggedInAt > (int) config('session.absolute_lifetime') * 60) {
                 AuthSession::end($request);
 
-                return response()->json(['message' => Translate::text('login.session_expired')], Response::HTTP_UNAUTHORIZED);
+                return response()->json([
+                    'message' => Translate::text('login.session_expired'),
+                    'meta' => ['reason' => AuthErrorReason::SessionExpired->value],
+                ], Response::HTTP_UNAUTHORIZED);
             }
         }
 

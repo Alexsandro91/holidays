@@ -14,7 +14,9 @@ class CurrentUserTest extends TestCase
     {
         $this->getJson('/api/auth/user')
             ->assertUnauthorized()
-            ->assertJsonStructure(['message']);
+            ->assertJsonStructure(['message'])
+            // Il 401 generico (nessuna sessione) non ha un motivo
+            ->assertJsonMissingPath('meta');
     }
 
     public function test_authenticated_users_receive_their_own_resource(): void

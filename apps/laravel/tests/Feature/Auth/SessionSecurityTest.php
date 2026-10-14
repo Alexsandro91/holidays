@@ -19,7 +19,7 @@ class SessionSecurityTest extends TestCase
         $this->actingAs($user)
             ->getJson('/api/auth/user')
             ->assertUnauthorized()
-            ->assertJsonPath('message', __('login.session_ended'));
+            ->assertExactJson(['message' => __('login.session_ended'), 'meta' => ['reason' => 'account_disabled']]);
     }
 
     public function test_the_session_expires_twelve_hours_after_login(): void
@@ -31,7 +31,7 @@ class SessionSecurityTest extends TestCase
             ->withSession([AuthSession::LOGGED_IN_AT => now()->subHours(12)->subMinute()->getTimestamp()])
             ->getJson('/api/auth/user')
             ->assertUnauthorized()
-            ->assertJsonPath('message', __('login.session_expired'));
+            ->assertExactJson(['message' => __('login.session_expired'), 'meta' => ['reason' => 'session_expired']]);
     }
 
     public function test_a_session_younger_than_twelve_hours_is_valid(): void

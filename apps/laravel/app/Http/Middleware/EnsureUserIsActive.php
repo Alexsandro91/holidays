@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AuthErrorReason;
 use App\Models\User;
 use App\Support\AuthSession;
 use App\Support\Translate;
@@ -21,7 +22,10 @@ final class EnsureUserIsActive
         if ($user instanceof User && ! $user->isActive()) {
             AuthSession::end($request);
 
-            return response()->json(['message' => Translate::text('login.session_ended')], Response::HTTP_UNAUTHORIZED);
+            return response()->json([
+                'message' => Translate::text('login.session_ended'),
+                'meta' => ['reason' => AuthErrorReason::AccountDisabled->value],
+            ], Response::HTTP_UNAUTHORIZED);
         }
 
         return $next($request);
