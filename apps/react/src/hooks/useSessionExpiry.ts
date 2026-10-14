@@ -64,7 +64,9 @@ export const useSessionExpiry = (session: SessionLimits | undefined, { renewing 
   // Timer unico verso il prossimo passaggio: apertura dell'avviso, poi scadenza. Si riarma a ogni aggiornamento di
   // `now`: se scatta prima del bersaglio (orologio di sistema corretto all'indietro, deriva dei timer) riparte da solo
   useEffect(() => {
-    if (deadline === null) return
+    // Oltre lo zero il timer non serve: la fine sessione la decide l'effetto su `stage` e `renewing`, e il conto lo
+    // aggiorna il tick. Senza questa uscita, con "Resta collegato" in volo, si riarmerebbe a 0 ms di continuo
+    if (deadline === null || now >= deadline) return
     const current = Date.now()
     const warningAt = deadline - SESSION_WARNING_MS
     const target = current < warningAt ? warningAt : deadline

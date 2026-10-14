@@ -133,6 +133,38 @@ describe('SessionExpiryDialog', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Ciao, Giulia' })).toBeInTheDocument()
   })
 
+  it('does not spin the timer while "Stay signed in" waits past the deadline', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let reads = 0
+    server.use(
+      http.get('/api/auth/user', async () => {
+        reads += 1
+        if (reads > 1) await gate
+        return HttpResponse.json(currentUserResponse(adminUser))
+      }),
+    )
+    const { user } = await openHome()
+
+    await advance(119 * MINUTE + 58_000)
+    await user.click(await screen.findByRole('button', { name: 'Resta collegato' }))
+    await advance(5000)
+    const spy = vi.spyOn(window, 'setTimeout')
+    // Il rinnovo resta in volo oltre lo zero: ogni millisecondo dell'orologio di sistema non deve riarmare un timer
+    for (let step = 0; step < 30; step += 1) {
+      vi.setSystemTime(Date.now() + 1)
+      await advance(0)
+    }
+    const zeroDelay = spy.mock.calls.filter(([, delay]) => delay === 0).length
+    spy.mockRestore()
+
+    expect(zeroDelay).toBeLessThan(5)
+    act(release)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  })
+
   it('ends the session normally when the renewal answers 401', async () => {
     let reads = 0
     server.use(
