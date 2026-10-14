@@ -2,10 +2,13 @@
 
 namespace App\Support;
 
+use App\Enums\AuthErrorReason;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Chiavi di sessione del flusso di accesso.
@@ -58,6 +61,19 @@ final class AuthSession
         }
 
         return max(0, $total - (now()->getTimestamp() - $loggedInAt));
+    }
+
+    /**
+     * Risposta 401 per un account disattivato: chiude la sessione corrente (EnsureUserIsActive e servizi del profilo).
+     */
+    public static function disabledResponse(Request $request): JsonResponse
+    {
+        self::end($request);
+
+        return response()->json([
+            'message' => Translate::text('login.session_ended'),
+            'meta' => ['reason' => AuthErrorReason::AccountDisabled->value],
+        ], Response::HTTP_UNAUTHORIZED);
     }
 
     /**

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Enums\AuthEventType;
 use App\Models\LoginChallenge;
 use App\Models\User;
+use App\Support\AuthSession;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -28,8 +30,14 @@ final class ProfileService
      */
     public function update(User $user, array $data, Request $request): User
     {
-        return DB::transaction(function () use ($user, $data, $request): User {
+        $fresh = DB::transaction(function () use ($user, $data, $request): User {
             $fresh = User::query()->lockForUpdate()->findOrFail($user->id);
+
+            // Disattivato dopo il middleware: nessun salvataggio (la risposta la dà il chiamante, fuori dalla transazione)
+            if (! $fresh->isActive()) {
+                return $fresh;
+            }
+
             $fresh->fill($data);
             $changedFields = array_values(array_intersect(array_keys($fresh->getDirty()), ['first_name', 'last_name']));
 
@@ -45,17 +53,25 @@ final class ProfileService
 
             return $fresh;
         }, self::TRANSACTION_ATTEMPTS);
+
+        return $this->ensureActive($fresh, $request);
     }
 
     /**
      * Nuova password: chiude le altre sessioni (non quella corrente) e i login in attesa del codice, annulla i link di
-     * recupero, registra l'evento e avvisa l'utente nella sua lingua dopo il commit. Rigenerare l'id della sessione
-     * corrente tocca al chiamante.
+     * recupero, registra l'evento e avvisa l'utente nella sua lingua dopo il commit. Restituisce l'utente aggiornato:
+     * il chiamante lo mette nel guard e rigenera l'id della sessione.
      */
-    public function changePassword(User $user, #[\SensitiveParameter] string $password, Request $request): void
+    public function changePassword(User $user, #[\SensitiveParameter] string $password, Request $request): User
     {
-        DB::transaction(function () use ($user, $password, $request): void {
+        $fresh = DB::transaction(function () use ($user, $password, $request): User {
             $fresh = User::query()->lockForUpdate()->findOrFail($user->id);
+
+            // Disattivato dopo il middleware: niente cambio, niente email
+            if (! $fresh->isActive()) {
+                return $fresh;
+            }
+
             $fresh->forceFill(['password' => $password])->save();
 
             DB::table((string) config('session.table', 'sessions'))
@@ -68,6 +84,22 @@ final class ProfileService
             $this->passwordResets->forgetResetTokens($fresh);
             $this->events->log(AuthEventType::PasswordChanged, $request, $fresh, $fresh);
             $this->passwordResets->queueChangedMail($fresh, $request);
+
+            return $fresh;
         }, self::TRANSACTION_ATTEMPTS);
+
+        return $this->ensureActive($fresh, $request);
+    }
+
+    /**
+     * Utente non più attivo: stessa risposta 401 `account_disabled` del middleware, con la sessione chiusa.
+     */
+    private function ensureActive(User $fresh, Request $request): User
+    {
+        if (! $fresh->isActive()) {
+            throw new HttpResponseException(AuthSession::disabledResponse($request));
+        }
+
+        return $fresh;
     }
 }

@@ -3,17 +3,23 @@
 namespace Tests\Feature\Profile;
 
 use App\Enums\AuthEventType;
+use App\Enums\UserStatus;
 use App\Mail\PasswordChangedMail;
 use App\Models\AuthEvent;
 use App\Models\LoginChallenge;
 use App\Models\User;
+use App\Services\ProfileService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Session\ArraySessionHandler;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\CompletesLogin;
 use Tests\TestCase;
 
 /**
@@ -21,7 +27,7 @@ use Tests\TestCase;
  */
 class ChangePasswordTest extends TestCase
 {
-    use RefreshDatabase;
+    use CompletesLogin, RefreshDatabase;
 
     private const NEW_PASSWORD = 'una-password-nuova-lunga';
 
@@ -94,11 +100,9 @@ class ChangePasswordTest extends TestCase
         $this->assertDatabaseMissing('sessions', ['id' => 'other-device-2']);
         $this->assertDatabaseHas('sessions', ['id' => 'someone-else']);
         $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
-        // L'utente resta collegato
-        $this->getJson('/api/auth/user')->assertOk()->assertJsonPath('data.id', $user->id);
     }
 
-    public function test_the_session_id_is_regenerated_and_the_user_stays_logged_in(): void
+    public function test_the_session_id_is_regenerated(): void
     {
         $user = User::factory()->create();
 
@@ -108,7 +112,51 @@ class ChangePasswordTest extends TestCase
         $this->putJson('/api/profile/password', $this->payload())->assertNoContent();
 
         $this->assertNotSame($before, session()->getId());
-        $this->getJson('/api/auth/user')->assertOk();
+    }
+
+    public function test_the_user_stays_logged_in_with_a_real_session_after_the_change(): void
+    {
+        $user = User::factory()->create();
+        $this->fromFrontend()->completeLogin($user);
+        Mail::fake();
+
+        $this->app['auth']->forgetGuards();
+        $this->putJson('/api/profile/password', $this->payload())->assertNoContent();
+
+        // Richiesta successiva in un altro "processo": il guard ricarica l'utente dal DB
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/auth/user')->assertOk()->assertJsonPath('data.id', $user->id);
+    }
+
+    public function test_the_service_deletes_other_sessions_but_not_the_current_one(): void
+    {
+        $user = User::factory()->create();
+        $currentId = str_repeat('c', 40);
+        $this->insertSession('other-device', $user->id);
+        $this->insertSession($currentId, $user->id);
+        $request = Request::create('/');
+        $session = new Store('test', new ArraySessionHandler(120), $currentId);
+        $request->setLaravelSession($session);
+
+        app(ProfileService::class)->changePassword($user, self::NEW_PASSWORD, $request);
+
+        $this->assertDatabaseMissing('sessions', ['id' => 'other-device']);
+        $this->assertDatabaseHas('sessions', ['id' => $currentId]);
+    }
+
+    public function test_a_user_disabled_in_the_meantime_gets_the_disabled_response_and_nothing_happens(): void
+    {
+        $user = User::factory()->create();
+        $stale = User::query()->findOrFail($user->id);
+        $user->forceFill(['status' => UserStatus::Disabled])->save();
+
+        $this->actingAs($stale)->fromFrontend()->putJson('/api/profile/password', $this->payload())
+            ->assertUnauthorized()
+            ->assertJsonPath('meta.reason', 'account_disabled');
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
+        $this->assertSame(0, AuthEvent::query()->where('event', AuthEventType::PasswordChanged)->count());
+        Mail::assertNothingQueued();
     }
 
     public function test_the_event_is_recorded_and_the_mail_is_queued_in_the_user_language(): void
@@ -138,6 +186,8 @@ class ChangePasswordTest extends TestCase
         $mail = new PasswordChangedMail('Mozilla/5.0', now());
 
         $mail->assertSeeInText('Se non sei stato tu');
+        $mail->assertSeeInText('usa Password dimenticata');
+        $mail->assertSeeInText('amministratore');
     }
 
     public function test_a_wrong_current_password_is_422_and_logs_the_failure(): void
@@ -172,13 +222,17 @@ class ChangePasswordTest extends TestCase
 
     public function test_the_counter_is_shared_with_the_admin_actions(): void
     {
-        $user = User::factory()->admin()->create();
-        RateLimiter::hit('admin-password:'.$user->id, 900);
-        RateLimiter::hit('admin-password:'.$user->id, 900);
-        RateLimiter::hit('admin-password:'.$user->id, 900);
-        RateLimiter::hit('admin-password:'.$user->id, 900);
-        $this->actingAs($user)->fromFrontend();
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)->fromFrontend();
 
+        // Quattro errori da un'azione admin vera (invito di un nuovo amministratore)
+        for ($i = 0; $i < 4; $i++) {
+            $this->postJson('/api/administrators/invitations', [
+                'first_name' => 'Nuovo', 'last_name' => 'Admin', 'email' => "nuovo{$i}@example.test", 'current_password' => 'sbagliata',
+            ])->assertUnprocessable();
+        }
+
+        // Il quinto errore arriva dal profilo, il successivo è bloccato
         $this->putJson('/api/profile/password', $this->payload(['current_password' => 'sbagliata']))->assertUnprocessable();
         $this->putJson('/api/profile/password', $this->payload())->assertTooManyRequests();
     }

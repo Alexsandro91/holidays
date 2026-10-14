@@ -18,7 +18,7 @@ return [
             'subject' => 'Your Holidays password was changed',
             'heading' => 'Password changed',
             'intro' => 'The password of your account was changed from :device on :date. For your security we signed out every other open session.',
-            'not_you' => 'If this wasn’t you, ask for a new link from the sign-in page right away and tell HR.',
+            'not_you' => 'If this wasn’t you, use Forgot password on the sign-in page and tell an administrator.',
         ],
     ],
 ];

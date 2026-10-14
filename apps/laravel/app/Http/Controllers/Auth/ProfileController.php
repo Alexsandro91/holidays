@@ -11,6 +11,7 @@ use App\Services\ProfileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
@@ -31,7 +32,11 @@ final class ProfileController extends Controller
 
     public function password(ChangePasswordRequest $request, ProfileService $profile): Response
     {
-        $profile->changePassword($this->currentUser($request), $request->string('password')->value(), $request);
+        $updated = $profile->changePassword($this->currentUser($request), $request->string('password')->value(), $request);
+
+        // AuthenticateSession salva in sessione l'hash dell'utente del guard: deve essere quello nuovo, altrimenti
+        // la richiesta successiva scollega chi ha appena cambiato la password
+        Auth::guard('web')->setUser($updated);
 
         // Nuovo id di sessione dopo il commit: l'utente resta collegato, il vecchio id non vale più
         if ($request->hasSession()) {
