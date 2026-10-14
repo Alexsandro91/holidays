@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -23,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi();
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
+        // `guest` con risposta 409 JSON per le chiamate API di chi ha già una sessione
+        $middleware->alias(['guest' => RedirectIfAuthenticated::class]);
         $middleware->append(SecurityHeaders::class);
         $middleware->appendToGroup('web', SetLocale::class);
         $middleware->appendToGroup('api', [

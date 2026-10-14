@@ -8,6 +8,7 @@ return [
     'resent' => 'New code sent.',
     'session_expired' => 'Your session expired. Please sign in again.',
     'session_ended' => 'Your session has ended. Please sign in again.',
+    'already_authenticated' => 'You already have an open session',
     'device' => ':browser on :os',
     'unknown_browser' => 'unknown browser',
     'unknown_os' => 'unknown system',
