@@ -130,6 +130,64 @@ describe('SessionExpiryDialog', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
+  it('still ends the session at the absolute deadline after "Got it"', async () => {
+    signedIn({ absolute: 30 * 60 })
+    const { user, router } = await openHome()
+
+    await advance(28 * MINUTE + 1000)
+    await user.click(await screen.findByRole('button', { name: 'Ho capito' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    // Orologio di sistema un po' indietro rispetto ai timer: lo scatto anticipato non deve fermare la scadenza
+    vi.setSystemTime(Date.now() - 2000)
+
+    await advance(2 * MINUTE)
+    await advance(5000)
+
+    expect(await screen.findByText('Sessione scaduta. Accedi di nuovo.')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+  })
+
+  it('rearms the timer when it fires before the wall clock reaches the target', async () => {
+    signedIn()
+    await openHome()
+    // Correzione NTP all'indietro dopo che il timer è stato armato
+    vi.setSystemTime(Date.now() - 2000)
+
+    await advance(118 * MINUTE + 1000)
+    await advance(5000)
+
+    expect(await screen.findByRole('alertdialog', { name: 'La sessione sta per scadere' })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['visibilitychange', () => document.dispatchEvent(new Event('visibilitychange'))],
+    ['focus', () => window.dispatchEvent(new Event('focus'))],
+    ['pageshow', () => window.dispatchEvent(new Event('pageshow'))],
+  ])('ends the session on %s after a sleep past the deadline', async (_event, wake) => {
+    const reads = signedIn()
+    const { router } = await openHome()
+
+    // Sospensione: l'orologio di sistema va avanti di 3 ore, i timer del browser no
+    vi.setSystemTime(Date.now() + 180 * MINUTE)
+    act(wake)
+
+    expect(await screen.findByText('Sessione scaduta. Accedi di nuovo.')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+    expect(reads.count).toBe(1)
+  })
+
+  it('opens the warning on wake-up within the last two minutes', async () => {
+    signedIn()
+    await openHome()
+
+    vi.setSystemTime(Date.now() + 119 * MINUTE)
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    expect(await screen.findByRole('alertdialog', { name: 'La sessione sta per scadere' })).toBeInTheDocument()
+  })
+
   it('ends the session at the deadline without calling the server and offers the way back', async () => {
     const reads = signedIn()
     const { router } = renderRoutes(routes, ['/profile'], { toaster: false, advanceTimers: (delay) => vi.advanceTimersByTime(delay) })

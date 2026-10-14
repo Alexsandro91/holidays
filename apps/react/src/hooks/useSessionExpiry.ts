@@ -38,7 +38,8 @@ export interface SessionExpiry {
 /**
  * Scadenza della sessione vista dal client: ultima attività + inattività ammessa, oppure durata assoluta. Un solo
  * `setTimeout` porta al prossimo passaggio (apertura dell'avviso o scadenza) e si ricalcola quando cambiano ultima
- * attività o scadenza; alla scadenza la sessione si chiude come per un 401 `session_expired`, senza chiamare il server.
+ * attività o scadenza, a ogni scatto e al risveglio della pagina. Alla scadenza la sessione si chiude come per un 401
+ * `session_expired`, senza chiamare il server.
  */
 export const useSessionExpiry = (session: SessionLimits | undefined): SessionExpiry => {
   const queryClient = useQueryClient()
@@ -54,7 +55,8 @@ export const useSessionExpiry = (session: SessionLimits | undefined): SessionExp
   const dismissed = kind === 'absolute' && deadline !== null && dismissedDeadline !== null && Math.abs(deadline - dismissedDeadline) < SAME_DEADLINE_MS
   const open = stage === 'warning' && !dismissed
 
-  // Timer unico verso il prossimo passaggio: apertura dell'avviso, poi scadenza
+  // Timer unico verso il prossimo passaggio: apertura dell'avviso, poi scadenza. Si riarma a ogni aggiornamento di
+  // `now`: se scatta prima del bersaglio (orologio di sistema corretto all'indietro, deriva dei timer) riparte da solo
   useEffect(() => {
     if (deadline === null) return
     const current = Date.now()
@@ -62,7 +64,23 @@ export const useSessionExpiry = (session: SessionLimits | undefined): SessionExp
     const target = current < warningAt ? warningAt : deadline
     const id = window.setTimeout(() => setNow(Date.now()), Math.max(0, target - current))
     return () => window.clearTimeout(id)
-  }, [deadline, stage])
+  }, [deadline, now])
+
+  // Risveglio dopo una sospensione: i timer del browser non contano il tempo trascorso, si ricalcola subito
+  useEffect(() => {
+    if (deadline === null) return
+    const refresh = () => {
+      if (document.visibilityState === 'visible') setNow(Date.now())
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    window.addEventListener('pageshow', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('pageshow', refresh)
+    }
+  }, [deadline])
 
   // Conto alla rovescia visibile: solo mentre l'avviso è aperto
   useEffect(() => {
