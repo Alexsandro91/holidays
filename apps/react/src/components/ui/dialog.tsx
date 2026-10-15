@@ -123,6 +123,7 @@ function DialogFooter({
   )
 }
 
+// pr-10: un titolo lungo va a capo prima della X di chiusura (in alto a destra) invece di finirci sotto
 function DialogTitle({
   className,
   ...props
@@ -131,7 +132,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-heading text-lg leading-tight font-semibold",
+        "pr-10 font-heading text-lg leading-tight font-semibold wrap-break-word",
         className
       )}
       {...props}
