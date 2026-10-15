@@ -804,6 +804,10 @@ describe('AdministratorsPage', () => {
     await user.click(trigger)
     const dialog = await screen.findByRole('dialog', { name: 'Modifica Bruno Admin' })
     expect(within(dialog).getByLabelText('Email aziendale')).toHaveAttribute('readonly')
+    // Per un admin il ruolo non si cambia da qui (è una revoca): la nota non lo suggerisce
+    expect(within(dialog).getByRole('radio', { name: 'Stagista' })).toBeDisabled()
+    expect(within(dialog).getByText('Un amministratore non può essere stagista.')).toBeInTheDocument()
+    expect(within(dialog).queryByText(/prima cambia il ruolo/)).not.toBeInTheDocument()
     await user.clear(within(dialog).getByLabelText('Nome'))
     await user.type(within(dialog).getByLabelText('Nome'), 'Brunello')
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')

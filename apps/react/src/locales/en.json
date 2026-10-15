@@ -146,6 +146,7 @@
     "titleWithLocation": "Users · {{location}}",
     "internRoleOnly": "An intern can only be a User.",
     "internNeedsUserRole": "An intern can only be a User: change the role first.",
+    "internNotAdmin": "An administrator cannot be an intern.",
     "invite": "Invite user",
     "filters": {
       "label": "Search and filter users",
@@ -463,8 +464,8 @@
         "done": "{{name}} archived.",
         "blockedTitle": "You cannot archive {{name}}",
         "blockedPrimary": "It is the primary location: make another location primary first.",
-        "blockedUsers_one": "{{count}} person still works here: move them to another location first.",
-        "blockedUsers_other": "{{count}} people still work here: move them to another location first.",
+        "blockedUsers_one": "{{count}} person still works here, counting administrators: move them to another location first.",
+        "blockedUsers_other": "{{count}} people still work here, administrators included: move them to another location first.",
         "understood": "Got it"
       },
       "restore": {

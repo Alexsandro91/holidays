@@ -222,7 +222,12 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
               </RadioGroup>
             )}
           />
-          {!internAllowed && <FieldDescription id="edit-employment-type-note">{t('users.internNeedsUserRole')}</FieldDescription>}
+          {!internAllowed && (
+            <FieldDescription id="edit-employment-type-note">
+              {/* Per un admin il cambio di ruolo è una revoca dalla pagina Amministratori: non lo si suggerisce */}
+              {user.role === 'admin' ? t('users.internNotAdmin') : t('users.internNeedsUserRole')}
+            </FieldDescription>
+          )}
           <FieldError id="edit-employment-type-error">{errors.employmentType?.message}</FieldError>
         </FieldSet>
         {showLocation && (

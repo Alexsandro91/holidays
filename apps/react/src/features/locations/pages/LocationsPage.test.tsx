@@ -160,6 +160,17 @@ describe('LocationsPage', () => {
     expect(calls).toBe(0)
   })
 
+  it('says that the people blocking the archive include the administrators', async () => {
+    listing(undefined, [milano, { ...bergamo, users_count: 3 }])
+    const { user } = renderRoutes(routes, ['/admin/locations'])
+
+    await user.click(within(await row('Bergamo')).getByRole('button', { name: 'Azioni per Bergamo' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Archivia' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Non puoi archiviare Bergamo' })
+    // Il conteggio comprende gli admin, che la lista Utenti non mostra
+    expect(within(dialog).getByText('Ha ancora 3 persone, amministratori compresi: spostale prima in un’altra sede.')).toBeInTheDocument()
+  })
+
   it('archives an empty location and restores an archived one', async () => {
     listing()
     const posted: string[] = []

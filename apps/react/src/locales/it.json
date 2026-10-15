@@ -146,6 +146,7 @@
     "titleWithLocation": "Utenti · {{location}}",
     "internRoleOnly": "Uno stagista può essere solo Utente.",
     "internNeedsUserRole": "Uno stagista può essere solo Utente: prima cambia il ruolo.",
+    "internNotAdmin": "Un amministratore non può essere stagista.",
     "invite": "Invita utente",
     "filters": {
       "label": "Cerca e filtra gli utenti",
@@ -463,8 +464,8 @@
         "done": "{{name}} archiviata.",
         "blockedTitle": "Non puoi archiviare {{name}}",
         "blockedPrimary": "È la sede principale: scegli prima un’altra sede come principale.",
-        "blockedUsers_one": "Ha ancora {{count}} persona: spostala prima in un’altra sede.",
-        "blockedUsers_other": "Ha ancora {{count}} persone: spostale prima in un’altra sede.",
+        "blockedUsers_one": "Ha ancora {{count}} persona, contando gli amministratori: spostala prima in un’altra sede.",
+        "blockedUsers_other": "Ha ancora {{count}} persone, amministratori compresi: spostale prima in un’altra sede.",
         "understood": "Ho capito"
       },
       "restore": {
