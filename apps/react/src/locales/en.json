@@ -448,6 +448,7 @@
     "description": "Applies to people of this location without personal working hours.",
     "change": "Change hours",
     "since": "From {{date}}",
+    "loadError": "The working hours versions could not be loaded.",
     "none": "No working hours set.",
     "weekdays": { "monday": "Monday", "tuesday": "Tuesday", "wednesday": "Wednesday", "thursday": "Thursday", "friday": "Friday", "saturday": "Saturday", "sunday": "Sunday" },
     "weekdaysShort": { "monday": "Mon", "tuesday": "Tue", "wednesday": "Wed", "thursday": "Thu", "friday": "Fri", "saturday": "Sat", "sunday": "Sun" },

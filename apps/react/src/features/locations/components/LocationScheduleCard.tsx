@@ -64,7 +64,14 @@ const LocationScheduleCard = ({ location }: LocationScheduleCardProps) => {
         )}
         {schedules.isPending ? (
           <Skeleton className="h-20 w-full" />
-        ) : schedules.isError ? null : (
+        ) : schedules.isError ? (
+          <div role="alert" className="grid justify-items-start gap-2">
+            <p>{t('schedule.loadError')}</p>
+            <Button variant="outline" onClick={() => void schedules.refetch()}>
+              {t('common.retry')}
+            </Button>
+          </div>
+        ) : (
           <ScheduleVersionsList
             schedules={schedules.data}
             onDelete={(schedule) => {

@@ -448,6 +448,7 @@
     "description": "Vale per chi lavora in questa sede senza un orario personale.",
     "change": "Cambia orario",
     "since": "Dal {{date}}",
+    "loadError": "Non è stato possibile caricare le versioni dell’orario.",
     "none": "Nessun orario impostato.",
     "weekdays": { "monday": "Lunedì", "tuesday": "Martedì", "wednesday": "Mercoledì", "thursday": "Giovedì", "friday": "Venerdì", "saturday": "Sabato", "sunday": "Domenica" },
     "weekdaysShort": { "monday": "Lun", "tuesday": "Mar", "wednesday": "Mer", "thursday": "Gio", "friday": "Ven", "saturday": "Sab", "sunday": "Dom" },

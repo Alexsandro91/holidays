@@ -139,6 +139,22 @@ describe('LocationDetailPage', () => {
     expect(await within(section as HTMLElement).findByText('Riposo settimanale · Pasqua')).toBeInTheDocument()
   })
 
+  it('shows an alert when the schedule versions fail to load and recovers on retry', async () => {
+    detail()
+    server.use(http.get('/api/locations/1/schedules', () => HttpResponse.json({ message: 'x' }, { status: 500 })))
+    const { user } = renderRoutes(routes, ['/admin/locations/1'])
+
+    await screen.findByRole('heading', { level: 1, name: 'Sede principale' })
+    const hours = card('Orario standard')
+    expect(await within(hours).findByText('Non è stato possibile caricare le versioni dell’orario.')).toBeInTheDocument()
+
+    server.use(http.get('/api/locations/1/schedules', () => HttpResponse.json({ data: [schedule({ id: 4, valid_from: '2099-01-01', is_started: false }), schedule()] })))
+    await user.click(within(hours).getByRole('button', { name: 'Riprova' }))
+
+    expect(await within(hours).findByText('In arrivo')).toBeInTheDocument()
+    expect(within(hours).queryByText('Non è stato possibile caricare le versioni dell’orario.')).not.toBeInTheDocument()
+  })
+
   it('changes the schedule from a future day and refuses past days and empty weeks', async () => {
     detail()
     let body: unknown = null
