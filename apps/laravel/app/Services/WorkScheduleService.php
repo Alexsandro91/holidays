@@ -137,7 +137,8 @@ final class WorkScheduleService
     }
 
     /**
-     * La request controlla già la data: qui si riverifica sulle righe bloccate.
+     * La request controlla già la data: qui si riverifica sulle righe bloccate. Una versione che parte oggi è già
+     * iniziata e non si cancella: il messaggio chiede una data da domani invece di cancellarla.
      */
     private function ensureValidFrom(CarbonImmutable $validFrom, CarbonImmutable $today, bool $taken): void
     {
@@ -146,7 +147,9 @@ final class WorkScheduleService
         }
 
         if ($taken) {
-            throw ValidationException::withMessages(['valid_from' => [Translate::text('locations.schedule_exists')]]);
+            $key = $validFrom->isSameDay($today) ? 'locations.schedule_started_today' : 'locations.schedule_exists';
+
+            throw ValidationException::withMessages(['valid_from' => [Translate::text($key)]]);
         }
     }
 

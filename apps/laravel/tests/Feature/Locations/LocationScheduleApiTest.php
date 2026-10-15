@@ -66,6 +66,21 @@ class LocationScheduleApiTest extends TestCase
         $this->assertSame(self::WEEK, $row->minutes());
     }
 
+    public function test_a_second_version_on_the_same_day_explains_what_to_do(): void
+    {
+        // Già iniziata oggi: non si cancella, quindi si chiede una data da domani
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-06-03', 'minutes' => self::WEEK])->assertCreated();
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-06-03', 'minutes' => self::WEEK])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['valid_from' => __('locations.schedule_started_today', [], 'it')]);
+
+        // Futura: si può cancellare prima di crearne un'altra
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-09-01', 'minutes' => self::WEEK])->assertCreated();
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-09-01', 'minutes' => self::WEEK])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['valid_from' => __('locations.schedule_exists', [], 'it')]);
+    }
+
     public function test_today_is_the_day_in_the_location_time_zone(): void
     {
         // Le 22:30 UTC del 14 giugno sono già le 00:30 del 15 a Roma

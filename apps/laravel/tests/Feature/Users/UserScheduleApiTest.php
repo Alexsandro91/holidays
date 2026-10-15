@@ -72,6 +72,21 @@ class UserScheduleApiTest extends TestCase
         $this->assertSame(2, WorkSchedule::query()->where('user_id', $this->employee->id)->whereNull('location_id')->count());
     }
 
+    public function test_a_second_version_on_the_same_day_explains_what_to_do(): void
+    {
+        // Già iniziata oggi: non si cancella, quindi si chiede una data da domani
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-06-03', 'minutes' => self::PART_TIME])->assertCreated();
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-06-03', 'follows_location' => true])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['valid_from' => __('locations.schedule_started_today', [], 'it')]);
+
+        // Futura: si può cancellare prima di crearne un'altra
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-09-01', 'follows_location' => true])->assertCreated();
+        $this->actingAs($this->admin)->postJson($this->url(), ['valid_from' => '2030-09-01', 'minutes' => self::PART_TIME])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['valid_from' => __('locations.schedule_exists', [], 'it')]);
+    }
+
     public function test_only_admins_manage_personal_schedules(): void
     {
         $manager = User::factory()->manager()->create();
