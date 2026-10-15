@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronsUpDown, House, LogOut, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { CalendarDays, ChevronsUpDown, House, LogOut, MapPin, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Outlet } from 'react-router'
@@ -94,9 +94,14 @@ const AppShell = () => {
                       <SidebarNavLink to="/users" label={t('nav.users')} icon={<Users aria-hidden="true" />} />
                     </SidebarMenuItem>
                     {user.role === 'admin' && (
-                      <SidebarMenuItem>
-                        <SidebarNavLink to="/admin/administrators" label={t('nav.administrators')} icon={<ShieldCheck aria-hidden="true" />} />
-                      </SidebarMenuItem>
+                      <>
+                        <SidebarMenuItem>
+                          <SidebarNavLink to="/admin/administrators" label={t('nav.administrators')} icon={<ShieldCheck aria-hidden="true" />} />
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <SidebarNavLink to="/admin/locations" label={t('nav.locations')} icon={<MapPin aria-hidden="true" />} />
+                        </SidebarMenuItem>
+                      </>
                     )}
                   </SidebarMenu>
                 </SidebarGroupContent>

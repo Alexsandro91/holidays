@@ -102,7 +102,10 @@
     "passwordMismatch": "The passwords don’t match.",
     "firstNameRequired": "Enter the first name.",
     "lastNameRequired": "Enter the last name.",
-    "currentPasswordRequired": "Enter your current password."
+    "currentPasswordRequired": "Enter your current password.",
+    "locationNameRequired": "Enter the name of the location.",
+    "tooLong": "At most {{max}} characters.",
+    "patronInvalid": "Write day and month as 07/12, with a date that exists."
   },
   "errors": {
     "generic": "Something went wrong. Please try again shortly.",
@@ -122,6 +125,7 @@
     "management": "Management",
     "users": "Users",
     "administrators": "Administrators",
+    "locations": "Locations",
     "soon": "soon"
   },
   "account": { "profile": "Profile", "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
@@ -359,6 +363,8 @@
     "profile": "Profile",
     "users": "Users",
     "administrators": "Administrators",
+    "locations": "Locations",
+    "location": "Location",
     "login": "Sign in",
     "verify": "Verification code",
     "home": "Home",
@@ -367,6 +373,63 @@
     "resetPassword": "New password",
     "invitation": "Activate account",
     "privacy": "Privacy notice"
+  },
+  "locations": {
+    "title": "Locations",
+    "subtitle": "Where people work: each location has its own holidays, closures and working hours.",
+    "add": "New location",
+    "tabs": { "label": "Filter by status", "active": "Active", "archived": "Archived" },
+    "columns": { "name": "Name", "city": "City", "people": "People", "managers": "Managers", "actions": "Actions" },
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "managers_one": "{{count}} manager",
+    "managers_other": "{{count}} managers",
+    "empty": { "active": "No active locations.", "archived": "No archived locations." },
+    "loadError": "The locations could not be loaded.",
+    "badges": { "primary": "Primary", "noManager": "No manager", "allLocations": "All locations", "archived": "Archived" },
+    "pagination": { "label": "Pages", "previous": "Previous page", "next": "Next page", "status": "Page {{page}} of {{pages}}" },
+    "actions": { "menu": "Actions for {{name}}", "open": "Open", "primary": "Make primary", "people": "See people", "archive": "Archive", "restore": "Restore" },
+    "form": {
+      "createTitle": "New location",
+      "editTitle": "Edit {{name}}",
+      "createDescription": "Working hours start as those of the primary location: change them from the location detail.",
+      "editDescription": "Name, city and patron saint of the location.",
+      "name": "Name",
+      "city": "City",
+      "cityHint": "Optional.",
+      "patron": "Patron saint (day/month)",
+      "patronHint": "E.g. 07/12. Leave empty if the location has no patron saint.",
+      "submitCreate": "Create location",
+      "submitEdit": "Save",
+      "created": "Location {{name}} created.",
+      "updated": "Location {{name}} updated."
+    },
+    "confirm": {
+      "back": "Cancel",
+      "primary": {
+        "title": "Make {{name}} the primary location?",
+        "description": "People invited without choosing a location will end up here.",
+        "action": "Make primary",
+        "done": "{{name}} is now the primary location."
+      },
+      "archive": {
+        "title": "Archive {{name}}?",
+        "description": "It will no longer be offered when assigning a location. You can restore it at any time.",
+        "action": "Archive",
+        "done": "{{name}} archived.",
+        "blockedTitle": "You cannot archive {{name}}",
+        "blockedPrimary": "It is the primary location: make another location primary first.",
+        "blockedUsers_one": "{{count}} person still works here: move them to another location first.",
+        "blockedUsers_other": "{{count}} people still work here: move them to another location first.",
+        "understood": "Got it"
+      },
+      "restore": {
+        "title": "Restore {{name}}?",
+        "description": "It will be offered again when assigning a location.",
+        "action": "Restore",
+        "done": "{{name}} restored."
+      }
+    }
   },
   "a11y": { "pageAnnouncement": "Page: {{title}}" }
 }

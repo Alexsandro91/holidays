@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import type { User } from '@/features/auth/api'
 import { routes } from '@/routes'
 import { expectNoA11yViolations } from '@/test/axe'
 import { userQueryKey } from '@/lib/queryKeys'
@@ -20,6 +21,22 @@ describe('AppShell', () => {
     await waitFor(() => expect(heading).toHaveFocus())
     expect(document.title).toBe('Home · Holidays')
     expect(screen.getByRole('navigation', { name: 'Navigazione principale' })).toBeInTheDocument()
+  })
+
+  it('shows Locations in the management menu only to admins', async () => {
+    signedIn()
+    const { unmount } = renderRoutes(routes, ['/'], { toaster: false })
+
+    const nav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
+    expect(within(nav).getByRole('link', { name: 'Sedi' })).toHaveAttribute('href', '/admin/locations')
+    unmount()
+
+    const manager: User = { ...adminUser, role: 'manager', role_label: 'Responsabile' }
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(manager))))
+    renderRoutes(routes, ['/'], { toaster: false })
+    const managerNav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
+    expect(within(managerNav).getByRole('link', { name: 'Utenti' })).toBeInTheDocument()
+    expect(within(managerNav).queryByRole('link', { name: 'Sedi' })).not.toBeInTheDocument()
   })
 
   it('signs out from the account menu', async () => {

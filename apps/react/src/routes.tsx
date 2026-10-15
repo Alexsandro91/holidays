@@ -20,6 +20,7 @@ const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPassword
 const AcceptInvitationPage = lazy(() => import('@/features/invitations/pages/AcceptInvitationPage'))
 const UsersAdminPage = lazy(() => import('@/features/users/pages/UsersAdminPage'))
 const AdministratorsPage = lazy(() => import('@/features/administrators/pages/AdministratorsPage'))
+const LocationsPage = lazy(() => import('@/features/locations/pages/LocationsPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'))
 
@@ -69,7 +70,11 @@ export const routes: RouteObject[] = [
                   },
                   {
                     element: <RoleRoute roles={['admin']} />,
-                    children: [{ path: '/admin/administrators', element: <AdministratorsPage />, handle: { titleKey: 'titles.administrators' } }],
+                    children: [
+                      { path: '/admin/administrators', element: <AdministratorsPage />, handle: { titleKey: 'titles.administrators' } },
+                      // Sezione Sedi: solo l'admin le gestisce (spec SP2 fase 1 §5.1)
+                      { path: '/admin/locations', element: <LocationsPage />, handle: { titleKey: 'titles.locations' } },
+                    ],
                   },
                 ],
               },

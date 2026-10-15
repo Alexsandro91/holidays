@@ -102,7 +102,10 @@
     "passwordMismatch": "Le due password non coincidono.",
     "firstNameRequired": "Inserisci il nome.",
     "lastNameRequired": "Inserisci il cognome.",
-    "currentPasswordRequired": "Inserisci la password attuale."
+    "currentPasswordRequired": "Inserisci la password attuale.",
+    "locationNameRequired": "Inserisci il nome della sede.",
+    "tooLong": "Al massimo {{max}} caratteri.",
+    "patronInvalid": "Scrivi giorno e mese come 07/12, con una data che esiste."
   },
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova tra poco.",
@@ -122,6 +125,7 @@
     "management": "Gestione",
     "users": "Utenti",
     "administrators": "Amministratori",
+    "locations": "Sedi",
     "soon": "presto"
   },
   "account": { "profile": "Profilo", "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
@@ -359,6 +363,8 @@
     "profile": "Profilo",
     "users": "Utenti",
     "administrators": "Amministratori",
+    "locations": "Sedi",
+    "location": "Sede",
     "login": "Accedi",
     "verify": "Codice di verifica",
     "home": "Home",
@@ -367,6 +373,63 @@
     "resetPassword": "Nuova password",
     "invitation": "Attiva account",
     "privacy": "Informativa privacy"
+  },
+  "locations": {
+    "title": "Sedi",
+    "subtitle": "Dove lavorano le persone: ogni sede ha i suoi festivi, le sue chiusure e il suo orario.",
+    "add": "Nuova sede",
+    "tabs": { "label": "Filtra per stato", "active": "Attive", "archived": "Archiviate" },
+    "columns": { "name": "Nome", "city": "Città", "people": "Persone", "managers": "Responsabili", "actions": "Azioni" },
+    "people_one": "{{count}} persona",
+    "people_other": "{{count}} persone",
+    "managers_one": "{{count}} responsabile",
+    "managers_other": "{{count}} responsabili",
+    "empty": { "active": "Nessuna sede attiva.", "archived": "Nessuna sede archiviata." },
+    "loadError": "Non è stato possibile caricare le sedi.",
+    "badges": { "primary": "Principale", "noManager": "Nessun responsabile", "allLocations": "Tutte le sedi", "archived": "Archiviata" },
+    "pagination": { "label": "Pagine", "previous": "Pagina precedente", "next": "Pagina successiva", "status": "Pagina {{page}} di {{pages}}" },
+    "actions": { "menu": "Azioni per {{name}}", "open": "Apri", "primary": "Imposta come principale", "people": "Vedi persone", "archive": "Archivia", "restore": "Ripristina" },
+    "form": {
+      "createTitle": "Nuova sede",
+      "editTitle": "Modifica {{name}}",
+      "createDescription": "L’orario parte uguale a quello della sede principale: lo cambi dal dettaglio della sede.",
+      "editDescription": "Nome, città e patrono della sede.",
+      "name": "Nome",
+      "city": "Città",
+      "cityHint": "Facoltativa.",
+      "patron": "Patrono (giorno/mese)",
+      "patronHint": "Es. 07/12. Lascia vuoto se la sede non ha un patrono.",
+      "submitCreate": "Crea sede",
+      "submitEdit": "Salva",
+      "created": "Sede {{name}} creata.",
+      "updated": "Sede {{name}} aggiornata."
+    },
+    "confirm": {
+      "back": "Annulla",
+      "primary": {
+        "title": "Rendere {{name}} la sede principale?",
+        "description": "Le persone invitate senza scegliere una sede finiranno qui.",
+        "action": "Imposta come principale",
+        "done": "{{name}} ora è la sede principale."
+      },
+      "archive": {
+        "title": "Archiviare {{name}}?",
+        "description": "Non comparirà più tra le sedi da assegnare. Potrai ripristinarla quando vuoi.",
+        "action": "Archivia",
+        "done": "{{name}} archiviata.",
+        "blockedTitle": "Non puoi archiviare {{name}}",
+        "blockedPrimary": "È la sede principale: scegli prima un’altra sede come principale.",
+        "blockedUsers_one": "Ha ancora {{count}} persona: spostala prima in un’altra sede.",
+        "blockedUsers_other": "Ha ancora {{count}} persone: spostale prima in un’altra sede.",
+        "understood": "Ho capito"
+      },
+      "restore": {
+        "title": "Ripristinare {{name}}?",
+        "description": "Tornerà tra le sedi da assegnare.",
+        "action": "Ripristina",
+        "done": "{{name}} ripristinata."
+      }
+    }
   },
   "a11y": { "pageAnnouncement": "Pagina: {{title}}" }
 }
