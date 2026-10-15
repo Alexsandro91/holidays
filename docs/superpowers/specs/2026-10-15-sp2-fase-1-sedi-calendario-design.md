@@ -1,4 +1,4 @@
-# Sotto-progetto 2, fase 1: sedi e calendario lavorativo
+# Sotto-progetto 2, fase 1: sedi, calendario lavorativo, tipo di rapporto e storico della persona
 
 Data: 15/10/2026. Il design è stato approvato in chat dall'utente, una sezione alla volta.
 
@@ -26,17 +26,23 @@ persona ha una sede: esiste sempre una sede principale, e un'azienda con una sol
   del cambio resta com'era; le richieste dopo quella data si ricalcolano con il calendario della nuova sede e tornano
   in attesa del nuovo responsabile. Il dipendente riceve un'email con l'elenco e non deve rifare nulla.
 - **Sezione Sedi:** solo admin.
+- **Tipo di rapporto** (aggiunta del 15/10, §7): Dipendente, Collaboratore esterno o Stagista, separato dal ruolo. Il
+  ruolo "Dipendente" si rinomina "Utente". Nessuna data di fine rapporto: chi se ne va si disattiva a mano, come oggi.
+- **Storico della persona** (aggiunta del 15/10, §8): nel profilo, sotto Preferenze, le date in cui la persona è stata
+  aggiunta e in cui sono cambiati ruolo, tipo e sede.
 
 ### 1.1 Fasi del sotto-progetto 2
-1. **Sedi e calendario lavorativo:** questa spec.
-2. **Tipi di assenza e saldi:** ferie, permessi, ex festività, maturazione.
+1. **Sedi e calendario lavorativo, tipo di rapporto, storico della persona:** questa spec.
+2. **Tipi di assenza e saldi:** ferie, permessi, ex festività, maturazione; quali valgono per ogni tipo di rapporto
+   (§7.5).
 3. **Richieste e approvazioni:** approvazione del responsabile della sede, notifiche, cambio sede con richieste aperte
    (decisione sopra).
 4. **Calendario del team** per sede.
 
 ### 1.2 Fuori ambito
 - Sedi all'estero (solo il campo paese, con il solo valore `IT`).
-- Storico delle sedi di una persona: le richieste (fase 3) salveranno sede, giorni e ore calcolati, quindi non serve.
+- Calcoli sulla sede passata di una persona: il calendario usa la sede attuale, e le richieste (fase 3) salveranno sede,
+  giorni e ore calcolati. Lo storico del §8 serve solo da consultazione.
 - Cambio sede con decorrenza futura o passata: il cambio vale da subito.
 - Ricalcolo delle richieste quando cambiano festivi, chiusure od orari: lo decide la fase 3.
 - Approvazioni in una sede senza responsabili: nella fase 3 passano all'admin.
@@ -294,3 +300,110 @@ contrasto per i nuovi badge.
 - Il responsabile vede solo le persone della sua sede e riceve 404 sull'indirizzo di una persona di un'altra sede.
 - Il calendario dell'anno mostra Pasquetta e il patrono nel giorno giusto.
 - Con una sola sede non c'è traccia della colonna Sede.
+
+## 7. Tipo di rapporto (aggiunta del 15/10)
+
+### 7.1 Dati
+- Nuovo campo obbligatorio `users.employment_type`: `employee` (Dipendente), `contractor` (Collaboratore esterno),
+  `intern` (Stagista). Enum `App\Enums\EmploymentType`.
+- La migration mette `employee` a tutti gli utenti esistenti (valore letterale).
+- Vale per ogni ruolo, admin compresi.
+
+### 7.2 Ruolo rinominato
+- Il ruolo `employee` si chiama **"Utente"** ("User") in tutta l'interfaccia, nelle email e nei messaggi. Anche
+  l'ordinamento per ruolo cambia testo ("Ruolo (utente → admin)").
+- Nel codice e nell'API il valore resta `employee`: link, filtri ed E2E non cambiano. Un commento su `Role::Employee`
+  spiega che è il ruolo base, da non confondere con `EmploymentType::Employee`.
+
+### 7.3 Regole
+- **Stagista solo Utente.** 422 con un messaggio dedicato quando:
+  - si invita uno stagista come responsabile;
+  - si cambia in responsabile il ruolo di uno stagista, o lo si promuove ad admin (promozione o invito admin);
+  - si cambia in Stagista il tipo di un responsabile o di un admin.
+- **Collaboratore esterno:** qualunque ruolo.
+- **Chi lo imposta:** admin e responsabile, nell'invito (default Dipendente) e in Modifica, con gli stessi permessi e la
+  stessa visibilità di oggi (il responsabile solo per la sua sede). Su un altro admin: password di conferma ed email
+  agli admin, con il nuovo `AdminChange::EmploymentTypeChanged`.
+- **Log:** `user_updated` con `employment_type` tra i campi cambiati.
+
+### 7.4 API e interfaccia
+- `POST /api/users`, `PATCH /api/users/{user}` e `POST /api/administrators/invitations`: campo `employment_type`
+  (`Rule::enum`), facoltativo nell'invito con default `employee`.
+- `GET /api/users`: ogni riga ha `employment_type`; nuovo `filter[employment_type]` per admin e responsabile; ordinamento
+  per tipo non previsto.
+- `GET /api/administrators`, `GET /api/auth/user` e `PATCH /api/profile`: `employment_type`.
+- **Utenti:** colonna **Tipo** (sempre visibile, anche con una sola sede), filtro **Tipo** nel pannello filtri
+  (parametro `employment_type` nell'URL), campo Tipo nell'invito e in Modifica. Con Tipo = Stagista il campo Ruolo
+  mostra solo Utente, con una nota che spiega perché.
+- **Amministratori:** campo Tipo in Modifica e nell'invito di un admin; lo stagista non compare tra le persone
+  promuovibili.
+- **Profilo:** Tipo in sola lettura in Dati personali.
+
+### 7.5 Nota per la fase 2
+Il tipo decide quali assenze e saldi valgono. Proposta di partenza, da decidere nella fase 2:
+- dipendenti: ferie e permessi con saldo e maturazione;
+- collaboratori esterni: assenze senza saldo, visibili nel calendario del team;
+- stagisti: assenze secondo la convenzione di tirocinio, con un eventuale monte giorni.
+
+### 7.6 Test
+- **Backend:** ogni combinazione vietata di §7.3 dà 422 (invito, cambio ruolo, promozione, invito admin, cambio tipo);
+  filtro per tipo; il responsabile imposta il tipo solo nella sua sede; tipo di un altro admin con password ed email;
+  utenti esistenti migrati a `employee`.
+- **Frontend:** colonna e filtro Tipo, campo Ruolo limitato con Stagista, testo "Utente" al posto di "Dipendente".
+
+## 8. Storico della persona (aggiunta del 15/10)
+
+### 8.1 Cosa mostra
+Le tappe dell'account, dalla più recente:
+- **Invitato** come tipo e ruolo, nella sede (es. "Invitato come Stagista, Utente, sede Milano");
+- **Account attivato** (invito accettato);
+- **Ruolo** cambiato, promozione e revoca admin comprese (es. "Ruolo: Utente → Responsabile");
+- **Tipo** cambiato (es. "Tipo: Stagista → Dipendente");
+- **Sede** cambiata (es. "Sede: Milano → Bergamo");
+- **Account disattivato** e **riattivato**.
+
+Nome, email, password e lingua non compaiono: non sono tappe del rapporto e hanno già il loro log di sicurezza.
+
+### 8.2 Dati
+Nuova tabella `user_history`, separata da `auth_events` perché deve durare quanto l'account (`auth_events` ha una
+conservazione limitata):
+
+| Colonna | Tipo | Note |
+| --- | --- | --- |
+| `id` | bigint | |
+| `user_id` | FK, `cascadeOnDelete` | |
+| `event` | string | enum `UserHistoryEvent`: `invited`, `activated`, `role_changed`, `employment_type_changed`, `location_changed`, `disabled`, `enabled`, `imported` |
+| `old_value`, `new_value` | string, null | valore dell'enum per ruolo e tipo, id per la sede |
+| `context` | json, null | solo per `invited` e `imported`: ruolo, tipo e id della sede di partenza |
+| `actor_id` | FK, null, `nullOnDelete` | chi ha agito; null per azioni di sistema |
+| `created_at` | timestamp | |
+
+- **Scrittura:** ogni servizio che cambia ruolo, tipo, sede o stato, o che crea o attiva l'invito, scrive la riga nella
+  stessa transazione della modifica. Un unico punto (`UserHistoryRecorder`) costruisce le righe, così nessun flusso la
+  dimentica; un test elenca i flussi e controlla che ognuno lasci la sua riga.
+- **Sede:** si salva l'id e si mostra il nome attuale della sede (una sede rinominata compare con il nome nuovo).
+- **Utenti esistenti:** la migration inserisce per ognuno una riga `imported` con la data di `users.created_at` e ruolo,
+  tipo e sede attuali ("Nell'app dal 3 marzo 2026, come Dipendente, Utente, sede principale"). Valori letterali, una sola
+  `INSERT … SELECT`.
+- **Indice** su (`user_id`, `created_at`).
+
+### 8.3 API
+- `GET /api/profile/history`: lo storico di chi fa la richiesta, paginato (20 per pagina), senza chi ha agito.
+- `GET /api/users/{user}/history`: per admin e responsabile, con lo stesso scope di §4.1 (fuori sede, 404) e con il nome
+  di chi ha agito. Un responsabile non vede lo storico di un admin (stessa regola di oggi sugli admin).
+
+### 8.4 Interfaccia
+- **Profilo:** card **Storico** nella colonna di destra, sotto Preferenze. Elenco verticale: data (es. "3 marzo 2026") e
+  testo della tappa. Mostra le ultime 5 tappe e "Mostra tutto" carica le altre.
+- **Utenti** (proposta di Claude, da togliere se non serve): voce di menu **Storico** per admin e responsabile, che apre
+  lo stesso elenco in una modale con anche il nome di chi ha agito.
+- Date nel formato della lingua dell'account.
+
+### 8.5 Test
+- **Backend:** ogni flusso di §8.1 scrive esattamente una riga con valori e attore giusti (invito utente, invito admin,
+  `app:create-admin`, accettazione, cambio ruolo, promozione e revoca admin, cambio tipo, cambio sede, disattivazione,
+  riattivazione); una modifica senza cambiamenti reali non scrive nulla; la migration crea le righe `imported`;
+  `GET /api/profile/history` non espone `actor`; `GET /api/users/{user}/history` rispetta scope e regola sugli admin.
+- **Frontend:** card Storico con testi per ogni tipo di tappa, "Mostra tutto", stato vuoto.
+- **E2E:** l'admin promuove un utente a responsabile e lo sposta di sede; nel profilo di quella persona compaiono le due
+  tappe.
