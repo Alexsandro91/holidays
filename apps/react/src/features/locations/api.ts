@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { request, requestData } from '@/lib/api'
-import { adminQueryKey, historyQueryKey, locationsQueryKey, userQueryKey } from '@/lib/queryKeys'
+import { adminQueryKey, locationsQueryKey, userQueryKey } from '@/lib/queryKeys'
 
 export const workScheduleSchema = z.object({
   id: z.number(),
@@ -130,10 +130,9 @@ const closureBody = ({ locationId, startsOn, endsOn, description }: ClosureInput
 
 /**
  * Dopo ogni modifica si ricaricano le query admin (sedi, utenti, amministratori) e l'utente corrente: rinominare la
- * propria sede o crearne una seconda cambia profilo e campi Sede. Con `history` anche lo storico delle persone
- * (orario personale): il dialog Storico non mostra dati vecchi fino allo staleTime.
+ * propria sede o crearne una seconda cambia profilo e campi Sede. Lo storico no: sedi e orari non scrivono tappe.
  */
-const useLocationMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>, { history = false }: { history?: boolean } = {}) => {
+const useLocationMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,
@@ -142,7 +141,6 @@ const useLocationMutation = <TInput, TResult>(mutationFn: (input: TInput) => Pro
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminQueryKey }),
         queryClient.invalidateQueries({ queryKey: userQueryKey }),
-        ...(history ? [queryClient.invalidateQueries({ queryKey: historyQueryKey })] : []),
       ])
     },
   })
@@ -235,8 +233,7 @@ export const useAddUserSchedule = (userId: number) =>
       scheduleResponse,
       'followsLocation' in input ? { valid_from: input.validFrom, follows_location: true } : { valid_from: input.validFrom, minutes: input.minutes },
     ),
-    { history: true },
   )
 
 export const useDeleteUserSchedule = (userId: number) =>
-  useLocationMutation((scheduleId: number) => request('DELETE', `/api/users/${userId}/schedules/${scheduleId}`), { history: true })
+  useLocationMutation((scheduleId: number) => request('DELETE', `/api/users/${userId}/schedules/${scheduleId}`))
