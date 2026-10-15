@@ -1,8 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { request, requestData } from '@/lib/api'
-import { locationRefSchema, type User } from '@/features/auth/api'
-import { adminQueryKey, userQueryKey } from '@/lib/queryKeys'
+import { locationRefSchema, type EmploymentType, type User } from '@/features/auth/api'
+import { adminQueryKey, historyQueryKey, userQueryKey } from '@/lib/queryKeys'
 
 export const managedUserSchema = z.object({
   id: z.number(),
@@ -45,7 +45,9 @@ export type UserStatus = ManagedUser['status']
 export type UserStatusFilter = 'all' | UserStatus
 /** Gli admin non sono nella lista Utenti (si gestiscono in Amministratori): il filtro ha solo gli altri ruoli */
 export type UserRoleFilter = 'all' | Exclude<UserRole, 'admin'>
-export type UserSortField = 'last_name' | 'first_name' | 'email' | 'role' | 'status'
+/** "Tutti i tipi" o un tipo di rapporto (spec SP2 fase 1 §7.4) */
+export type EmploymentTypeFilter = 'all' | EmploymentType
+export type UserSortField = 'last_name' | 'first_name' | 'email' | 'role' | 'status' | 'location'
 /** Campo di ordinamento, con il prefisso `-` per l'ordine decrescente (contratto API, spec §7.2) */
 export type UserSort = UserSortField | `-${UserSortField}`
 export type UserPerPage = 10 | 25 | 50
@@ -60,6 +62,10 @@ export interface UserListParams {
   lastName: string
   email: string
   role: UserRoleFilter
+  /** Tipo di rapporto, per admin e responsabili */
+  employmentType: EmploymentTypeFilter
+  /** Id della sede: solo per l'admin con più sedi (spec §4.5), altrimenti null */
+  location: number | null
   status: UserStatusFilter
   sort: UserSort
   page: number
@@ -72,6 +78,8 @@ export const DEFAULT_USER_LIST_PARAMS: UserListParams = {
   lastName: '',
   email: '',
   role: 'all',
+  employmentType: 'all',
+  location: null,
   status: 'all',
   sort: 'last_name',
   page: 1,
@@ -95,7 +103,7 @@ export type UserList = z.infer<typeof userListSchema>
 export const usersQueryKey = (params: UserListParams): readonly ['admin', 'users', UserListParams] => [adminQueryKey[0], 'users', params]
 
 /** Parametri dell'API: `filter[...]`, `sort`, `page` e `per_page` (spec §3 e §7.2). I testi vuoti non si inviano. */
-const toQueryString = ({ search, firstName, lastName, email, role, status, sort, page, perPage }: UserListParams): string => {
+const toQueryString = ({ search, firstName, lastName, email, role, employmentType, location, status, sort, page, perPage }: UserListParams): string => {
   const query = new URLSearchParams()
   const texts: [string, string][] = [
     ['filter[search]', search],
@@ -107,6 +115,8 @@ const toQueryString = ({ search, firstName, lastName, email, role, status, sort,
     if (value.trim() !== '') query.set(key, value.trim())
   })
   if (role !== 'all') query.set('filter[role]', role)
+  if (employmentType !== 'all') query.set('filter[employment_type]', employmentType)
+  if (location !== null) query.set('filter[location]', String(location))
   if (status !== 'all') query.set('filter[status]', status)
   query.set('sort', sort)
   if (page > 1) query.set('page', String(page))
@@ -127,11 +137,17 @@ export interface InviteUserInput {
   lastName: string
   email: string
   role: ManagedRole
+  employmentType: EmploymentType
+  /** Solo l'admin con più sedi la sceglie; senza, il server usa la sede di chi invita o la principale */
+  locationId?: number
 }
 
 const userResourceSchema = z.object({ data: managedUserSchema })
 
-/** Dopo ogni modifica si ricaricano tutte le query admin (lista utenti, amministratori, conteggi). */
+/**
+ * Dopo ogni modifica si ricaricano tutte le query admin (lista utenti, amministratori, conteggi) e lo storico: invito,
+ * ruolo, tipo, sede e stato aggiungono tappe, che il dialog Storico deve mostrare subito e non dopo lo staleTime.
+ */
 const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>, onSuccess?: (result: TResult) => void) => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -140,13 +156,20 @@ const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promis
     // Variabili (password di conferma comprese) fuori dalla cache appena il dialog si chiude
     gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
-    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: adminQueryKey }), queryClient.invalidateQueries({ queryKey: historyQueryKey })]),
   })
 }
 
 export const useInviteUser = () =>
-  useAdminMutation(({ firstName, lastName, email, role }: InviteUserInput) =>
-    requestData('POST', '/api/users', userResourceSchema, { first_name: firstName, last_name: lastName, email, role }),
+  useAdminMutation(({ firstName, lastName, email, role, employmentType, locationId }: InviteUserInput) =>
+    requestData('POST', '/api/users', userResourceSchema, {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      role,
+      employment_type: employmentType,
+      ...(locationId === undefined ? {} : { location_id: locationId }),
+    }),
   )
 
 export const useResendInvitation = () => useAdminMutation((id: number) => request('POST', `/api/users/${id}/invitation`))
@@ -162,6 +185,10 @@ export interface UpdateUserInput {
   lastName: string
   /** Solo per gli utenti invitati: per gli altri l'email non cambia (spec §7.3) */
   email?: string
+  /** Solo se cambia */
+  employmentType?: EmploymentType
+  /** Solo se cambia, e solo l'admin (can.change_location) */
+  locationId?: number
   /** Solo per modificare un altro admin */
   currentPassword?: string
 }
@@ -169,17 +196,29 @@ export interface UpdateUserInput {
 export const useUpdateUser = () => {
   const queryClient = useQueryClient()
   return useAdminMutation(
-    ({ id, firstName, lastName, email, currentPassword }: UpdateUserInput) =>
+    ({ id, firstName, lastName, email, employmentType, locationId, currentPassword }: UpdateUserInput) =>
       requestData('PATCH', `/api/users/${id}`, userResourceSchema, {
         first_name: firstName,
         last_name: lastName,
         ...(email === undefined ? {} : { email }),
+        ...(employmentType === undefined ? {} : { employment_type: employmentType }),
+        ...(locationId === undefined ? {} : { location_id: locationId }),
         ...(currentPassword === undefined ? {} : { current_password: currentPassword }),
       }),
-    // Modificando sé stessi cambia anche il nome del menu account: si aggiorna subito l'utente corrente
+    // Modificando sé stessi cambiano anche menu account e profilo: si aggiorna subito l'utente corrente
     ({ data }) => {
       queryClient.setQueryData<User | null>(userQueryKey, (current) =>
-        current && current.id === data.id ? { ...current, first_name: data.first_name, last_name: data.last_name, name: data.name } : current,
+        current && current.id === data.id
+          ? {
+              ...current,
+              first_name: data.first_name,
+              last_name: data.last_name,
+              name: data.name,
+              employment_type: data.employment_type,
+              employment_type_label: data.employment_type_label,
+              location: data.location,
+            }
+          : current,
       )
     },
   )

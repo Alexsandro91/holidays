@@ -7,7 +7,9 @@ import UsersAdminPage from '@/features/users/pages/UsersAdminPage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
-import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
+import { historyEntry, historyPage } from '@/test/historyFixtures'
+import { ADMIN_ACTIONS, managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -42,7 +44,7 @@ describe('UsersAdminPage', () => {
 
     expect(await within(dialog).findByText('L’email è già in uso.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Email aziendale')).toHaveFocus()
-    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', role: 'employee' })
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', role: 'employee', employment_type: 'employee' })
   })
 
   it('closes the invite dialog and refreshes the list on success', async () => {
@@ -821,5 +823,223 @@ describe('UsersAdminPage', () => {
 
     const trigger = within(screen.getByRole('table')).getByRole('button', { name: 'Azioni per Marco Bianchi' })
     await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('limits the role of an intern to "Utente" in the invitation', async () => {
+    listing()
+    let body: unknown = null
+    server.use(
+      http.post('/api/users', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
+    await user.click(within(dialog).getByRole('radio', { name: 'Stagista' }))
+
+    expect(within(dialog).queryByRole('radio', { name: 'Responsabile' })).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('radio', { name: 'Utente' })).toBeChecked()
+    expect(within(dialog).getByText('Uno stagista può essere solo Utente.')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
+
+    await screen.findByText('Invito inviato a sara@holidays.test.')
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', role: 'employee', employment_type: 'intern' })
+  })
+
+  it('shows the refusal of an intern role under the role of the invitation', async () => {
+    listing()
+    server.use(http.post('/api/users', () => HttpResponse.json({ message: 'x', errors: { role: ['Uno stagista può avere solo il ruolo Utente.'] } }, { status: 422 })))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
+
+    const error = await within(dialog).findByText('Uno stagista può avere solo il ruolo Utente.')
+    expect(within(within(dialog).getByRole('group', { name: 'Ruolo' })).getByRole('radiogroup')).toHaveAccessibleDescription(error.textContent ?? '')
+  })
+
+  it('lets admins choose the location of the invitation, starting from the primary one', async () => {
+    listing()
+    let body: unknown = null
+    server.use(
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))),
+      http.get('/api/locations/options', () => HttpResponse.json({ data: [{ id: 2, name: 'Bergamo', is_primary: false }, { id: 1, name: 'Sede principale', is_primary: true }] })),
+      http.post('/api/users', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ id: 9, status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await user.click(await screen.findByRole('button', { name: 'Invita utente' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Invita utente' })
+    await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Sede' })).toHaveTextContent('Sede principale'))
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Sede' }))
+    await user.click(await screen.findByRole('option', { name: 'Bergamo' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Invia invito' }))
+
+    await screen.findByText('Invito inviato a sara@holidays.test.')
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', role: 'employee', employment_type: 'employee', location_id: 2 })
+  })
+
+  it('sends only the type and location that changed, explaining the change of location', async () => {
+    listing([managedUser({ can: ADMIN_ACTIONS })])
+    let body: unknown = null
+    server.use(
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))),
+      http.get('/api/locations/options', () => HttpResponse.json({ data: [{ id: 1, name: 'Sede principale', is_primary: true }, { id: 2, name: 'Bergamo', is_primary: false }] })),
+      http.patch('/api/users/2', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser() })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Collaboratore esterno' }))
+    const location = await within(dialog).findByRole('combobox', { name: 'Sede' })
+    expect(location).toHaveAccessibleDescription('La persona passa al responsabile della nuova sede.')
+    await user.click(location)
+    await user.click(await screen.findByRole('option', { name: 'Bergamo' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    await screen.findByText('Dati di Marco Bianchi aggiornati.')
+    expect(body).toEqual({ first_name: 'Marco', last_name: 'Bianchi', employment_type: 'contractor', location_id: 2 })
+  })
+
+  it('shows the refusal of the type under the employment type of the edit', async () => {
+    listing([managedUser()])
+    server.use(http.patch('/api/users/2', () => HttpResponse.json({ message: 'x', errors: { employment_type: ['Uno stagista può avere solo il ruolo Utente.'] } }, { status: 422 })))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Stagista' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    const error = await within(dialog).findByText('Uno stagista può avere solo il ruolo Utente.')
+    expect(within(within(dialog).getByRole('group', { name: 'Tipo di rapporto' })).getByRole('radiogroup')).toHaveAccessibleDescription(error.textContent ?? '')
+  })
+
+  it('does not offer "Stagista" to a manager and hides the location without the permission', async () => {
+    listing([managedUser({ role: 'manager', role_label: 'Responsabile' })])
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Modifica Marco Bianchi' })
+
+    expect(within(dialog).getByRole('radio', { name: 'Stagista' })).toBeDisabled()
+    expect(within(dialog).getByText('Uno stagista può essere solo Utente: prima cambia il ruolo.')).toBeInTheDocument()
+    // can.change_location è falso (vista del responsabile o permesso negato): nessun campo Sede
+    expect(within(dialog).queryByRole('combobox', { name: 'Sede' })).not.toBeInTheDocument()
+  })
+
+  it('does not let an intern become a manager', async () => {
+    listing([managedUser({ employment_type: 'intern', employment_type_label: 'Stagista' })])
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+
+    expect(within(dialog).getByRole('radio', { name: 'Responsabile' })).toBeDisabled()
+    expect(within(dialog).getByText('Uno stagista può essere solo Utente.')).toBeInTheDocument()
+  })
+
+  it('shows the refusal of the server under the roles when the person became an intern meanwhile', async () => {
+    listing([managedUser()])
+    server.use(http.patch('/api/users/2/role', () => HttpResponse.json({ message: 'x', errors: { role: ['Uno stagista può avere solo il ruolo Utente.'] } }, { status: 422 })))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Salva ruolo' }))
+
+    const error = await within(dialog).findByText('Uno stagista può avere solo il ruolo Utente.')
+    expect(within(dialog).getByRole('radiogroup')).toHaveAccessibleDescription(error.textContent ?? '')
+    expect(screen.getByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })).toBeInTheDocument()
+  })
+
+  it('opens the history of a person from the row menu', async () => {
+    listing([managedUser({ can: { ...NO_ACTIONS, view_history: true } })])
+    server.use(http.get('/api/users/2/history', () => HttpResponse.json(historyPage([historyEntry({ summary: 'Tipo: Stagista → Dipendente', actor_name: 'Giulia Rossi' })]))))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Storico' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Storico di Marco Bianchi' })
+    expect(await within(dialog).findByText('Tipo: Stagista → Dipendente')).toBeInTheDocument()
+    expect(within(dialog).getByText('da Giulia Rossi')).toBeInTheDocument()
+  })
+
+  it('reloads the history after a change of role, without waiting for it to become stale', async () => {
+    listing([managedUser({ can: ADMIN_ACTIONS })])
+    let historyCalls = 0
+    server.use(
+      http.get('/api/users/2/history', () => {
+        historyCalls += 1
+        return HttpResponse.json(historyPage([historyEntry({ summary: `Tappa ${historyCalls}` })]))
+      }),
+      http.patch('/api/users/2/role', () => HttpResponse.json({ data: managedUser({ role: 'manager', role_label: 'Responsabile', can: ADMIN_ACTIONS }) })),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Storico' }))
+    const first = await screen.findByRole('dialog', { name: 'Storico di Marco Bianchi' })
+    await within(first).findByText('Tappa 1')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Cambia ruolo' }))
+    const roleDialog = await screen.findByRole('dialog', { name: 'Cambia ruolo di Marco Bianchi' })
+    await user.click(within(roleDialog).getByRole('radio', { name: 'Responsabile' }))
+    await user.click(within(roleDialog).getByRole('button', { name: 'Salva ruolo' }))
+    await screen.findByText('Ruolo di Marco Bianchi aggiornato.')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Storico' }))
+    const second = await screen.findByRole('dialog', { name: 'Storico di Marco Bianchi' })
+    expect(await within(second).findByText('Tappa 2')).toBeInTheDocument()
+    expect(historyCalls).toBe(2)
+  })
+
+  it('opens the working hours of a person from the row menu', async () => {
+    listing([managedUser({ can: { ...NO_ACTIONS, manage_schedule: true } })])
+    server.use(
+      http.get('/api/users/2/schedules', () =>
+        HttpResponse.json({ data: { schedules: [], location_schedule: { id: 1, valid_from: '2026-01-01', follows_location: false, minutes: [480, 480, 480, 480, 480, 0, 0], is_started: true } } }),
+      ),
+    )
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await openMenu(user, 'Marco Bianchi')
+    await user.click(await screen.findByRole('menuitem', { name: 'Orario di lavoro' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Orario di lavoro di Marco Bianchi' })).toBeInTheDocument()
   })
 })

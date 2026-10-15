@@ -143,6 +143,9 @@
   "users": {
     "title": "Utenti",
     "subtitle": "Inviti, ruoli e accessi di chi usa Holidays.",
+    "titleWithLocation": "Utenti · {{location}}",
+    "internRoleOnly": "Uno stagista può essere solo Utente.",
+    "internNeedsUserRole": "Uno stagista può essere solo Utente: prima cambia il ruolo.",
     "invite": "Invita utente",
     "filters": {
       "label": "Cerca e filtra gli utenti",
@@ -155,10 +158,14 @@
       "lastName": "Cognome",
       "email": "Email",
       "role": "Ruolo",
-      "allRoles": "Tutti i ruoli"
+      "allRoles": "Tutti i ruoli",
+      "employmentType": "Tipo di rapporto",
+      "allEmploymentTypes": "Tutti i tipi",
+      "location": "Sede",
+      "allLocations": "Tutte le sedi"
     },
     "tabs": { "label": "Filtra per stato", "all": "Tutti", "active": "Attivi", "invited": "Invitati", "disabled": "Disattivati" },
-    "columns": { "firstName": "Nome", "lastName": "Cognome", "email": "Email", "role": "Ruolo", "status": "Stato", "details": "Dettagli", "actions": "Azioni" },
+    "columns": { "firstName": "Nome", "lastName": "Cognome", "email": "Email", "role": "Ruolo", "employmentType": "Tipo", "location": "Sede", "status": "Stato", "details": "Dettagli", "actions": "Azioni" },
     "sort": {
       "label": "Ordina per",
       "last_name": "Cognome (A → Z)",
@@ -170,7 +177,9 @@
       "role": "Ruolo (utente → admin)",
       "-role": "Ruolo (admin → utente)",
       "status": "Stato (attivo → disattivato)",
-      "-status": "Stato (disattivato → attivo)"
+      "-status": "Stato (disattivato → attivo)",
+      "location": "Sede (A → Z)",
+      "-location": "Sede (Z → A)"
     },
     "you": "Tu",
     "inviteExpires": "Invito scade il {{date}}",
@@ -198,7 +207,9 @@
       "changeRole": "Cambia ruolo",
       "passwordReset": "Invia reset password",
       "disable": "Disattiva",
-      "enable": "Riattiva"
+      "enable": "Riattiva",
+      "schedule": "Orario di lavoro",
+      "history": "Storico"
     },
     "inviteDialog": {
       "title": "Invita utente",
@@ -209,13 +220,15 @@
       "role": "Ruolo",
       "submit": "Invia invito",
       "submitting": "Invio in corso…",
-      "done": "Invito inviato a {{email}}."
+      "done": "Invito inviato a {{email}}.",
+      "employmentType": "Tipo di rapporto",
+      "location": "Sede"
     },
     "roles": { "employee": "Utente", "manager": "Responsabile", "admin": "HR / Admin" },
     "employmentTypes": { "employee": "Dipendente", "contractor": "Collaboratore esterno", "intern": "Stagista" },
     "editDialog": {
       "title": "Modifica {{name}}",
-      "description": "Nome, cognome ed email di chi usa Holidays.",
+      "description": "Nome, cognome, email, tipo di rapporto e sede di chi usa Holidays.",
       "firstName": "Nome",
       "lastName": "Cognome",
       "email": "Email aziendale",
@@ -224,9 +237,23 @@
       "password": "La tua password",
       "submit": "Salva",
       "done": "Dati di {{name}} aggiornati.",
-      "reinvited": "Dati aggiornati. Nuovo invito inviato a {{email}}."
+      "reinvited": "Dati aggiornati. Nuovo invito inviato a {{email}}.",
+      "employmentType": "Tipo di rapporto",
+      "location": "Sede",
+      "locationNote": "La persona passa al responsabile della nuova sede."
     },
     "roleDialog": { "title": "Cambia ruolo di {{name}}", "submit": "Salva ruolo", "done": "Ruolo di {{name}} aggiornato." },
+    "scheduleDialog": {
+      "title": "Orario di lavoro di {{name}}",
+      "description": "Senza un orario personale vale quello della sua sede. Il cambio vale dal giorno scelto in poi.",
+      "mode": "Orario",
+      "useLocation": "Usa l’orario della sede ({{location}})",
+      "personal": "Orario personale",
+      "alreadyLocation": "Segue già l’orario della sede.",
+      "submit": "Salva",
+      "saved": "Orario di {{name}} salvato: vale dal {{date}}.",
+      "loadError": "Non è stato possibile caricare l’orario."
+    },
     "confirm": {
       "resend": { "title": "Reinviare l’invito a {{name}}?", "description": "Il link precedente smetterà di funzionare.", "action": "Reinvia", "done": "Invito inviato di nuovo." },
       "cancel": { "title": "Annullare l’invito di {{name}}?", "description": "L’account non attivato verrà eliminato.", "action": "Annulla invito di {{name}}", "done": "Invito annullato." },
@@ -258,6 +285,7 @@
     "enableFor": "Riattiva {{name}}",
     "onlyYou": "Sei l’unico amministratore. Aggiungine un altro prima di lasciare il ruolo: serve sempre almeno un amministratore.",
     "loadError": "Non è stato possibile caricare gli amministratori.",
+    "location": "Sede: {{name}}",
     "grant": {
       "title": "Aggiungi un amministratore",
       "description": "Promuovi un utente attivo o invita una persona nuova. Tutti gli amministratori riceveranno un’email.",
@@ -276,6 +304,8 @@
       "password": "La tua password",
       "submit": "Rendi amministratore",
       "pickUser": "Scegli un utente.",
+      "employmentType": "Tipo di rapporto",
+      "location": "Sede",
       "done": "{{name}} ora è amministratore."
     },
     "revokeDialog": {

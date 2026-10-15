@@ -21,6 +21,8 @@ interface UsersTableProps {
   onChange: (next: Partial<UserListParams>) => void
   /** null per le righe senza azioni: nella scheda mobile non resta un contenitore vuoto */
   renderActions?: (user: ManagedUser) => ReactNode
+  /** Colonna Sede: solo admin con più sedi */
+  withLocation: boolean
 }
 
 const toSorting = (sort: UserSort): SortingState => [{ id: sort.startsWith('-') ? sort.slice(1) : sort, desc: sort.startsWith('-') }]
@@ -32,7 +34,7 @@ const toAriaSort = (sorted: false | 'asc' | 'desc'): 'ascending' | 'descending' 
  * Data Table degli utenti (TanStack Table, ordinamento e paginazione manuali: li fa il server).
  * Tabella su desktop, schede su mobile: le due viste sono entrambe nel DOM e si alternano via CSS.
  */
-const UsersTable = ({ list, sort, page, perPage, onChange, renderActions }: UsersTableProps) => {
+const UsersTable = ({ list, sort, page, perPage, onChange, renderActions, withLocation }: UsersTableProps) => {
   const { t } = useTranslation()
   const sorting = useMemo(() => toSorting(sort), [sort])
   const pagination: PaginationState = useMemo(() => ({ pageIndex: page - 1, pageSize: perPage }), [page, perPage])
@@ -63,6 +65,20 @@ const UsersTable = ({ list, sort, page, perPage, onChange, renderActions }: User
           header: ({ column }) => <SortableHeader label={t('users.columns.role')} column={column} />,
           cell: ({ row }) => <RoleBadge user={row.original} />,
         }),
+        usersColumnHelper.accessor('employment_type', {
+          header: t('users.columns.employmentType'),
+          enableSorting: false,
+          cell: ({ row }) => row.original.employment_type_label,
+        }),
+        ...(withLocation
+          ? [
+              usersColumnHelper.accessor((user) => user.location.name, {
+                id: 'location',
+                header: ({ column }) => <SortableHeader label={t('users.columns.location')} column={column} />,
+                cell: ({ row }) => row.original.location.name,
+              }),
+            ]
+          : []),
         usersColumnHelper.accessor('status', {
           header: ({ column }) => <SortableHeader label={t('users.columns.status')} column={column} />,
           cell: ({ row }) => <StatusBadge user={row.original} />,
@@ -78,7 +94,7 @@ const UsersTable = ({ list, sort, page, perPage, onChange, renderActions }: User
           cell: ({ row }) => <div className="text-right">{renderActions?.(row.original)}</div>,
         }),
         ]),
-    [t, details, renderActions],
+    [t, details, renderActions, withLocation],
   )
 
   const table = useTable({
@@ -156,6 +172,10 @@ const UsersTable = ({ list, sort, page, perPage, onChange, renderActions }: User
                   <RoleBadge user={user} />
                   <StatusBadge user={user} />
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  {user.employment_type_label}
+                  {withLocation && ` · ${user.location.name}`}
+                </p>
                 {/* Dettagli solo se ci sono: nella griglia un contenitore vuoto lascerebbe uno spazio */}
                 {detail !== '' && <p className="text-sm text-muted-foreground">{detail}</p>}
               </div>

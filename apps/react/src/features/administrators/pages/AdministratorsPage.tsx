@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAdministrators } from '@/features/administrators/api'
 import GrantAdminDialog from '@/features/administrators/components/GrantAdminDialog'
 import RevokeAdminDialog from '@/features/administrators/components/RevokeAdminDialog'
+import { useMultipleLocations } from '@/features/auth/api'
 import ConfirmUserActionDialog from '@/features/users/components/ConfirmUserActionDialog'
 import EditUserDialog from '@/features/users/components/EditUserDialog'
 import StatusBadge from '@/features/users/components/StatusBadge'
@@ -35,6 +36,8 @@ const TONE = {
 const AdministratorsPage = () => {
   const { t } = useTranslation()
   const administrators = useAdministrators()
+  // Con più sedi ogni admin mostra la sua (spec SP2 fase 1 §5.5)
+  const multipleLocations = useMultipleLocations()
   const [revoking, setRevoking] = useState<ManagedUser | null>(null)
   // Azioni con conferma sugli endpoint di /api/users: invito di un admin non ancora attivo (spec §4), disattivazione
   // e riattivazione senza togliere il ruolo (spec §7.6, con la password come nella fase 3)
@@ -93,6 +96,7 @@ const AdministratorsPage = () => {
                   <div className="min-w-0">
                     <p className="font-medium break-words">{admin.name}</p>
                     <p className="text-sm break-all text-muted-foreground">{admin.email}</p>
+                    {multipleLocations && <p className="text-sm text-muted-foreground">{t('administrators.location', { name: admin.location.name })}</p>}
                     {detail !== '' && <p className="text-sm text-muted-foreground">{detail}</p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

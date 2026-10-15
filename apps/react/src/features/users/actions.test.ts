@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { availableActions, needsPassword } from '@/features/users/actions'
-import { managedUser, NO_ACTIONS } from '@/test/usersFixtures'
+import { ADMIN_ACTIONS, managedUser, NO_ACTIONS } from '@/test/usersFixtures'
 
 describe('availableActions', () => {
+  it('offers working hours and history when the server allows them, in every status', () => {
+    expect(availableActions(managedUser({ can: ADMIN_ACTIONS }))).toEqual(['edit', 'schedule', 'history', 'changeRole', 'passwordReset', 'disable'])
+    expect(availableActions(managedUser({ status: 'invited', can: ADMIN_ACTIONS }))).toEqual(['edit', 'schedule', 'history', 'resend', 'cancel'])
+    expect(availableActions(managedUser({ status: 'disabled', can: { ...NO_ACTIONS, view_history: true } }))).toEqual(['history'])
+  })
+
   it('offers nothing when the server allows nothing (e.g. your own row)', () => {
     expect(availableActions(managedUser({ is_current_user: true, can: NO_ACTIONS }))).toEqual([])
   })

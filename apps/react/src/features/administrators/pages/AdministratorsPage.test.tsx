@@ -6,7 +6,7 @@ import AdministratorsPage from '@/features/administrators/pages/AdministratorsPa
 import type { User } from '@/features/auth/api'
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
-import { adminUser } from '@/test/fixtures'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
@@ -421,7 +421,7 @@ describe('AdministratorsPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
 
     expect(await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')).toBeInTheDocument()
-    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', current_password: 'password' })
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', employment_type: 'employee', current_password: 'password' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
@@ -923,5 +923,83 @@ describe('AdministratorsPage', () => {
 
     await screen.findByText('Bruno Admin')
     await expectNoA11yViolations(container)
+  })
+
+  it('shows the location of each administrator when there is more than one', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))))
+    admins([me, { ...bruno, location: { id: 2, name: 'Bergamo' } }])
+    renderRoutes(routes, ['/admin/administrators'])
+
+    expect(await screen.findByText('Sede: Bergamo')).toBeInTheDocument()
+  })
+
+  it('never offers an intern for promotion', async () => {
+    admins()
+    server.use(
+      http.get('/api/users', () =>
+        HttpResponse.json(
+          userListResponse([
+            managedUser({ id: 5, name: 'Sara Colombo', email: 'sara@holidays.test' }),
+            managedUser({ id: 6, name: 'Luca Stagista', email: 'luca@holidays.test', employment_type: 'intern', employment_type_label: 'Stagista' }),
+          ]),
+        ),
+      ),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    expect(await within(dialog).findByRole('radio', { name: /Sara Colombo/ })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('radio', { name: /Luca Stagista/ })).not.toBeInTheDocument()
+  })
+
+  it('invites a contractor as administrator in the chosen location, never as an intern', async () => {
+    admins()
+    server.use(
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))),
+      http.get('/api/locations/options', () => HttpResponse.json({ data: [{ id: 2, name: 'Bergamo', is_primary: false }, { id: 1, name: 'Sede principale', is_primary: true }] })),
+      http.get('/api/users', () => HttpResponse.json(userListResponse([]))),
+    )
+    let body: unknown = null
+    server.use(
+      http.post('/api/administrators/invitations', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ data: managedUser({ id: 9, name: 'Sara Colombo', email: 'sara@holidays.test', role: 'admin', status: 'invited' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    const dialog = await openNewPerson(user)
+    expect(within(dialog).queryByRole('radio', { name: 'Stagista' })).not.toBeInTheDocument()
+    await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Sede' })).toHaveTextContent('Sede principale'))
+    await user.type(within(dialog).getByLabelText('Nome'), 'Sara')
+    await user.type(within(dialog).getByLabelText('Cognome'), 'Colombo')
+    await user.type(within(dialog).getByLabelText('Email aziendale'), 'sara@holidays.test')
+    await user.click(within(dialog).getByRole('radio', { name: 'Collaboratore esterno' }))
+    await user.click(within(dialog).getByRole('combobox', { name: 'Sede' }))
+    await user.click(await screen.findByRole('option', { name: 'Bergamo' }))
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Invita amministratore' }))
+
+    await screen.findByText('Invito da amministratore inviato a sara@holidays.test.')
+    expect(body).toEqual({ first_name: 'Sara', last_name: 'Colombo', email: 'sara@holidays.test', employment_type: 'contractor', location_id: 2, current_password: 'password' })
+  })
+
+  it('shows the refusal of an intern under the chosen person of the promotion', async () => {
+    admins()
+    server.use(
+      http.get('/api/users', () => HttpResponse.json(userListResponse([managedUser({ id: 5, name: 'Sara Colombo', email: 'sara@holidays.test' })]))),
+      http.post('/api/administrators', () => HttpResponse.json({ message: 'x', errors: { user_id: ['Uno stagista non può essere amministratore.'] } }, { status: 422 })),
+    )
+    const { user } = renderRoutes(routes, ['/admin/administrators'])
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi admin' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Aggiungi un amministratore' })
+    await user.click(await within(dialog).findByRole('radio', { name: /Sara Colombo/ }))
+    await user.type(within(dialog).getByLabelText('La tua password'), 'password')
+    await user.click(within(dialog).getByRole('button', { name: 'Rendi amministratore' }))
+
+    const error = await within(dialog).findByText('Uno stagista non può essere amministratore.')
+    expect(within(dialog).getByRole('radiogroup', { name: 'Utenti attivi' })).toHaveAccessibleDescription(error.textContent ?? '')
   })
 })

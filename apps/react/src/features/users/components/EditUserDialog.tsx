@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { TFunction } from 'i18next'
 import { LoaderCircle } from 'lucide-react'
 import { useMemo, useRef, useState, type FormEvent } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -10,9 +10,14 @@ import PasswordInput from '@/components/PasswordInput'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { EMPLOYMENT_TYPES, isEmploymentType, useMultipleLocations } from '@/features/auth/api'
 import { emailField } from '@/features/auth/validation'
+import { useLocationOptions } from '@/features/locations/api'
 import { useUpdateUser, type ManagedUser } from '@/features/users/api'
 import { isApiError } from '@/lib/api'
 import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
@@ -24,12 +29,15 @@ const createSchema = (t: TFunction, askPassword: boolean, emailEditable: boolean
     firstName: z.string().trim().min(1, t('validation.firstNameRequired')),
     lastName: z.string().trim().min(1, t('validation.lastNameRequired')),
     email: emailEditable ? emailField(t) : z.string(),
+    employmentType: z.enum(['employee', 'contractor', 'intern']),
+    // Id della sede come testo (valore della select)
+    locationId: z.string(),
     currentPassword: askPassword ? z.string().min(1, t('validation.passwordRequired')) : z.string(),
   })
 
 type EditValues = z.infer<ReturnType<typeof createSchema>>
 
-const FIELDS: (keyof EditValues)[] = ['firstName', 'lastName', 'email', 'currentPassword']
+const FIELDS: (keyof EditValues)[] = ['firstName', 'lastName', 'email', 'employmentType', 'locationId', 'currentPassword']
 
 interface EditUserDialogProps {
   user: ManagedUser | null
@@ -54,11 +62,24 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
   const emailEditable = user.status === 'invited'
   // Modificare un altro admin chiede la password di chi agisce, come promozione e revoca
   const askPassword = user.role === 'admin' && !user.is_current_user
+  const multipleLocations = useMultipleLocations()
+  // Solo l'admin cambia la sede (can.change_location) e solo se ce n'è più d'una (spec SP2 fase 1 §5.4 e §5.5)
+  const showLocation = user.can.change_location && multipleLocations
+  const locations = useLocationOptions(showLocation)
+  // Uno stagista può essere solo Utente: per un responsabile o un admin il tipo Stagista non si sceglie (spec §7.3)
+  const internAllowed = user.role === 'employee'
   const schema = useMemo(() => createSchema(t, askPassword, emailEditable), [t, askPassword, emailEditable])
   // La password vive solo nel form: si smonta alla chiusura e la mutation ha gcTime 0
   const form = useForm<EditValues>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: user.first_name, lastName: user.last_name, email: user.email, currentPassword: '' },
+    defaultValues: {
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      employmentType: user.employment_type,
+      locationId: String(user.location.id),
+      currentPassword: '',
+    },
   })
   const { errors } = form.formState
   // Messaggio del server mostrato nel dialog (troppe richieste, errori senza campo)
@@ -68,7 +89,7 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
   // durante l'animazione di chiusura il form è ancora nel DOM
   const submitting = useRef(false)
 
-  const submit = async ({ firstName, lastName, email, currentPassword }: EditValues) => {
+  const submit = async ({ firstName, lastName, email, employmentType, locationId, currentPassword }: EditValues) => {
     if (submitting.current) return
     submitting.current = true
     setNotice(null)
@@ -80,6 +101,9 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
         firstName,
         lastName,
         email: emailEditable ? email : undefined,
+        // Tipo e sede solo se cambiano: la richiesta non aggiunge tappe inutili allo storico
+        employmentType: employmentType !== user.employment_type ? employmentType : undefined,
+        locationId: showLocation && Number(locationId) !== user.location.id ? Number(locationId) : undefined,
         currentPassword: askPassword ? currentPassword : undefined,
       })).data
     } catch (error) {
@@ -89,6 +113,8 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
           firstName: error.fieldErrors.first_name?.[0],
           lastName: error.fieldErrors.last_name?.[0],
           email: error.fieldErrors.email?.[0],
+          employmentType: error.fieldErrors.employment_type?.[0],
+          locationId: error.fieldErrors.location_id?.[0],
           currentPassword: error.fieldErrors.current_password?.[0],
         }
         FIELDS.forEach((field) => {
@@ -173,6 +199,66 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
           <FieldDescription id="edit-email-hint">{emailEditable ? t('users.editDialog.emailInvited') : t('users.editDialog.emailLocked')}</FieldDescription>
           <FieldError id="edit-email-error">{errors.email?.message}</FieldError>
         </Field>
+        <FieldSet>
+          <FieldLegend variant="label">{t('users.editDialog.employmentType')}</FieldLegend>
+          <Controller
+            control={form.control}
+            name="employmentType"
+            render={({ field }) => (
+              <RadioGroup
+                value={field.value}
+                onValueChange={(value) => isEmploymentType(value) && field.onChange(value)}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                aria-invalid={errors.employmentType ? true : undefined}
+                aria-describedby={[internAllowed ? '' : 'edit-employment-type-note', errors.employmentType ? 'edit-employment-type-error' : ''].filter(Boolean).join(' ') || undefined}
+              >
+                {EMPLOYMENT_TYPES.map((type) => (
+                  <Field key={type} orientation="horizontal" data-disabled={type === 'intern' && !internAllowed ? true : undefined}>
+                    <RadioGroupItem value={type} id={`edit-employment-type-${type}`} disabled={type === 'intern' && !internAllowed} />
+                    <FieldLabel htmlFor={`edit-employment-type-${type}`}>{t(`users.employmentTypes.${type}`)}</FieldLabel>
+                  </Field>
+                ))}
+              </RadioGroup>
+            )}
+          />
+          {!internAllowed && <FieldDescription id="edit-employment-type-note">{t('users.internNeedsUserRole')}</FieldDescription>}
+          <FieldError id="edit-employment-type-error">{errors.employmentType?.message}</FieldError>
+        </FieldSet>
+        {showLocation && (
+          <Field data-invalid={errors.locationId ? true : undefined}>
+            <Label id="edit-location-label" htmlFor="edit-location">
+              {t('users.editDialog.location')}
+            </Label>
+            <Controller
+              control={form.control}
+              name="locationId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    id="edit-location"
+                    aria-labelledby="edit-location-label"
+                    aria-describedby={errors.locationId ? 'edit-location-note edit-location-error' : 'edit-location-note'}
+                    aria-invalid={errors.locationId ? true : undefined}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {/* La sede attuale c'è sempre, anche prima che arrivino le opzioni */}
+                    {(locations.data ?? [{ id: user.location.id, name: user.location.name, is_primary: false }]).map((location) => (
+                      <SelectItem key={location.id} value={String(location.id)}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldDescription id="edit-location-note">{t('users.editDialog.locationNote')}</FieldDescription>
+            <FieldError id="edit-location-error">{errors.locationId?.message}</FieldError>
+          </Field>
+        )}
         {askPassword && (
           <Field data-invalid={errors.currentPassword ? true : undefined}>
             <FieldLabel htmlFor="edit-password">{t('users.editDialog.password')}</FieldLabel>
@@ -203,7 +289,7 @@ const EditForm = ({ user, onClose, onBusyChange }: EditFormProps) => {
   )
 }
 
-/** Modifica di nome, cognome ed email (questa solo per gli invitati). */
+/** Modifica di nome, cognome, email (solo invitati), tipo di rapporto e, per l'admin, sede. */
 const EditUserDialog = ({ user, onClose, triggerAttribute = USER_TRIGGER_ATTRIBUTE, triggerKey = (target) => target.id }: EditUserDialogProps) => {
   const { t } = useTranslation()
   const open = user !== null

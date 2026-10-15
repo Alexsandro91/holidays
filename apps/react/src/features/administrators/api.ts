@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { requestData } from '@/lib/api'
-import { adminQueryKey } from '@/lib/queryKeys'
+import { adminQueryKey, historyQueryKey } from '@/lib/queryKeys'
+import type { EmploymentType } from '@/features/auth/api'
 import { managedUserSchema, type ManagedRole } from '@/features/users/api'
 
 const listSchema = z.object({ data: z.array(managedUserSchema) })
@@ -31,8 +32,8 @@ export const useGrantAdmin = () => {
       requestData('POST', '/api/administrators', resourceSchema, { user_id: userId, current_password: currentPassword }),
     // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
     gcTime: 0,
-    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
-    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato. Lo storico ha una tappa nuova (ruolo, invito)
+    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: adminQueryKey }), queryClient.invalidateQueries({ queryKey: historyQueryKey })]),
   })
 }
 
@@ -40,6 +41,10 @@ export interface InviteAdminInput {
   firstName: string
   lastName: string
   email: string
+  /** Un admin non può essere stagista: solo dipendente o collaboratore esterno */
+  employmentType: Exclude<EmploymentType, 'intern'>
+  /** Solo con più sedi; senza, il server usa la principale */
+  locationId?: number
   currentPassword: string
 }
 
@@ -47,17 +52,19 @@ export interface InviteAdminInput {
 export const useInviteAdmin = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ firstName, lastName, email, currentPassword }: InviteAdminInput) =>
+    mutationFn: ({ firstName, lastName, email, employmentType, locationId, currentPassword }: InviteAdminInput) =>
       requestData('POST', '/api/administrators/invitations', resourceSchema, {
         first_name: firstName,
         last_name: lastName,
         email,
+        employment_type: employmentType,
+        ...(locationId === undefined ? {} : { location_id: locationId }),
         current_password: currentPassword,
       }),
     // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
     gcTime: 0,
-    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
-    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato. Lo storico ha una tappa nuova (ruolo, invito)
+    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: adminQueryKey }), queryClient.invalidateQueries({ queryKey: historyQueryKey })]),
   })
 }
 
@@ -68,7 +75,7 @@ export const useRevokeAdmin = () => {
       requestData('DELETE', `/api/administrators/${id}`, resourceSchema, { role, current_password: currentPassword }),
     // La password di conferma non resta nella cache delle mutation dopo la chiusura del dialog
     gcTime: 0,
-    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
-    onSettled: () => queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+    // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato. Lo storico ha una tappa nuova (ruolo, invito)
+    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: adminQueryKey }), queryClient.invalidateQueries({ queryKey: historyQueryKey })]),
   })
 }

@@ -1,9 +1,11 @@
-import { act, screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { User } from '@/features/auth/api'
 import UsersPage from '@/features/users/pages/UsersPage'
 import { expectNoA11yViolations } from '@/test/axe'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { managedUser, userListResponse } from '@/test/usersFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -579,5 +581,76 @@ describe('UsersPage', () => {
     await screen.findByRole('table')
     await screen.findByText('Pagina 2 di 3')
     await expectNoA11yViolations(container)
+  })
+
+  it('shows location column and filter to admins when there is more than one location', async () => {
+    const urls: URL[] = []
+    server.use(
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))),
+      http.get('/api/locations/options', () => HttpResponse.json({ data: [{ id: 1, name: 'Sede principale', is_primary: true }, { id: 2, name: 'Bergamo', is_primary: false }] })),
+    )
+    respondWith((url) => urls.push(url), [managedUser({ location: { id: 2, name: 'Bergamo' }, employment_type: 'intern', employment_type_label: 'Stagista' })])
+    const { user, router } = renderRoutes(routes, ['/users'])
+
+    const table = await screen.findByRole('table')
+    await waitFor(() => expect(columnHeader('Sede')).toBeInTheDocument())
+    expect(within(table).getByText('Bergamo')).toBeInTheDocument()
+    expect(within(table).getByText('Stagista')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Filtri' }))
+    await user.click(screen.getByRole('combobox', { name: 'Sede' }))
+    await user.click(await screen.findByRole('option', { name: 'Bergamo' }))
+
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[location]')).toBe('2'))
+    expect(router.state.location.search).toContain('location=2')
+
+    await user.click(within(columnHeader('Sede')).getByRole('button'))
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('sort')).toBe('location'))
+  })
+
+  it('starts from the location of the link ("Vedi persone" of a location), selected in the filter', async () => {
+    const urls: URL[] = []
+    server.use(
+      http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))),
+      http.get('/api/locations/options', () => HttpResponse.json({ data: [{ id: 1, name: 'Sede principale', is_primary: true }, { id: 2, name: 'Bergamo', is_primary: false }] })),
+    )
+    respondWith((url) => urls.push(url))
+    renderRoutes(routes, ['/users?location=2'])
+
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[location]')).toBe('2'))
+    // Il pannello si apre da solo con un filtro attivo e la select mostra la sede del link
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Sede' })).toHaveTextContent('Bergamo'))
+    expect(screen.getByRole('button', { name: 'Filtri: 1 filtro attivo' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('filters by employment type for every viewer and hides the location with a single one', async () => {
+    const urls: URL[] = []
+    respondWith((url) => urls.push(url))
+    const { user } = renderRoutes(routes, ['/users'])
+
+    await screen.findByRole('table')
+    expect(columnHeader('Tipo')).toBeInTheDocument()
+    expect(within(screen.getByRole('table')).queryByRole('columnheader', { name: /Sede/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Filtri' }))
+    expect(screen.queryByRole('combobox', { name: 'Sede' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'Tipo di rapporto' }))
+    await user.click(await screen.findByRole('option', { name: 'Collaboratore esterno' }))
+
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get('filter[employment_type]')).toBe('contractor'))
+  })
+
+  it('names the location in the title for managers and never sends a location filter', async () => {
+    const urls: URL[] = []
+    const manager: User = { ...adminUser, role: 'manager', role_label: 'Responsabile', location: { id: 2, name: 'Bergamo' } }
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(manager, { multipleLocations: true }))))
+    respondWith((url) => urls.push(url))
+    renderRoutes(routes, ['/users?location=1&sort=location'])
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Utenti · Bergamo' })).toBeInTheDocument()
+    await screen.findByRole('table')
+    expect(urls.at(-1)?.searchParams.has('filter[location]')).toBe(false)
+    expect(urls.at(-1)?.searchParams.get('sort')).toBe('last_name')
+    expect(within(screen.getByRole('table')).queryByRole('columnheader', { name: /Sede/ })).not.toBeInTheDocument()
   })
 })

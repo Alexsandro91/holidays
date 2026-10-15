@@ -46,7 +46,8 @@ const PromoteExistingForm = ({ onDone, onBusyChange, lockNotice, onLock }: Promo
   const submitting = useRef(false)
   // Ricerca generale: nome, cognome o email, anche "nome cognome" o "cognome nome" (spec §7.2)
   const candidates = useManagedUsers({ ...DEFAULT_USER_LIST_PARAMS, status: 'active', search, perPage: 50 })
-  const people = (candidates.data?.data ?? []).filter((person) => person.role !== 'admin')
+  // Un admin non può essere stagista (spec SP2 fase 1 §7.3): gli stagisti non sono tra i candidati
+  const people = (candidates.data?.data ?? []).filter((person) => person.role !== 'admin' && person.employment_type !== 'intern')
 
   // Se la scelta non è più tra i candidati (nuova ricerca) si azzera, così il nome non va perso
   if (userId !== '' && candidates.data !== undefined && !people.some((person) => String(person.id) === userId)) setUserId('')

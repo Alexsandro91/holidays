@@ -14,6 +14,7 @@ import {
   useUserSchedules,
 } from '@/features/locations/api'
 import { createQueryClient } from '@/lib/queryClient'
+import { historyQueryKey } from '@/lib/queryKeys'
 import { closure, location, locationListResponse, schedule } from '@/test/locationsFixtures'
 import { server } from '@/test/server'
 
@@ -128,5 +129,25 @@ describe('locations api', () => {
 
     await waitFor(() => expect(result.current.data?.schedules[0]?.minutes).toEqual([240, 240, 240, 0, 0, 0, 0]))
     expect(result.current.data?.location_schedule?.minutes).toEqual([480, 480, 480, 480, 480, 0, 0])
+  })
+
+  it('marks the history as stale after a change of the personal schedule, not after one of the location', async () => {
+    server.use(
+      http.post('/api/locations/1/schedules', () => HttpResponse.json({ data: schedule({ id: 9 }) }, { status: 201 })),
+      http.post('/api/users/7/schedules', () => HttpResponse.json({ data: schedule({ id: 10 }) }, { status: 201 })),
+    )
+    const { result, queryClient } = renderWithClient(() => ({ location: useAddLocationSchedule(1), user: useAddUserSchedule(7) }))
+    const historyKey = [...historyQueryKey, 'user', 7]
+    queryClient.setQueryData(historyKey, { pages: [], pageParams: [] })
+
+    await act(async () => {
+      await result.current.location.mutateAsync({ validFrom: '2026-11-01', minutes: [480, 480, 480, 480, 240, 0, 0] })
+    })
+    expect(queryClient.getQueryState(historyKey)?.isInvalidated).toBe(false)
+
+    await act(async () => {
+      await result.current.user.mutateAsync({ validFrom: '2026-11-01', followsLocation: true })
+    })
+    expect(queryClient.getQueryState(historyKey)?.isInvalidated).toBe(true)
   })
 })

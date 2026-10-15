@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import type { TFunction } from 'i18next'
 import { LoaderCircle } from 'lucide-react'
 import { useMemo, useRef, useState, type FormEvent } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -10,10 +10,15 @@ import PasswordInput from '@/components/PasswordInput'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { DialogFooter } from '@/components/ui/dialog'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useInviteAdmin } from '@/features/administrators/api'
+import { useMultipleLocations } from '@/features/auth/api'
 import { emailField } from '@/features/auth/validation'
+import { useLocationOptions } from '@/features/locations/api'
 import { isApiError } from '@/lib/api'
 
 // Stesse regole dell'invito di dipendenti e responsabili, più la password di chi agisce (spec §4)
@@ -22,12 +27,20 @@ const createSchema = (t: TFunction) =>
     firstName: z.string().trim().min(1, t('validation.firstNameRequired')),
     lastName: z.string().trim().min(1, t('validation.lastNameRequired')),
     email: emailField(t),
+    employmentType: z.enum(['employee', 'contractor']),
+    // Id della sede scelta come testo (valore della select); vuoto = la principale
+    locationId: z.string(),
     currentPassword: z.string().min(1, t('validation.passwordRequired')),
   })
 
 type InviteAdminValues = z.infer<ReturnType<typeof createSchema>>
 
-const FIELDS: (keyof InviteAdminValues)[] = ['firstName', 'lastName', 'email', 'currentPassword']
+// Un admin non può essere stagista (spec SP2 fase 1 §7.3)
+const ADMIN_EMPLOYMENT_TYPES: InviteAdminValues['employmentType'][] = ['employee', 'contractor']
+
+const isAdminEmploymentType = (value: string): value is InviteAdminValues['employmentType'] => value === 'employee' || value === 'contractor'
+
+const FIELDS: (keyof InviteAdminValues)[] = ['firstName', 'lastName', 'email', 'employmentType', 'locationId', 'currentPassword']
 
 interface InviteAdminFormProps {
   onDone: () => void
@@ -42,7 +55,10 @@ const InviteAdminForm = ({ onDone, onBusyChange, lockNotice, onLock }: InviteAdm
   const { t } = useTranslation()
   const invite = useInviteAdmin()
   const schema = useMemo(() => createSchema(t), [t])
-  const form = useForm<InviteAdminValues>({ resolver: zodResolver(schema), defaultValues: { firstName: '', lastName: '', email: '', currentPassword: '' } })
+  const form = useForm<InviteAdminValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { firstName: '', lastName: '', email: '', employmentType: 'employee', locationId: '', currentPassword: '' },
+  })
   const { errors } = form.formState
   // Messaggio del server mostrato nel dialog (troppi tentativi, errori senza campo)
   const [notice, setNotice] = useState<string | null>(null)
@@ -50,6 +66,9 @@ const InviteAdminForm = ({ onDone, onBusyChange, lockNotice, onLock }: InviteAdm
   // Evita il doppio invio: letto solo nei gestori di evento. Dopo l'invito riuscito resta attivo fino allo smontaggio:
   // durante l'animazione di chiusura il form è ancora nel DOM (il form si rimonta a ogni apertura)
   const submitting = useRef(false)
+  const multipleLocations = useMultipleLocations()
+  const locations = useLocationOptions(multipleLocations)
+  const primaryId = locations.data?.find((location) => location.is_primary)?.id
 
   const submit = async (values: InviteAdminValues) => {
     if (submitting.current) return
@@ -57,7 +76,9 @@ const InviteAdminForm = ({ onDone, onBusyChange, lockNotice, onLock }: InviteAdm
     setNotice(null)
     onBusyChange(true)
     try {
-      await invite.mutateAsync(values)
+      const chosen = Number(values.locationId === '' ? primaryId : values.locationId)
+      // Senza campo (o senza sedi caricate) il server usa la principale
+      await invite.mutateAsync({ ...values, locationId: multipleLocations && Number.isInteger(chosen) ? chosen : undefined })
     } catch (error) {
       submitting.current = false
       if (isApiError(error, 'validation')) {
@@ -65,6 +86,8 @@ const InviteAdminForm = ({ onDone, onBusyChange, lockNotice, onLock }: InviteAdm
           firstName: error.fieldErrors.first_name?.[0],
           lastName: error.fieldErrors.last_name?.[0],
           email: error.fieldErrors.email?.[0],
+          employmentType: error.fieldErrors.employment_type?.[0],
+          locationId: error.fieldErrors.location_id?.[0],
           currentPassword: error.fieldErrors.current_password?.[0],
         }
         FIELDS.forEach((field) => {
@@ -138,6 +161,63 @@ const InviteAdminForm = ({ onDone, onBusyChange, lockNotice, onLock }: InviteAdm
           <FieldDescription id="invite-admin-hint">{t('administrators.grant.inviteHint')}</FieldDescription>
           <FieldError id="invite-admin-email-error">{errors.email?.message}</FieldError>
         </Field>
+        <FieldSet>
+          <FieldLegend variant="label">{t('administrators.grant.employmentType')}</FieldLegend>
+          <Controller
+            control={form.control}
+            name="employmentType"
+            render={({ field }) => (
+              <RadioGroup
+                value={field.value}
+                onValueChange={(value) => isAdminEmploymentType(value) && field.onChange(value)}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                aria-invalid={errors.employmentType ? true : undefined}
+                aria-describedby={errors.employmentType ? 'invite-admin-employment-type-error' : undefined}
+              >
+                {ADMIN_EMPLOYMENT_TYPES.map((type) => (
+                  <Field key={type} orientation="horizontal">
+                    <RadioGroupItem value={type} id={`invite-admin-employment-type-${type}`} />
+                    <FieldLabel htmlFor={`invite-admin-employment-type-${type}`}>{t(`users.employmentTypes.${type}`)}</FieldLabel>
+                  </Field>
+                ))}
+              </RadioGroup>
+            )}
+          />
+          <FieldError id="invite-admin-employment-type-error">{errors.employmentType?.message}</FieldError>
+        </FieldSet>
+        {multipleLocations && (
+          <Field data-invalid={errors.locationId ? true : undefined}>
+            <Label id="invite-admin-location-label" htmlFor="invite-admin-location">
+              {t('administrators.grant.location')}
+            </Label>
+            <Controller
+              control={form.control}
+              name="locationId"
+              render={({ field }) => (
+                <Select value={field.value === '' ? (primaryId === undefined ? '' : String(primaryId)) : field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    id="invite-admin-location"
+                    aria-labelledby="invite-admin-location-label"
+                    aria-invalid={errors.locationId ? true : undefined}
+                    aria-describedby={errors.locationId ? 'invite-admin-location-error' : undefined}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {(locations.data ?? []).map((location) => (
+                      <SelectItem key={location.id} value={String(location.id)}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError id="invite-admin-location-error">{errors.locationId?.message}</FieldError>
+          </Field>
+        )}
         <Field data-invalid={errors.currentPassword ? true : undefined}>
           <FieldLabel htmlFor="invite-admin-password">{t('administrators.grant.password')}</FieldLabel>
           <PasswordInput

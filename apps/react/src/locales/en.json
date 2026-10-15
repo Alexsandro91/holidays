@@ -143,6 +143,9 @@
   "users": {
     "title": "Users",
     "subtitle": "Invitations, roles and access of everyone using Holidays.",
+    "titleWithLocation": "Users · {{location}}",
+    "internRoleOnly": "An intern can only be a User.",
+    "internNeedsUserRole": "An intern can only be a User: change the role first.",
     "invite": "Invite user",
     "filters": {
       "label": "Search and filter users",
@@ -155,10 +158,14 @@
       "lastName": "Last name",
       "email": "Email",
       "role": "Role",
-      "allRoles": "All roles"
+      "allRoles": "All roles",
+      "employmentType": "Employment type",
+      "allEmploymentTypes": "All types",
+      "location": "Location",
+      "allLocations": "All locations"
     },
     "tabs": { "label": "Filter by status", "all": "All", "active": "Active", "invited": "Invited", "disabled": "Disabled" },
-    "columns": { "firstName": "First name", "lastName": "Last name", "email": "Email", "role": "Role", "status": "Status", "details": "Details", "actions": "Actions" },
+    "columns": { "firstName": "First name", "lastName": "Last name", "email": "Email", "role": "Role", "employmentType": "Type", "location": "Location", "status": "Status", "details": "Details", "actions": "Actions" },
     "sort": {
       "label": "Sort by",
       "last_name": "Last name (A → Z)",
@@ -170,7 +177,9 @@
       "role": "Role (user → admin)",
       "-role": "Role (admin → user)",
       "status": "Status (active → disabled)",
-      "-status": "Status (disabled → active)"
+      "-status": "Status (disabled → active)",
+      "location": "Location (A → Z)",
+      "-location": "Location (Z → A)"
     },
     "you": "You",
     "inviteExpires": "Invitation expires on {{date}}",
@@ -198,7 +207,9 @@
       "changeRole": "Change role",
       "passwordReset": "Send password reset",
       "disable": "Disable",
-      "enable": "Enable"
+      "enable": "Enable",
+      "schedule": "Working hours",
+      "history": "History"
     },
     "inviteDialog": {
       "title": "Invite user",
@@ -209,13 +220,15 @@
       "role": "Role",
       "submit": "Send invitation",
       "submitting": "Sending…",
-      "done": "Invitation sent to {{email}}."
+      "done": "Invitation sent to {{email}}.",
+      "employmentType": "Employment type",
+      "location": "Location"
     },
     "roles": { "employee": "User", "manager": "Manager", "admin": "HR / Admin" },
     "employmentTypes": { "employee": "Employee", "contractor": "External contractor", "intern": "Intern" },
     "editDialog": {
       "title": "Edit {{name}}",
-      "description": "First name, last name and email of a Holidays user.",
+      "description": "Name, surname, email, employment type and location of who uses Holidays.",
       "firstName": "First name",
       "lastName": "Last name",
       "email": "Work email",
@@ -224,9 +237,23 @@
       "password": "Your password",
       "submit": "Save",
       "done": "{{name}}’s details updated.",
-      "reinvited": "Details updated. New invitation sent to {{email}}."
+      "reinvited": "Details updated. New invitation sent to {{email}}.",
+      "employmentType": "Employment type",
+      "location": "Location",
+      "locationNote": "The person moves to the manager of the new location."
     },
     "roleDialog": { "title": "Change {{name}}’s role", "submit": "Save role", "done": "{{name}}’s role updated." },
+    "scheduleDialog": {
+      "title": "Working hours of {{name}}",
+      "description": "Without personal hours, those of their location apply. The change applies from the chosen day on.",
+      "mode": "Hours",
+      "useLocation": "Use the hours of the location ({{location}})",
+      "personal": "Personal hours",
+      "alreadyLocation": "Already follows the hours of the location.",
+      "submit": "Save",
+      "saved": "Working hours of {{name}} saved: they apply from {{date}}.",
+      "loadError": "The working hours could not be loaded."
+    },
     "confirm": {
       "resend": { "title": "Resend the invitation to {{name}}?", "description": "The previous link will stop working.", "action": "Resend", "done": "Invitation sent again." },
       "cancel": { "title": "Cancel {{name}}’s invitation?", "description": "The account was never activated and will be deleted.", "action": "Cancel {{name}}’s invitation", "done": "Invitation cancelled." },
@@ -258,6 +285,7 @@
     "enableFor": "Enable {{name}}",
     "onlyYou": "You are the only administrator. Add another one before giving up the role: at least one administrator is always required.",
     "loadError": "Administrators couldn’t be loaded.",
+    "location": "Location: {{name}}",
     "grant": {
       "title": "Add an administrator",
       "description": "Promote an active user or invite a new person. Every administrator will get an email.",
@@ -276,6 +304,8 @@
       "password": "Your password",
       "submit": "Make administrator",
       "pickUser": "Pick a user.",
+      "employmentType": "Employment type",
+      "location": "Location",
       "done": "{{name}} is now an administrator."
     },
     "revokeDialog": {
