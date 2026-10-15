@@ -43,6 +43,25 @@ class SubProject2MigrationTest extends TestCase
         $this->assertSame('employee', DB::table('users')->where('email', 'sara@example.test')->value('employment_type'));
     }
 
+    public function test_existing_users_get_an_imported_entry_with_their_current_situation(): void
+    {
+        $this->legacyDatabaseWith([
+            ['first_name' => 'Marco', 'last_name' => 'Bianchi', 'email' => 'marco@example.test', 'role' => 'manager'],
+        ]);
+
+        $userId = DB::table('users')->where('email', 'marco@example.test')->value('id');
+        $entry = DB::table('user_history')->where('user_id', $userId)->sole();
+
+        $this->assertSame('imported', $entry->event);
+        $this->assertSame('2026-03-03 09:00:00', $entry->created_at);
+        $this->assertNull($entry->actor_id);
+        // MySQL riordina le chiavi JSON: si confronta il contenuto
+        $this->assertEquals(
+            ['role' => 'manager', 'employment_type' => 'employee', 'location_id' => Location::primary()->id],
+            json_decode((string) $entry->context, true),
+        );
+    }
+
     /**
      * Ricrea lo schema di prima della fase, inserisce gli utenti di allora e applica le migration nuove.
      *

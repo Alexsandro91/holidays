@@ -43,6 +43,7 @@ final class UserManagementService
         private readonly AuthEventLogger $events,
         private readonly InvitationService $invitations,
         private readonly PasswordResetService $passwordResets,
+        private readonly UserHistoryRecorder $history,
     ) {}
 
     public function changeRole(User $target, Role $role, User $actor, Request $request): User
@@ -64,8 +65,10 @@ final class UserManagementService
 
             $this->ensureStillAllowed('changeRole', $actor, $freshActor, $fresh);
 
+            $from = $fresh->role;
             $fresh->forceFill(['role' => $role])->save();
             $this->events->log(AuthEventType::RoleChanged, $request, $fresh, $actor);
+            $this->history->roleChanged($fresh, $from, $role, $actor);
 
             return $fresh;
         }, self::TRANSACTION_ATTEMPTS);
@@ -156,6 +159,7 @@ final class UserManagementService
             LoginChallenge::query()->where('user_id', $fresh->id)->delete();
             DB::table((string) config('auth.passwords.users.table'))->where('email', $fresh->email)->delete();
             $this->events->log(AuthEventType::UserDisabled, $request, $fresh, $actor);
+            $this->history->disabled($fresh, $actor);
 
             if ($fresh->isAdmin()) {
                 $this->notifyAdmins(AdminChange::Disabled, $fresh, $actor);
@@ -209,6 +213,7 @@ final class UserManagementService
 
             $fresh->forceFill(['status' => UserStatus::Active])->save();
             $this->events->log(AuthEventType::UserEnabled, $request, $fresh, $actor);
+            $this->history->enabled($fresh, $actor);
 
             if ($fresh->isAdmin()) {
                 $this->notifyAdmins(AdminChange::Enabled, $fresh, $actor);
@@ -229,8 +234,10 @@ final class UserManagementService
                 throw new ConflictHttpException(Translate::text('users.not_promotable'));
             }
 
+            $from = $fresh->role;
             $fresh->forceFill(['role' => Role::Admin])->save();
             $this->events->log(AuthEventType::AdminGranted, $request, $fresh, $actor);
+            $this->history->roleChanged($fresh, $from, Role::Admin, $actor);
             $this->notifyAdmins(AdminChange::Granted, $fresh, $actor);
 
             return $fresh;
@@ -283,6 +290,7 @@ final class UserManagementService
 
             $fresh->forceFill(['role' => $newRole])->save();
             $this->events->log(AuthEventType::AdminRevoked, $request, $fresh, $actor);
+            $this->history->roleChanged($fresh, Role::Admin, $newRole, $actor);
             $this->notifyAdmins(AdminChange::Revoked, $fresh, $actor);
 
             return $fresh;

@@ -3,12 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Enums\AuthEventType;
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\AuthEventLogger;
 use App\Services\InvitationService;
+use App\Services\UserHistoryRecorder;
 use App\Support\PersonRules;
 use App\Support\Translate;
 use Illuminate\Console\Command;
@@ -30,7 +32,7 @@ class CreateAdmin extends Command
 
     protected $description = 'Invita un amministratore (serve per il primo admin dell’installazione)';
 
-    public function handle(InvitationService $invitations, AuthEventLogger $events, Request $request): int
+    public function handle(InvitationService $invitations, AuthEventLogger $events, UserHistoryRecorder $history, Request $request): int
     {
         $firstName = trim((string) $this->argument('first_name'));
         $lastName = trim((string) $this->argument('last_name'));
@@ -74,7 +76,7 @@ class CreateAdmin extends Command
             return self::FAILURE;
         }
 
-        DB::transaction(function () use ($firstName, $lastName, $email, $invitations, $events, $request): void {
+        DB::transaction(function () use ($firstName, $lastName, $email, $invitations, $events, $history, $request): void {
             $admin = new User;
             $admin->forceFill([
                 'first_name' => $firstName,
@@ -82,12 +84,14 @@ class CreateAdmin extends Command
                 'email' => $email,
                 'password' => null,
                 'role' => Role::Admin,
+                'employment_type' => EmploymentType::Employee,
                 'location_id' => Location::primary()->id,
                 'status' => UserStatus::Invited,
                 'locale' => 'it',
             ])->save();
 
             $invitations->send($admin, null);
+            $history->invited($admin, null);
             // Nessun autore: l'invito parte dal terminale
             $events->log(AuthEventType::InvitationSent, $request, $admin);
         });

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AuthEventType;
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Mail\InvitationMail;
@@ -40,7 +41,7 @@ final class InvitationService
      */
     private const TRANSACTION_ATTEMPTS = 3;
 
-    public function __construct(private readonly AuthEventLogger $events) {}
+    public function __construct(private readonly AuthEventLogger $events, private readonly UserHistoryRecorder $history) {}
 
     /**
      * Invito di un dipendente o di un responsabile.
@@ -83,12 +84,14 @@ final class InvitationService
             'email' => $email,
             'password' => null,
             'role' => $role,
+            'employment_type' => EmploymentType::Employee,
             'location_id' => Location::primary()->id,
             'status' => UserStatus::Invited,
             'locale' => app()->getLocale(),
         ])->save();
 
         $this->send($user, $inviter);
+        $this->history->invited($user, $inviter);
 
         return $user;
     }
@@ -177,6 +180,7 @@ final class InvitationService
                 'privacy_notice_acknowledged_at' => now(),
             ])->save();
             $locked->forceFill(['accepted_at' => now()])->save();
+            $this->history->activated($user);
             $this->events->log(AuthEventType::InvitationAccepted, $request, $user);
 
             return $user;
