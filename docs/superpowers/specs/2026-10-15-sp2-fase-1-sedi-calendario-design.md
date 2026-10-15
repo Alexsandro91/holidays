@@ -395,7 +395,7 @@ conservazione limitata):
 ### 8.4 Interfaccia
 - **Profilo:** card **Storico** nella colonna di destra, sotto Preferenze. Elenco verticale: data (es. "3 marzo 2026") e
   testo della tappa. Mostra le ultime 5 tappe e "Mostra tutto" carica le altre.
-- **Utenti** (proposta di Claude, da togliere se non serve): voce di menu **Storico** per admin e responsabile, che apre
+- **Utenti** (confermato dall'utente): voce di menu **Storico** per admin e responsabile, che apre
   lo stesso elenco in una modale con anche il nome di chi ha agito.
 - Date nel formato della lingua dell'account.
 
