@@ -1,4 +1,3 @@
-import { LoaderCircle } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -6,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUserHistory } from '@/features/history/api'
 import HistoryList from '@/features/history/components/HistoryList'
+import LoadMore from '@/features/history/components/LoadMore'
 import type { ManagedUser } from '@/features/users/api'
 import { isApiError } from '@/lib/api'
 import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
@@ -38,9 +38,18 @@ const HistoryBody = ({ userId }: { userId: number }) => {
     )
   }
 
-  if (history.isError) {
-    // 404: la persona non è più visibile (es. spostata in un'altra sede)
-    return <p role="alert">{isApiError(history.error) && history.error.status === 404 ? t('history.notVisible') : t('history.loadError')}</p>
+  // Errore a tutta altezza solo senza tappe: se fallisce "Carica altre" quelle già caricate restano
+  if (history.isError && entries.length === 0) {
+    // 404: la persona non è più visibile (es. spostata in un'altra sede), riprovare non serve
+    if (isApiError(history.error) && history.error.status === 404) return <p role="alert">{t('history.notVisible')}</p>
+    return (
+      <div role="alert" className="grid justify-items-start gap-2">
+        <p>{t('history.loadError')}</p>
+        <Button variant="outline" onClick={() => void history.refetch()}>
+          {t('common.retry')}
+        </Button>
+      </div>
+    )
   }
 
   if (entries.length === 0) return <p className="text-muted-foreground">{t('history.empty')}</p>
@@ -50,12 +59,7 @@ const HistoryBody = ({ userId }: { userId: number }) => {
       <div ref={listRef} className="max-h-[60vh] overflow-y-auto pr-1">
         <HistoryList entries={entries} showActor />
       </div>
-      {history.hasNextPage && (
-        <Button variant="outline" className="justify-self-start" disabled={history.isFetchingNextPage} onClick={() => void loadMore()}>
-          {history.isFetchingNextPage && <LoaderCircle className="animate-spin" aria-hidden="true" />}
-          {t('history.loadMore')}
-        </Button>
-      )}
+      {history.hasNextPage && <LoadMore pending={history.isFetchingNextPage} failed={history.isFetchNextPageError} onLoad={() => void loadMore()} />}
     </div>
   )
 }

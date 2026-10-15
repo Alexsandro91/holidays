@@ -571,6 +571,7 @@
     "notVisible": "Questa persona non è più tra quelle che puoi vedere.",
     "showAll": "Mostra tutto",
     "loadMore": "Carica altre",
+    "loadMoreError": "Non è stato possibile caricare altre tappe.",
     "by": "da {{name}}",
     "dialogTitle": "Storico di {{name}}",
     "dialogDescription": "Le tappe dell’account dalla più recente, con chi le ha fatte."

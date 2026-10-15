@@ -1,10 +1,10 @@
-import { LoaderCircle } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProfileHistory } from '@/features/history/api'
 import HistoryList from '@/features/history/components/HistoryList'
+import LoadMore from '@/features/history/components/LoadMore'
 import ProfileCard from '@/features/profile/components/ProfileCard'
 
 /** Tappe visibili prima di "Mostra tutto" (spec §8.4) */
@@ -38,7 +38,8 @@ const HistoryCard = () => {
             <Skeleton key={row} className="h-10 w-full" />
           ))}
         </div>
-      ) : history.isError ? (
+      ) : history.isError && entries.length === 0 ? (
+        // Errore a tutta altezza solo senza tappe: se fallisce "Carica altre" quelle già caricate restano
         <div role="alert" className="grid justify-items-start gap-2">
           <p>{t('history.loadError')}</p>
           <Button variant="outline" onClick={() => void history.refetch()}>
@@ -65,10 +66,7 @@ const HistoryCard = () => {
             </Button>
           )}
           {expanded && history.hasNextPage && (
-            <Button variant="outline" className="justify-self-start" disabled={history.isFetchingNextPage} onClick={() => void loadMore()}>
-              {history.isFetchingNextPage && <LoaderCircle className="animate-spin" aria-hidden="true" />}
-              {t('history.loadMore')}
-            </Button>
+            <LoadMore pending={history.isFetchingNextPage} failed={history.isFetchNextPageError} onLoad={() => void loadMore()} />
           )}
         </div>
       )}

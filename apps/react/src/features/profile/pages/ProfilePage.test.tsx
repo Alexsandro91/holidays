@@ -397,6 +397,36 @@ describe('ProfilePage', () => {
     expect(within(history).queryByRole('button', { name: 'Carica altre' })).not.toBeInTheDocument()
   })
 
+  it('keeps the loaded steps when the next page fails and retries it', async () => {
+    signedIn()
+    let failNext = true
+    server.use(
+      http.get('/api/profile/history', ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '1'
+        if (page === '2' && failNext) {
+          failNext = false
+          return HttpResponse.json({ message: 'Errore' }, { status: 500 })
+        }
+        const entries = page === '1' ? Array.from({ length: 20 }, (_, index) => historyEntry({ id: index + 1, summary: `Tappa ${index + 1}` })) : [historyEntry({ id: 21, summary: 'Tappa 21' })]
+        return HttpResponse.json(historyPage(entries, { page: Number(page), lastPage: 2 }))
+      }),
+    )
+    const { user } = await openProfile()
+
+    const history = card('Storico')
+    await within(history).findByText('Tappa 1')
+    await user.click(within(history).getByRole('button', { name: 'Mostra tutto' }))
+    await user.click(within(history).getByRole('button', { name: 'Carica altre' }))
+
+    // Le tappe già caricate restano: l'errore compare accanto al pulsante, con Riprova
+    expect(await within(history).findByRole('alert')).toHaveTextContent('Non è stato possibile caricare altre tappe.')
+    expect(within(history).getByText('Tappa 20')).toBeInTheDocument()
+    await user.click(within(history).getByRole('button', { name: 'Riprova' }))
+
+    expect(await within(history).findByText('Tappa 21')).toBeInTheDocument()
+    expect(within(history).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('says when there are no steps yet', async () => {
     signedIn()
     await openProfile()

@@ -60,6 +60,53 @@ describe('UserHistoryDialog', () => {
     expect(pages).toEqual(['1', '2'])
   })
 
+  it('keeps the loaded steps when the next page fails and retries it', async () => {
+    let failNext = true
+    server.use(
+      http.get('/api/users/7/history', ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '1'
+        if (page === '2' && failNext) {
+          failNext = false
+          return HttpResponse.json({ message: 'Errore' }, { status: 500 })
+        }
+        return HttpResponse.json(historyPage([historyEntry({ id: Number(page), summary: `Tappa ${page}` })], { page: Number(page), lastPage: 2 }))
+      }),
+    )
+    const { user } = renderDialog()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Storico di Marco Bianchi' })
+    await within(dialog).findByText('Tappa 1')
+    await user.click(within(dialog).getByRole('button', { name: 'Carica altre' }))
+
+    // Le tappe già caricate restano: l'errore compare accanto al pulsante, con Riprova
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Non è stato possibile caricare altre tappe.')
+    expect(within(dialog).getByText('Tappa 1')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Riprova' }))
+
+    expect(await within(dialog).findByText('Tappa 2')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('offers a retry when the history cannot be loaded', async () => {
+    let fail = true
+    server.use(
+      http.get('/api/users/7/history', () => {
+        if (fail) {
+          fail = false
+          return HttpResponse.json({ message: 'Errore' }, { status: 500 })
+        }
+        return HttpResponse.json(historyPage([historyEntry({ summary: 'Tappa 1' })]))
+      }),
+    )
+    const { user } = renderDialog()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Storico di Marco Bianchi' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Non è stato possibile caricare lo storico.')
+    await user.click(within(dialog).getByRole('button', { name: 'Riprova' }))
+
+    expect(await within(dialog).findByText('Tappa 1')).toBeInTheDocument()
+  })
+
   it('has no accessibility violations', async () => {
     server.use(http.get('/api/users/7/history', () => HttpResponse.json(historyPage([historyEntry()]))))
     renderDialog()

@@ -571,6 +571,7 @@
     "notVisible": "This person is no longer among those you can see.",
     "showAll": "Show all",
     "loadMore": "Load more",
+    "loadMoreError": "More steps could not be loaded.",
     "by": "by {{name}}",
     "dialogTitle": "History of {{name}}",
     "dialogDescription": "The steps of the account, most recent first, with who made them."
