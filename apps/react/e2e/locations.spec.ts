@@ -23,6 +23,8 @@ const MOVED_PEOPLE: Array<[email: string, name: string]> = [
 ]
 // Richieste API dell'admin in questo file (caricamenti delle pagine e chiamate dirette), contro un limite di 60 al minuto
 const ADMIN_API_BUDGET = 50
+// Timeout di test e hook che chiamano l'API direttamente: `api()` può aspettare fino a ~61 s su un 429
+const API_RETRY_TIMEOUT = 150_000
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES: Array<'light' | 'dark'> = ['light', 'dark']
 
@@ -114,23 +116,69 @@ const findPerson = async (page: Page, email: string) => {
   return person
 }
 
-const primaryLocationId = async (page: Page): Promise<number> => {
-  const options = z.object({ data: z.array(z.object({ id: z.number(), is_primary: z.boolean() })) }).parse(await (await api(page, 'GET', '/api/locations/options')).json())
-  const primary = options.data.find((option) => option.is_primary)
-  if (!primary) throw new Error('Sede principale mancante')
-  return primary.id
+const locationOptionsSchema = z.object({ data: z.array(z.object({ id: z.number(), name: z.string(), is_primary: z.boolean() })) })
+
+/** Sedi attive (le opzioni dei filtri e dei campi Sede). */
+const activeLocations = async (page: Page) => {
+  const response = await api(page, 'GET', '/api/locations/options')
+  if (response.status() !== 200) throw new Error(`opzioni delle sedi: HTTP ${response.status()}`)
+  return locationOptionsSchema.parse(await response.json()).data
 }
 
-/** Riporta le persone spostate nella principale e Sara al ruolo Utente; restituisce gli stati HTTP delle chiamate. */
-const putPeopleBack = async (): Promise<number[]> => {
-  const primaryId = await primaryLocationId(admin)
-  const statuses: number[] = []
-  for (const [email] of MOVED_PEOPLE) {
-    const person = await findPerson(admin, email)
-    statuses.push((await api(admin, 'PATCH', `/api/users/${person.id}`, { first_name: person.first_name, last_name: person.last_name, location_id: primaryId })).status())
-    if (email === EMPLOYEE && person.role === 'manager') statuses.push((await api(admin, 'PATCH', `/api/users/${person.id}/role`, { role: 'employee' })).status())
+const describeError = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+
+/** Esegue un passo della pulizia senza fermare i successivi: l'eventuale errore finisce in `errors`. */
+const attempt = async (errors: string[], label: string, step: () => Promise<void>): Promise<void> => {
+  try {
+    await step()
+  } catch (error) {
+    errors.push(`${label}: ${describeError(error)}`)
   }
-  return statuses
+}
+
+const expectStatus = (label: string, response: APIResponse, expected: number): void => {
+  if (response.status() !== expected) throw new Error(`${label}: HTTP ${response.status()} invece di ${expected}`)
+}
+
+/**
+ * Riporta le persone spostate nella principale e Sara al ruolo Utente. Ogni persona (e il ruolo di Sara) è un passo a
+ * sé: un errore su una non impedisce di rimettere a posto le altre. Restituisce gli errori.
+ */
+const putPeopleBack = async (): Promise<string[]> => {
+  const errors: string[] = []
+  let primaryId: number | null = null
+  await attempt(errors, 'sede principale', async () => {
+    const primary = (await activeLocations(admin)).find((location) => location.is_primary)
+    if (!primary) throw new Error('mancante')
+    primaryId = primary.id
+  })
+  for (const [email] of MOVED_PEOPLE) {
+    await attempt(errors, `sede di ${email}`, async () => {
+      if (primaryId === null) throw new Error('sede principale sconosciuta')
+      const person = await findPerson(admin, email)
+      const payload = { first_name: person.first_name, last_name: person.last_name, location_id: primaryId }
+      expectStatus('PATCH', await api(admin, 'PATCH', `/api/users/${person.id}`, payload), 200)
+    })
+  }
+  await attempt(errors, `ruolo di ${EMPLOYEE}`, async () => {
+    const sara = await findPerson(admin, EMPLOYEE)
+    if (sara.role === 'manager') expectStatus('PATCH ruolo', await api(admin, 'PATCH', `/api/users/${sara.id}/role`, { role: 'employee' }), 200)
+  })
+  return errors
+}
+
+/**
+ * Archivia la sede di prova; se il test che la crea si è fermato prima di leggerne l'id, la cerca per nome tra quelle
+ * attive. L'archiviazione di una sede già archiviata risponde 200, con persone dentro 409. Restituisce gli errori.
+ */
+const archiveTestLocation = async (): Promise<string[]> => {
+  const errors: string[] = []
+  await attempt(errors, `archiviazione di ${LOCATION_NAME}`, async () => {
+    const id = locationId ?? (await activeLocations(admin)).find((location) => location.name === LOCATION_NAME)?.id ?? null
+    if (id === null) return
+    expectStatus('POST archive', await api(admin, 'POST', `/api/locations/${id}/archive`), 200)
+  })
+  return errors
 }
 
 /**
@@ -144,8 +192,8 @@ const waitForAdminApiBudget = async (): Promise<void> => {
 }
 
 test.beforeAll(async ({ browser }) => {
-  // Margine per l'eventuale attesa del limite delle API
-  test.setTimeout(120_000)
+  // Margine per le eventuali attese del limite delle API (riprova di `api()` e attesa della finestra)
+  test.setTimeout(180_000)
   browserRef = browser
   const configured = test.info().project.use.baseURL
   if (!configured) throw new Error('baseURL non configurato')
@@ -159,12 +207,13 @@ test.beforeAll(async ({ browser }) => {
 })
 
 test.afterAll(async () => {
+  test.setTimeout(API_RETRY_TIMEOUT)
   try {
-    // Pulizia anche dopo un errore a metà: persone nella principale, ruolo di Sara, sede archiviata
+    // Pulizia anche dopo un errore a metà: persone nella principale, ruolo di Sara, sede archiviata. Ogni passo si
+    // tenta comunque e gli errori si sommano: una pulizia incompleta fa fallire il file invece di passare inosservata
     if (adminContext && !restored) {
-      await putPeopleBack()
-      // Già archiviata dall'ultimo test: il 409 si ignora
-      if (locationId !== null) await api(admin, 'POST', `/api/locations/${locationId}/archive`)
+      const errors = [...(await putPeopleBack()), ...(await archiveTestLocation())]
+      if (errors.length > 0) throw new Error(`Pulizia incompleta del database di sviluppo:\n${errors.join('\n')}`)
     }
   } finally {
     for (const context of extraContexts) await context.close()
@@ -257,6 +306,7 @@ test('the admin promotes an employee to manager and moves her, a manager and an 
 })
 
 test('the manager sees only the people of his location and gets 404 for the others', async () => {
+  test.setTimeout(API_RETRY_TIMEOUT)
   await clearInbox()
   const context = await newContext()
   const manager = await context.newPage()
@@ -271,10 +321,11 @@ test('the manager sees only the people of his location and gets 404 for the othe
   // Nessuna colonna, filtro o campo Sede per il responsabile
   await expect(manager.getByRole('columnheader', { name: 'Sede' })).toHaveCount(0)
 
-  // Indirizzo di una persona di un'altra sede: per lui non esiste
+  // Indirizzo di una persona di un'altra sede: per lui non esiste. Solo rotte di lettura, risolte con lo stesso `{user}`
+  // limitato alla sede: se la visibilità regredisse, nessun account di sviluppo verrebbe modificato
   const other = await findPerson(admin, OTHER)
   expect((await api(manager, 'GET', `/api/users/${other.id}/history`)).status()).toBe(404)
-  expect((await api(manager, 'POST', `/api/users/${other.id}/disable`)).status()).toBe(404)
+  expect((await api(manager, 'GET', `/api/users/${other.id}/schedules`)).status()).toBe(404)
 })
 
 test('the history shows the promotion and the move, in the profile and in the users table', async () => {
@@ -300,7 +351,8 @@ test('the history shows the promotion and the move, in the profile and in the us
 })
 
 test('the admin puts everything back and archives the location', async () => {
-  expect(await putPeopleBack()).toEqual([200, 200, 200, 200])
+  test.setTimeout(API_RETRY_TIMEOUT)
+  expect(await putPeopleBack()).toEqual([])
 
   await openLocationsFromMenu()
   await admin.getByRole('row').filter({ hasText: LOCATION_NAME }).getByRole('button', { name: `Azioni per ${LOCATION_NAME}` }).click()
