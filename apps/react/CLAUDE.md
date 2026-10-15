@@ -8,6 +8,7 @@
   `API_PROXY_TARGET`: il codice chiama solo percorsi relativi, sempre tramite `src/lib/api.ts`.
 - Le variabili `VITE_*` finiscono nel bundle del browser: sono pubbliche, mai segreti.
   Ogni nuova variabile va aggiunta a `.env.example` e tipizzata in `src/env.d.ts`.
+- Sedi: con una sola sede attiva (`meta.multiple_locations = false` in `/api/auth/user`, hook `useMultipleLocations`) colonna, filtro e campi Sede non compaiono; il tipo di rapporto invece c'è sempre. Il ruolo `employee` si mostra come "Utente": "Dipendente" è un tipo di rapporto. Giorni e ore degli orari passano da `features/locations/scheduleFormat.ts`, le date del calendario (YYYY-MM-DD) da `features/locations/dateFormat.ts` (formattate in UTC, mai con il fuso del dispositivo).
 
 ## Approccio
 Questo progetto segue le **best practice React/Vite**, non lo scaffolding del template Dieffetech.

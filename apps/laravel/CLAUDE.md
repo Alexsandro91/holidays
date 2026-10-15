@@ -29,6 +29,7 @@
   (nome, cognome, `locale`) e `PUT /api/profile/password` (password attuale con lo stesso blocco/contatore delle azioni
   admin ma eventi `password_change_*`; chiude le altre sessioni). `GET /api/auth/user` e `PATCH /api/profile` aggiungono
   `meta.session` (`CurrentUserResource`).
+- Sedi (`Location`, solo admin, `LocationPolicy`): sempre una e una sola principale (`primary_marker` unico), si archiviano e non si cancellano. Ogni utente ha `location_id` ed `employment_type` (`EmploymentType`: dipendente, collaboratore esterno, stagista; lo stagista è solo `employee`, che nell'interfaccia si chiama "Utente"). Il responsabile vede e gestisce solo la sua sede: lo scope `User::visibleTo()` vale per la lista e per la risoluzione di `{user}` (fuori sede: 404). Giorni lavorativi solo da `WorkCalendar` (orario personale o della sede, festivi nazionali da `HolidayCalendars`, patrono, chiusure). Lo storico della persona (`user_history`) lo scrive solo `UserHistoryRecorder`, nella stessa transazione della modifica.
 
 ## Approccio
 Questo progetto segue le **best practice Laravel** (guideline e skill Boost), non lo scaffolding del
