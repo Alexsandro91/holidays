@@ -416,17 +416,27 @@ test('admin pages fit a phone screen and work with the keyboard', async () => {
   }
 
   // Desktop stretto con la barra laterale aperta: la tabella Utenti è più larga dello spazio
-  // e scorre nel suo contenitore; nessuna pagina deve scorrere in orizzontale
+  // e scorre nel suo contenitore; nessuna pagina deve scorrere in orizzontale.
+  // Navigazione dentro la SPA: ricaricare le pagine supererebbe il limite di richieste API al minuto
   await admin.setViewportSize({ width: 1024, height: 800 })
-  for (const { path, content } of [
-    { path: '/users', content: 'manager@holidays.test' },
-    { path: '/admin/administrators', content: 'Giulia Rossi' },
-    { path: '/admin/locations', content: 'Dieffetech' },
-    { path: '/profile', content: 'Dati personali' },
+  const nav = admin.getByRole('navigation', { name: 'Navigazione principale' })
+  for (const { title, open, content } of [
+    { title: 'Utenti', open: () => nav.getByRole('link', { name: 'Utenti' }).click(), content: 'manager@holidays.test' },
+    { title: 'Amministratori', open: () => nav.getByRole('link', { name: 'Amministratori' }).click(), content: 'Giulia Rossi' },
+    { title: 'Sedi', open: () => nav.getByRole('link', { name: 'Sedi' }).click(), content: 'Dieffetech' },
+    {
+      title: 'Profilo',
+      open: async () => {
+        await admin.getByRole('button', { name: /^Menu account/ }).click()
+        await admin.getByRole('menuitem', { name: 'Profilo' }).click()
+      },
+      content: 'Dati personali',
+    },
   ]) {
-    await admin.goto(path)
+    await open()
+    await expect(admin.getByRole('heading', { level: 1, name: title })).toBeVisible()
     await expect(admin.getByRole('main').getByText(content).locator('visible=true').first()).toBeVisible()
-    expect(await horizontalOverflow(admin), path).toBeLessThanOrEqual(0)
+    expect(await horizontalOverflow(admin), title).toBeLessThanOrEqual(0)
   }
 
   await admin.setViewportSize({ width: 1280, height: 800 })
