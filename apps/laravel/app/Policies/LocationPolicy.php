@@ -29,4 +29,12 @@ final class LocationPolicy
     {
         return $actor->isAdmin();
     }
+
+    /**
+     * Chiusure aziendali, di una sede o di tutte: solo l'admin (spec §4.3).
+     */
+    public function manageClosures(User $actor): bool
+    {
+        return $actor->isAdmin();
+    }
 }

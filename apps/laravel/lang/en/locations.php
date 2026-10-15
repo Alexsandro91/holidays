@@ -10,4 +10,6 @@ return [
     'schedule_exists' => 'A schedule already starts on this date: delete it before creating another one.',
     'schedule_empty' => 'At least one working day is required.',
     'schedule_started' => 'This schedule is already in force and can no longer be deleted.',
+    'closure_order' => 'A closure cannot end before it starts.',
+    'closure_too_long' => 'A closure lasts at most :days days: split it into several closures.',
 ];

@@ -83,6 +83,42 @@ final class WorkScheduleService
     }
 
     /**
+     * Versione personale (spec §4.4). Con `$minutes` null la persona torna all'orario della sede da quel giorno.
+     *
+     * @param  list<int>|null  $minutes
+     */
+    public function addForUser(User $user, CarbonImmutable $validFrom, ?array $minutes, User $actor): WorkSchedule
+    {
+        $schedule = DB::transaction(function () use ($user, $validFrom, $minutes): WorkSchedule {
+            // Blocca la persona: due versioni nuove in parallelo non scelgono la stessa data
+            $locked = User::query()->lockForUpdate()->findOrFail($user->id);
+            $location = Location::query()->findOrFail($locked->location_id);
+            $this->ensureValidFrom($validFrom, $this->today($location), $locked->schedules()->where('valid_from', $validFrom->toDateString())->exists());
+
+            $schedule = new WorkSchedule;
+            $schedule->forceFill([
+                'location_id' => null,
+                'user_id' => $locked->id,
+                'valid_from' => $validFrom->toDateString(),
+                'follows_location' => $minutes === null,
+                ...($minutes === null ? $this->restColumns() : $this->minuteColumns($minutes)),
+            ])->save();
+
+            return $schedule;
+        });
+
+        Log::info('Personal schedule added', [
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'valid_from' => $validFrom->toDateString(),
+            'follows_location' => $minutes === null,
+            'actor_id' => $actor->id,
+        ]);
+
+        return $schedule;
+    }
+
+    /**
      * Solo le versioni future (409 se è già in vigore), della sede o della persona.
      */
     public function delete(WorkSchedule $schedule, User $actor): void
@@ -112,6 +148,16 @@ final class WorkScheduleService
         if ($taken) {
             throw ValidationException::withMessages(['valid_from' => [Translate::text('locations.schedule_exists')]]);
         }
+    }
+
+    /**
+     * Righe `follows_location`: minuti a zero, che il calendario non legge (spec §2.3).
+     *
+     * @return array<string, int>
+     */
+    private function restColumns(): array
+    {
+        return array_fill_keys(array_map(fn (string $day): string => "{$day}_minutes", WorkSchedule::DAYS), 0);
     }
 
     /**

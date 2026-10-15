@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdministratorController;
+use App\Http\Controllers\Admin\ClosureController;
 use App\Http\Controllers\Admin\LocationCalendarController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LocationScheduleController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserInvitationController;
 use App\Http\Controllers\Admin\UserPasswordResetController;
 use App\Http\Controllers\Admin\UserRoleController;
+use App\Http\Controllers\Admin\UserScheduleController;
 use App\Http\Controllers\Admin\UserStatusController;
 use App\Http\Controllers\Auth\CurrentUserController;
 use App\Http\Controllers\Auth\ProfileController;
@@ -55,4 +57,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('/locations/{location}/schedules/{schedule}', [LocationScheduleController::class, 'destroy'])
         ->can('update', 'location')->scopeBindings()->name('locations.schedules.destroy');
     Route::get('/locations/{location}/calendar', LocationCalendarController::class)->can('view', 'location')->name('locations.calendar');
+
+    // Orario personale: solo admin (UserPolicy::manageSchedule)
+    Route::get('/users/{user}/schedules', [UserScheduleController::class, 'index'])->can('manageSchedule', 'user')->name('users.schedules.index');
+    Route::post('/users/{user}/schedules', [UserScheduleController::class, 'store'])->can('manageSchedule', 'user')->name('users.schedules.store');
+    Route::delete('/users/{user}/schedules/{schedule}', [UserScheduleController::class, 'destroy'])
+        ->can('manageSchedule', 'user')->scopeBindings()->name('users.schedules.destroy');
+
+    // Chiusure aziendali: solo admin (LocationPolicy::manageClosures)
+    Route::get('/closures', [ClosureController::class, 'index'])->can('manageClosures', Location::class)->name('closures.index');
+    Route::post('/closures', [ClosureController::class, 'store'])->can('manageClosures', Location::class)->name('closures.store');
+    Route::patch('/closures/{closure}', [ClosureController::class, 'update'])->can('manageClosures', Location::class)->name('closures.update');
+    Route::delete('/closures/{closure}', [ClosureController::class, 'destroy'])->can('manageClosures', Location::class)->name('closures.destroy');
 });
