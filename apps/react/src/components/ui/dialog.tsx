@@ -55,13 +55,16 @@ function DialogContent({
   showCloseButton?: boolean
 }) {
   const { t } = useTranslation()
+  // Quando il contenuto scorre, il campo che riceve il focus si ferma sopra il piede sticky
+  // (scroll-pb: piede con due pulsanti in colonna su telefono, in riga da sm) e la X in alto
+  // resta intera con il suo anello di focus (scroll-pt)
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-y-auto rounded-xl bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 overflow-y-auto scroll-pt-6 scroll-pb-32 rounded-xl sm:scroll-pb-24 bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -104,11 +107,13 @@ function DialogFooter({
   showCloseButton?: boolean
 }) {
   const { t } = useTranslation()
+  // Nei dialog più alti dello schermo il contenuto scorre e il piede resta in vista: sticky sul fondo
+  // dell'area che scorre (-bottom-6 annulla il padding del contenitore) e sfondo opaco
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 px-6 py-4 sm:flex-row sm:justify-end",
+        "sticky -bottom-6 z-10 -mx-6 -mb-6 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-[color-mix(in_oklab,var(--color-muted)_50%,var(--color-popover))] px-6 py-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
