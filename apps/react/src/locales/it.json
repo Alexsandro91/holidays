@@ -389,6 +389,18 @@
     "badges": { "primary": "Principale", "noManager": "Nessun responsabile", "allLocations": "Tutte le sedi", "archived": "Archiviata" },
     "pagination": { "label": "Pagine", "previous": "Pagina precedente", "next": "Pagina successiva", "status": "Pagina {{page}} di {{pages}}" },
     "actions": { "menu": "Azioni per {{name}}", "open": "Apri", "primary": "Imposta come principale", "people": "Vedi persone", "archive": "Archivia", "restore": "Ripristina" },
+    "detail": {
+      "back": "Tutte le sedi",
+      "notFound": "Sede non trovata.",
+      "loadError": "Non è stato possibile caricare la sede.",
+      "dataTitle": "Dati",
+      "name": "Nome",
+      "city": "Città",
+      "patron": "Patrono",
+      "noCity": "Non indicata",
+      "noPatron": "Nessuno",
+      "edit": "Modifica"
+    },
     "form": {
       "createTitle": "Nuova sede",
       "editTitle": "Modifica {{name}}",
@@ -430,6 +442,92 @@
         "done": "{{name}} ripristinata."
       }
     }
+  },
+  "schedule": {
+    "title": "Orario standard",
+    "description": "Vale per chi lavora in questa sede senza un orario personale.",
+    "change": "Cambia orario",
+    "since": "Dal {{date}}",
+    "none": "Nessun orario impostato.",
+    "weekdays": { "monday": "Lunedì", "tuesday": "Martedì", "wednesday": "Mercoledì", "thursday": "Giovedì", "friday": "Venerdì", "saturday": "Sabato", "sunday": "Domenica" },
+    "weekdaysShort": { "monday": "Lun", "tuesday": "Mar", "wednesday": "Mer", "thursday": "Gio", "friday": "Ven", "saturday": "Sab", "sunday": "Dom" },
+    "hours": "{{hours}} h",
+    "hoursUnit": "ore",
+    "hoursFor": "Ore di {{day}}",
+    "nonWorking": "Non lavorativo",
+    "invalidHours": "Usa quarti d’ora fino a 12 ore (es. 8 o 4:30).",
+    "weekInvalid": "Controlla le ore: usa quarti d’ora fino a 12 ore.",
+    "noWorkingDay": "Almeno un giorno deve essere lavorativo.",
+    "dialogTitle": "Cambia orario di {{name}}",
+    "dialogDescription": "Il nuovo orario vale dal giorno scelto in poi: i giorni precedenti restano con l’orario di prima.",
+    "validFrom": "Vale dal",
+    "validFromPast": "Scegli oggi o una data futura.",
+    "days": "Ore per giorno",
+    "submit": "Salva orario",
+    "saved": "Nuovo orario salvato: vale dal {{date}}.",
+    "versions": {
+      "current": "In vigore",
+      "upcoming": "In arrivo",
+      "past": "Precedenti",
+      "delete": "Elimina",
+      "deleteFor": "Elimina l’orario dal {{date}}",
+      "followsLocation": "Torna all’orario della sede."
+    },
+    "deleteDialog": {
+      "title": "Eliminare l’orario dal {{date}}?",
+      "description": "Non è ancora in vigore: resta l’orario di adesso.",
+      "action": "Elimina",
+      "done": "Orario dal {{date}} eliminato."
+    }
+  },
+  "closures": {
+    "title": "Chiusure",
+    "description": "Giorni in cui la sede è chiusa: ponti, ferie collettive, inventario.",
+    "year": "Anno",
+    "add": "Aggiungi chiusura",
+    "empty": "Nessuna chiusura in questo anno.",
+    "loadError": "Non è stato possibile caricare le chiusure.",
+    "period": "dal {{from}} al {{to}}",
+    "edit": "Modifica",
+    "editFor": "Modifica {{description}}",
+    "delete": "Elimina",
+    "deleteFor": "Elimina {{description}}",
+    "dateRequired": "Scegli una data.",
+    "descriptionRequired": "Scrivi una descrizione.",
+    "endsBeforeStart": "La fine viene prima dell’inizio.",
+    "tooLong": "Una chiusura dura al massimo 31 giorni.",
+    "dialog": {
+      "createTitle": "Nuova chiusura",
+      "editTitle": "Modifica chiusura",
+      "description": "Al massimo 31 giorni. I giorni di chiusura non sono lavorativi.",
+      "scope": "Vale per",
+      "scopeLocation": "Solo questa sede",
+      "scopeAll": "Tutte le sedi",
+      "startsOn": "Dal",
+      "endsOn": "Al",
+      "text": "Descrizione",
+      "textHint": "Es. Chiusura estiva.",
+      "submit": "Salva",
+      "created": "Chiusura aggiunta.",
+      "updated": "Chiusura aggiornata."
+    },
+    "deleteDialog": {
+      "title": "Eliminare “{{description}}”?",
+      "description": "I giorni tornano lavorativi per questa sede.",
+      "descriptionAll": "È una chiusura di tutte le sedi: i giorni tornano lavorativi per tutte.",
+      "action": "Elimina",
+      "done": "Chiusura eliminata."
+    }
+  },
+  "calendar": {
+    "title": "Calendario dell’anno",
+    "description": "Giorni non lavorativi della sede: festivi nazionali, patrono e chiusure.",
+    "year": "Anno",
+    "empty": "Nessun giorno festivo in questo anno.",
+    "loadError": "Non è stato possibile caricare il calendario.",
+    "weeklyRest": "Riposo settimanale: {{days}}.",
+    "weeklyRestSince": "Dal {{date}}, riposo settimanale: {{days}}.",
+    "noWeeklyRest": "Nessun giorno di riposo settimanale."
   },
   "a11y": { "pageAnnouncement": "Pagina: {{title}}" }
 }

@@ -389,6 +389,18 @@
     "badges": { "primary": "Primary", "noManager": "No manager", "allLocations": "All locations", "archived": "Archived" },
     "pagination": { "label": "Pages", "previous": "Previous page", "next": "Next page", "status": "Page {{page}} of {{pages}}" },
     "actions": { "menu": "Actions for {{name}}", "open": "Open", "primary": "Make primary", "people": "See people", "archive": "Archive", "restore": "Restore" },
+    "detail": {
+      "back": "All locations",
+      "notFound": "Location not found.",
+      "loadError": "The location could not be loaded.",
+      "dataTitle": "Details",
+      "name": "Name",
+      "city": "City",
+      "patron": "Patron saint",
+      "noCity": "Not set",
+      "noPatron": "None",
+      "edit": "Edit"
+    },
     "form": {
       "createTitle": "New location",
       "editTitle": "Edit {{name}}",
@@ -430,6 +442,92 @@
         "done": "{{name}} restored."
       }
     }
+  },
+  "schedule": {
+    "title": "Standard working hours",
+    "description": "Applies to people of this location without personal working hours.",
+    "change": "Change hours",
+    "since": "From {{date}}",
+    "none": "No working hours set.",
+    "weekdays": { "monday": "Monday", "tuesday": "Tuesday", "wednesday": "Wednesday", "thursday": "Thursday", "friday": "Friday", "saturday": "Saturday", "sunday": "Sunday" },
+    "weekdaysShort": { "monday": "Mon", "tuesday": "Tue", "wednesday": "Wed", "thursday": "Thu", "friday": "Fri", "saturday": "Sat", "sunday": "Sun" },
+    "hours": "{{hours}} h",
+    "hoursUnit": "hours",
+    "hoursFor": "Hours on {{day}}",
+    "nonWorking": "Non-working",
+    "invalidHours": "Use quarters of an hour up to 12 hours (e.g. 8 or 4:30).",
+    "weekInvalid": "Check the hours: use quarters of an hour up to 12 hours.",
+    "noWorkingDay": "At least one day must be a working day.",
+    "dialogTitle": "Change working hours of {{name}}",
+    "dialogDescription": "The new hours apply from the chosen day on: earlier days keep the previous hours.",
+    "validFrom": "Applies from",
+    "validFromPast": "Choose today or a future date.",
+    "days": "Hours per day",
+    "submit": "Save hours",
+    "saved": "New working hours saved: they apply from {{date}}.",
+    "versions": {
+      "current": "In effect",
+      "upcoming": "Upcoming",
+      "past": "Previous",
+      "delete": "Delete",
+      "deleteFor": "Delete the hours from {{date}}",
+      "followsLocation": "Back to the hours of the location."
+    },
+    "deleteDialog": {
+      "title": "Delete the hours from {{date}}?",
+      "description": "They are not in effect yet: the current hours stay.",
+      "action": "Delete",
+      "done": "Hours from {{date}} deleted."
+    }
+  },
+  "closures": {
+    "title": "Closures",
+    "description": "Days when the location is closed: bridges, company holidays, stocktaking.",
+    "year": "Year",
+    "add": "Add closure",
+    "empty": "No closures this year.",
+    "loadError": "The closures could not be loaded.",
+    "period": "from {{from}} to {{to}}",
+    "edit": "Edit",
+    "editFor": "Edit {{description}}",
+    "delete": "Delete",
+    "deleteFor": "Delete {{description}}",
+    "dateRequired": "Choose a date.",
+    "descriptionRequired": "Write a description.",
+    "endsBeforeStart": "The end comes before the start.",
+    "tooLong": "A closure lasts at most 31 days.",
+    "dialog": {
+      "createTitle": "New closure",
+      "editTitle": "Edit closure",
+      "description": "At most 31 days. Closure days are not working days.",
+      "scope": "Applies to",
+      "scopeLocation": "This location only",
+      "scopeAll": "All locations",
+      "startsOn": "From",
+      "endsOn": "To",
+      "text": "Description",
+      "textHint": "E.g. Summer closure.",
+      "submit": "Save",
+      "created": "Closure added.",
+      "updated": "Closure updated."
+    },
+    "deleteDialog": {
+      "title": "Delete “{{description}}”?",
+      "description": "The days become working days again for this location.",
+      "descriptionAll": "It is a closure of all locations: the days become working days again everywhere.",
+      "action": "Delete",
+      "done": "Closure deleted."
+    }
+  },
+  "calendar": {
+    "title": "Calendar of the year",
+    "description": "Non-working days of the location: national holidays, patron saint and closures.",
+    "year": "Year",
+    "empty": "No holidays this year.",
+    "loadError": "The calendar could not be loaded.",
+    "weeklyRest": "Weekly rest: {{days}}.",
+    "weeklyRestSince": "From {{date}}, weekly rest: {{days}}.",
+    "noWeeklyRest": "No weekly rest day."
   },
   "a11y": { "pageAnnouncement": "Page: {{title}}" }
 }
