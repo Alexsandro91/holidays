@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\AuthEventType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
+use App\Models\Location;
 use App\Models\User;
 use App\Services\AuthEventLogger;
 use App\Services\InvitationService;
@@ -81,6 +82,7 @@ class CreateAdmin extends Command
                 'email' => $email,
                 'password' => null,
                 'role' => Role::Admin,
+                'location_id' => Location::primary()->id,
                 'status' => UserStatus::Invited,
                 'locale' => 'it',
             ])->save();

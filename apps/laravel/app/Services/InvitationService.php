@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Mail\InvitationMail;
 use App\Models\Invitation;
+use App\Models\Location;
 use App\Models\User;
 use App\Services\Concerns\RechecksUserPermissions;
 use App\Services\Concerns\RejectsDuplicateEmail;
@@ -82,6 +83,7 @@ final class InvitationService
             'email' => $email,
             'password' => null,
             'role' => $role,
+            'location_id' => Location::primary()->id,
             'status' => UserStatus::Invited,
             'locale' => app()->getLocale(),
         ])->save();

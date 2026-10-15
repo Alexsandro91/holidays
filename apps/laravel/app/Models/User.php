@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -82,5 +84,25 @@ class User extends Authenticatable implements HasLocalePreference
     public function invitation(): HasOne
     {
         return $this->hasOne(Invitation::class);
+    }
+
+    /**
+     * Sede della persona (spec §2.2): obbligatoria per ogni ruolo e stato.
+     *
+     * @return BelongsTo<Location, $this>
+     */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Versioni dell'orario personale (part-time e simili); senza, vale l'orario della sede.
+     *
+     * @return HasMany<WorkSchedule, $this>
+     */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(WorkSchedule::class);
     }
 }
