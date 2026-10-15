@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_WEEK, formatMinutes, parseHours, todayIn, validateWeek } from '@/features/locations/scheduleFormat'
+import { DEFAULT_WEEK, formatMinutes, nextDay, parseHours, proposedValidFrom, todayIn, validateWeek } from '@/features/locations/scheduleFormat'
 
 describe('formatMinutes', () => {
   it('writes whole hours without minutes and the rest as h:mm', () => {
@@ -50,5 +50,25 @@ describe('todayIn', () => {
     // 23:30 UTC del 14 ottobre: a Roma è già il 15
     expect(todayIn('Europe/Rome', new Date('2026-10-14T23:30:00Z'))).toBe('2026-10-15')
     expect(todayIn('Europe/Rome', new Date('2026-10-14T10:00:00Z'))).toBe('2026-10-14')
+  })
+})
+
+describe('nextDay', () => {
+  it('moves to the next calendar day across months, years and leap days', () => {
+    expect(nextDay('2026-10-15')).toBe('2026-10-16')
+    expect(nextDay('2026-10-31')).toBe('2026-11-01')
+    expect(nextDay('2026-12-31')).toBe('2027-01-01')
+    expect(nextDay('2028-02-28')).toBe('2028-02-29')
+    // Cambio dell'ora legale: nessuno spostamento di giorno
+    expect(nextDay('2026-03-28')).toBe('2026-03-29')
+    expect(nextDay('2026-03-29')).toBe('2026-03-30')
+  })
+})
+
+describe('proposedValidFrom', () => {
+  it('proposes tomorrow when a version already starts today, otherwise today', () => {
+    expect(proposedValidFrom('2026-10-15', '2026-10-15')).toBe('2026-10-16')
+    expect(proposedValidFrom('2026-10-15', '2026-01-01')).toBe('2026-10-15')
+    expect(proposedValidFrom('2026-10-15', undefined)).toBe('2026-10-15')
   })
 })

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { Toaster } from '@/components/ui/sonner'
+import { todayIn } from '@/features/locations/scheduleFormat'
 import UserScheduleDialog from '@/features/users/components/UserScheduleDialog'
 import { createQueryClient } from '@/lib/queryClient'
 import { expectNoA11yViolations } from '@/test/axe'
@@ -49,6 +50,26 @@ describe('UserScheduleDialog', () => {
 
     expect(await screen.findByText('Orario di Marco Bianchi salvato: vale dal 1 marzo 2099.')).toBeInTheDocument()
     expect(body).toEqual({ valid_from: '2099-03-01', minutes: [240, 240, 240, 240, 120, 0, 0] })
+  })
+
+  it('proposes tomorrow when the personal schedule in force starts today, which cannot be replaced', async () => {
+    const today = todayIn('Europe/Rome')
+    schedules([schedule({ id: 5, valid_from: today, minutes: [240, 240, 240, 240, 240, 0, 0] })])
+    renderDialog()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Orario di lavoro di Marco Bianchi' })
+    await within(dialog).findByRole('radio', { name: 'Orario personale' })
+    expect(within(dialog).getByLabelText('Vale dal')).toHaveValue(new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10))
+    expect(within(dialog).getByLabelText('Vale dal')).toHaveAttribute('min', today)
+  })
+
+  it('proposes today when the personal schedule in force started earlier', async () => {
+    schedules()
+    renderDialog()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Orario di lavoro di Marco Bianchi' })
+    await within(dialog).findByRole('radio', { name: 'Orario personale' })
+    expect(within(dialog).getByLabelText('Vale dal')).toHaveValue(todayIn('Europe/Rome'))
   })
 
   it('goes back to the schedule of the location', async () => {

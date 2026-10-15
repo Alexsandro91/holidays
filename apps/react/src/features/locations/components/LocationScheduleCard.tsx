@@ -87,6 +87,7 @@ const LocationScheduleCard = ({ location }: LocationScheduleCardProps) => {
         locationName={location.name}
         timezone={location.timezone}
         initialMinutes={current?.minutes ?? DEFAULT_WEEK}
+        currentValidFrom={current?.valid_from}
         onClose={() => setChanging(false)}
       />
       <ConfirmDeleteDialog

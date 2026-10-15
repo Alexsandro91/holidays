@@ -50,3 +50,17 @@ export const validateWeek = (minutes: number[]): 'invalidHours' | 'noWorkingDay'
 export const todayIn = (timeZone: string, now: Date = new Date()): string =>
   // en-CA scrive già le date come YYYY-MM-DD
   new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+
+/** Giorno dopo una data YYYY-MM-DD, in UTC: il fuso e l'ora legale del dispositivo non spostano il giorno. */
+export const nextDay = (day: string): string => {
+  const date = new Date(`${day}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * Data proposta per una nuova versione: oggi, ma domani se la versione in vigore parte oggi, perché è già iniziata e non
+ * si può sostituire né cancellare (spec §2.3).
+ */
+export const proposedValidFrom = (today: string, currentValidFrom: string | undefined): string =>
+  currentValidFrom === today ? nextDay(today) : today

@@ -13,7 +13,7 @@ import ScheduleSummary from '@/features/locations/components/ScheduleSummary'
 import ScheduleVersionsList from '@/features/locations/components/ScheduleVersionsList'
 import WeeklyScheduleEditor from '@/features/locations/components/WeeklyScheduleEditor'
 import { formatDay } from '@/features/locations/dateFormat'
-import { DEFAULT_TIMEZONE, DEFAULT_WEEK, todayIn, validateWeek } from '@/features/locations/scheduleFormat'
+import { DEFAULT_TIMEZONE, DEFAULT_WEEK, proposedValidFrom, todayIn, validateWeek } from '@/features/locations/scheduleFormat'
 import type { ManagedUser } from '@/features/users/api'
 import { isApiError } from '@/lib/api'
 
@@ -43,7 +43,7 @@ const UserScheduleForm = ({ user, data, onClose, onBusyChange }: UserScheduleFor
   const personalNow = current !== undefined && !current.follows_location
   const [mode, setMode] = useState<Mode>(personalNow ? 'personal' : 'location')
   const [minutes, setMinutes] = useState(personalNow ? current.minutes : (data.location_schedule?.minutes ?? DEFAULT_WEEK))
-  const [validFrom, setValidFrom] = useState(today)
+  const [validFrom, setValidFrom] = useState(() => proposedValidFrom(today, current?.valid_from))
   const [errors, setErrors] = useState<{ validFrom?: string; minutes?: string }>({})
   const [target, setTarget] = useState<WorkSchedule | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)

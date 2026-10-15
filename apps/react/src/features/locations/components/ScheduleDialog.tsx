@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { useAddLocationSchedule } from '@/features/locations/api'
 import WeeklyScheduleEditor from '@/features/locations/components/WeeklyScheduleEditor'
 import { formatDay } from '@/features/locations/dateFormat'
-import { todayIn, validateWeek } from '@/features/locations/scheduleFormat'
+import { proposedValidFrom, todayIn, validateWeek } from '@/features/locations/scheduleFormat'
 import { isApiError } from '@/lib/api'
 import { focusTrigger, LOCATION_DETAIL_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
@@ -20,6 +20,8 @@ interface ScheduleDialogProps {
   timezone: string
   /** Orario da cui partire: quello in vigore */
   initialMinutes: number[]
+  /** Inizio della versione in vigore: se è oggi la data proposta è domani */
+  currentValidFrom?: string
   onClose: () => void
 }
 
@@ -27,12 +29,12 @@ interface ScheduleFormProps extends Omit<ScheduleDialogProps, 'open' | 'location
   onBusyChange: (busy: boolean) => void
 }
 
-const ScheduleForm = ({ locationId, timezone, initialMinutes, onClose, onBusyChange }: ScheduleFormProps) => {
+const ScheduleForm = ({ locationId, timezone, initialMinutes, currentValidFrom, onClose, onBusyChange }: ScheduleFormProps) => {
   const { t, i18n } = useTranslation()
   const add = useAddLocationSchedule(locationId)
   // "Oggi" nel fuso della sede (spec §2.3), fissato all'apertura del dialog
   const [today] = useState(() => todayIn(timezone))
-  const [validFrom, setValidFrom] = useState(today)
+  const [validFrom, setValidFrom] = useState(() => proposedValidFrom(today, currentValidFrom))
   const [minutes, setMinutes] = useState(initialMinutes)
   const [errors, setErrors] = useState<{ validFrom?: string; minutes?: string }>({})
   const submitting = useRef(false)

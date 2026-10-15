@@ -45,6 +45,9 @@ const detail = (
     }),
   )
 
+/** Giorno dopo, calcolato qui senza l'helper del codice */
+const tomorrowOf = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+
 const card = (name: string): HTMLElement => {
   const section = screen.getByRole('heading', { level: 2, name }).closest('section')
   if (!section) throw new Error(`Blocco ${name} mancante`)
@@ -190,6 +193,19 @@ describe('LocationDetailPage', () => {
 
     expect(await screen.findByText('Nuovo orario salvato: vale dal 1 febbraio 2099.')).toBeInTheDocument()
     expect(body).toEqual({ valid_from: '2099-02-01', minutes: [480, 0, 0, 0, 0, 240, 0] })
+  })
+
+  it('proposes tomorrow when the schedule in force starts today, which cannot be replaced', async () => {
+    const today = todayIn('Europe/Rome')
+    detail()
+    server.use(http.get('/api/locations/1', () => HttpResponse.json({ data: locationDetail({ current_schedule: schedule({ valid_from: today }) }) })))
+    const { user } = renderRoutes(routes, ['/admin/locations/1'])
+
+    await screen.findByRole('heading', { level: 1, name: 'Sede principale' })
+    await user.click(within(card('Orario standard')).getByRole('button', { name: 'Cambia orario' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Cambia orario di Sede principale' })
+    expect(within(dialog).getByLabelText('Vale dal')).toHaveValue(tomorrowOf(today))
+    expect(within(dialog).getByLabelText('Vale dal')).toHaveAttribute('min', today)
   })
 
   it('deletes a schedule that has not started yet', async () => {
