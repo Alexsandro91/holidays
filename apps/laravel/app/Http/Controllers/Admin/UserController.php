@@ -47,9 +47,11 @@ final class UserController extends Controller
         $role = $request->enum('filter.role', Role::class);
         $status = $request->enum('filter.status', UserStatus::class);
 
-        // Gli admin non sono mai in questa lista (si gestiscono dalla pagina Amministratori), né nei conteggi.
+        // Solo le persone che chi agisce può vedere (la sua sede per il responsabile);
+        // gli admin non sono mai in questa lista (si gestiscono dalla pagina Amministratori), né nei conteggi.
         // Ricerca, filtri per campo e ruolo valgono anche per i conteggi delle schede; lo stato filtra solo la lista
         $base = User::query()
+            ->visibleTo($this->actor($request))
             ->where('role', '!=', Role::Admin)
             ->when($role !== null, fn (Builder $query) => $query->where('role', $role));
 

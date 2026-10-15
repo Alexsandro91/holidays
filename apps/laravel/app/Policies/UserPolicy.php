@@ -7,7 +7,7 @@ use App\Models\User;
 
 /**
  * Chi può agire su chi nella gestione utenti (spec del 14/10, §2). Il responsabile gestisce gli utenti come l'admin,
- * tranne gli admin; gli amministratori li gestisce solo l'admin. Lo stato del destinatario (invitato, attivo…)
+ * tranne gli admin e le persone delle altre sedi; gli amministratori li gestisce solo l'admin. Lo stato del destinatario (invitato, attivo…)
  * lo controllano controller e servizi: qui contano solo i ruoli, senza query.
  */
 final class UserPolicy
@@ -43,7 +43,7 @@ final class UserPolicy
     public function changeRole(User $actor, User $target): bool
     {
         // Il ruolo admin si gestisce solo dalla sezione amministratori
-        return $this->managesUsers($actor) && ! $actor->is($target) && ! $target->isAdmin();
+        return $this->mayActOn($actor, $target) && ! $actor->is($target) && ! $target->isAdmin();
     }
 
     public function disable(User $actor, User $target): bool
@@ -65,7 +65,7 @@ final class UserPolicy
     }
 
     /**
-     * Nome, cognome ed email: l'admin su chiunque, il responsabile su chi non è admin, sé stessi compresi.
+     * Nome, cognome ed email: l'admin su chiunque, il responsabile su chi non è admin ed è nella sua sede, sé stessi compresi.
      */
     public function update(User $actor, User $target): bool
     {
@@ -88,10 +88,15 @@ final class UserPolicy
     }
 
     /**
-     * Un admin come destinatario lo gestisce solo un altro admin.
+     * L'admin agisce su chiunque. Il responsabile solo su chi non è admin ed è nella sua sede (spec §4.1): confronta
+     * le sedi già caricate, nessuna query.
      */
     private function mayActOn(User $actor, User $target): bool
     {
-        return $this->managesUsers($actor) && ($actor->isAdmin() || ! $target->isAdmin());
+        if (! $this->managesUsers($actor)) {
+            return false;
+        }
+
+        return $actor->isAdmin() || (! $target->isAdmin() && $actor->location_id === $target->location_id);
     }
 }
