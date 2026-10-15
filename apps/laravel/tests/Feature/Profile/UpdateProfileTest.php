@@ -96,10 +96,10 @@ class UpdateProfileTest extends TestCase
         $user = $this->userWithRole('employee');
 
         // Un utente italiano: il testo tradotto della risposta passa all'inglese già nella stessa richiesta
-        $this->assertSame('Dipendente', $this->actingAs($user)->fromFrontend()->getJson('/api/auth/user')->json('data.role_label'));
+        $this->assertSame('Utente', $this->actingAs($user)->fromFrontend()->getJson('/api/auth/user')->json('data.role_label'));
         $this->patchJson('/api/profile', ['locale' => 'en'])->assertOk()
             ->assertJsonPath('data.locale', 'en')
-            ->assertJsonPath('data.role_label', 'Employee');
+            ->assertJsonPath('data.role_label', 'User');
     }
 
     public function test_an_unsupported_locale_is_rejected(): void

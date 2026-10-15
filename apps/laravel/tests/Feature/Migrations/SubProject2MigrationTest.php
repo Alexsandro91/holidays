@@ -34,6 +34,15 @@ class SubProject2MigrationTest extends TestCase
         $this->assertSame(1, Location::query()->count());
     }
 
+    public function test_existing_users_become_employees(): void
+    {
+        $this->legacyDatabaseWith([
+            ['first_name' => 'Sara', 'last_name' => 'Colombo', 'email' => 'sara@example.test', 'role' => 'manager'],
+        ]);
+
+        $this->assertSame('employee', DB::table('users')->where('email', 'sara@example.test')->value('employment_type'));
+    }
+
     /**
      * Ricrea lo schema di prima della fase, inserisce gli utenti di allora e applica le migration nuove.
      *

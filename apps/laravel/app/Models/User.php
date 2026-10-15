@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Mail\ResetPasswordMail;
@@ -36,6 +37,7 @@ class User extends Authenticatable implements HasLocalePreference
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'role' => Role::class,
+            'employment_type' => EmploymentType::class,
             'status' => UserStatus::class,
         ];
     }
@@ -71,6 +73,11 @@ class User extends Authenticatable implements HasLocalePreference
     public function isActive(): bool
     {
         return $this->status === UserStatus::Active;
+    }
+
+    public function isIntern(): bool
+    {
+        return $this->employment_type === EmploymentType::Intern;
     }
 
     public function isAdmin(): bool

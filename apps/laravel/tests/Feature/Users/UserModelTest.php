@@ -78,6 +78,7 @@ class UserModelTest extends TestCase
     {
         app()->setLocale('it');
         $this->assertSame('HR / Admin', Role::Admin->label());
+        $this->assertSame('Utente', Role::Employee->label());
 
         app()->setLocale('en');
         $this->assertSame('Manager', Role::Manager->label());

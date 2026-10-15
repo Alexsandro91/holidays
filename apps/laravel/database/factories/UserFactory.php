@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Models\Location;
@@ -31,6 +32,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'role' => Role::Employee,
+            'employment_type' => EmploymentType::Employee,
             'location_id' => fn (): int => self::primaryLocationId(),
             'status' => UserStatus::Active,
             'locale' => 'it',
@@ -45,6 +47,16 @@ class UserFactory extends Factory
     public function manager(): static
     {
         return $this->state(fn (array $attributes): array => ['role' => Role::Manager]);
+    }
+
+    public function contractor(): static
+    {
+        return $this->state(fn (array $attributes): array => ['employment_type' => EmploymentType::Contractor]);
+    }
+
+    public function intern(): static
+    {
+        return $this->state(fn (array $attributes): array => ['employment_type' => EmploymentType::Intern]);
     }
 
     public function invited(): static
