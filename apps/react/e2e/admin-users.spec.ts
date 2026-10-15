@@ -331,6 +331,8 @@ test('the users table searches, filters from the panel and sorts by email', asyn
   await admin.goto('/users')
   const table = admin.getByRole('table')
   await expect(table.getByRole('row').nth(1)).toBeVisible()
+  // La tabella larga scorre dentro il suo contenitore, mai la pagina
+  expect(await horizontalOverflow(admin)).toBeLessThanOrEqual(0)
   const managerRow = table.getByRole('row').filter({ hasText: 'manager@holidays.test' })
   const employeeRow = table.getByRole('row').filter({ hasText: 'employee@holidays.test' })
   const adminRow = table.getByRole('row').filter({ hasText: 'admin@holidays.test' })
@@ -410,6 +412,20 @@ test('admin pages fit a phone screen and work with the keyboard', async () => {
     await expect(admin.locator('#page-title')).toBeVisible()
     // Su telefono la lista ha una versione a schede e una a tabella: conta quella visibile
     await expect(admin.getByText(name).locator('visible=true').first()).toBeVisible()
+    expect(await horizontalOverflow(admin), path).toBeLessThanOrEqual(0)
+  }
+
+  // Desktop stretto con la barra laterale aperta: la tabella Utenti è più larga dello spazio
+  // e scorre nel suo contenitore; nessuna pagina deve scorrere in orizzontale
+  await admin.setViewportSize({ width: 1024, height: 800 })
+  for (const { path, content } of [
+    { path: '/users', content: 'manager@holidays.test' },
+    { path: '/admin/administrators', content: 'Giulia Rossi' },
+    { path: '/admin/locations', content: 'Dieffetech' },
+    { path: '/profile', content: 'Dati personali' },
+  ]) {
+    await admin.goto(path)
+    await expect(admin.getByRole('main').getByText(content).locator('visible=true').first()).toBeVisible()
     expect(await horizontalOverflow(admin), path).toBeLessThanOrEqual(0)
   }
 

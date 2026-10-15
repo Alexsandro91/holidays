@@ -157,8 +157,9 @@ const AppShell = () => {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      {/* SidebarInset rende già l'unico <main> della pagina: è il bersaglio dello skip link */}
-      <SidebarInset id="main" tabIndex={-1} className="outline-none">
+      {/* SidebarInset rende già l'unico <main> della pagina: è il bersaglio dello skip link.
+          min-w-0: da figlio flex non si allarga sul contenuto, così una tabella larga scorre nel suo contenitore e non la pagina */}
+      <SidebarInset id="main" tabIndex={-1} className="min-w-0 outline-none">
         <header className="sticky top-0 z-10 flex h-16 items-center gap-2 border-b bg-background/85 px-4 backdrop-blur md:px-6">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-1 h-5" />
