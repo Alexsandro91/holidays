@@ -3,7 +3,8 @@
 namespace App\Enums;
 
 /**
- * Ordinamenti della lista utenti (spec del 14/10, §7.2): la colonna, con il prefisso `-` per l'ordine decrescente.
+ * Ordinamenti della lista utenti (spec del 14/10, §7.2): la colonna, con il prefisso `-` per l'ordine decrescente;
+ * la sede si ordina per nome.
  */
 enum UserSort: string
 {
@@ -17,6 +18,8 @@ enum UserSort: string
     case RoleDesc = '-role';
     case Status = 'status';
     case StatusDesc = '-status';
+    case Location = 'location';
+    case LocationDesc = '-location';
 
     public function column(): string
     {

@@ -72,6 +72,30 @@ final class UserPolicy
         return $this->mayActOn($actor, $target);
     }
 
+    /**
+     * Spostare una persona di sede: solo l'admin (spec §4.5).
+     */
+    public function changeLocation(User $actor, User $target): bool
+    {
+        return $actor->isAdmin();
+    }
+
+    /**
+     * Orario personale: solo l'admin (spec §4.4).
+     */
+    public function manageSchedule(User $actor, User $target): bool
+    {
+        return $actor->isAdmin();
+    }
+
+    /**
+     * Storico di una persona: chi può agire su di lei (spec §8.3).
+     */
+    public function viewHistory(User $actor, User $target): bool
+    {
+        return $this->mayActOn($actor, $target);
+    }
+
     public function grantAdmin(User $actor, User $target): bool
     {
         return $this->manageAdministrators($actor);

@@ -49,4 +49,23 @@ class AdminChangeMailTest extends TestCase
         $mail->assertHasSubject('Holidays: email of an invited admin changed');
         $mail->assertSeeInText('Anna Admin changed the email of the invited admin Nora Neri');
     }
+
+    public function test_tells_who_moved_an_admin_or_changed_the_employment_type(): void
+    {
+        app()->setLocale('it');
+        $mail = new AdminChangeMail(AdminChange::LocationChanged, 'Anna Admin', 'Nora Neri', now());
+        $mail->assertHasSubject('Holidays: sede di un amministratore cambiata');
+        $mail->assertSeeInText('Anna Admin ha spostato l’amministratore Nora Neri in un’altra sede');
+
+        $mail = new AdminChangeMail(AdminChange::EmploymentTypeChanged, 'Anna Admin', 'Nora Neri', now());
+        $mail->assertHasSubject('Holidays: tipo di rapporto di un amministratore cambiato');
+
+        app()->setLocale('en');
+        $mail = new AdminChangeMail(AdminChange::LocationChanged, 'Anna Admin', 'Nora Neri', now());
+        $mail->assertHasSubject('Holidays: admin moved to another location');
+        $mail->assertSeeInText('Anna Admin moved the admin Nora Neri to another location');
+
+        $mail = new AdminChangeMail(AdminChange::EmploymentTypeChanged, 'Anna Admin', 'Nora Neri', now());
+        $mail->assertHasSubject('Holidays: employment type of an admin changed');
+    }
 }

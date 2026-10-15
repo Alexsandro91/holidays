@@ -18,6 +18,7 @@ return [
     'reset_link_throttled' => 'A link was sent to this user a moment ago. Try again in :seconds seconds.',
     'reset_link_cap' => 'Too many links sent to this user in the last hour. Try again in :minutes minutes.',
     'password_locked' => 'Too many password attempts. Try again in :minutes minutes.',
+    'intern_role' => 'An intern can only have the User role.',
     'mail' => [
         'admin_change' => [
             'subject' => [
@@ -28,6 +29,8 @@ return [
                 'invited' => 'Holidays: new admin invited',
                 'password_reset_sent' => 'Holidays: password reset for an admin',
                 'email_changed' => 'Holidays: email of an invited admin changed',
+                'location_changed' => 'Holidays: admin moved to another location',
+                'employment_type_changed' => 'Holidays: employment type of an admin changed',
             ],
             'body' => [
                 'granted' => ':actor made :target an admin on :date.',
@@ -37,6 +40,8 @@ return [
                 'invited' => ':actor invited :target as an admin on :date. The account will be active once :target accepts the invitation.',
                 'password_reset_sent' => ':actor sent :target the link to reset the password on :date. The current password stays valid until it is changed.',
                 'email_changed' => ':actor changed the email of the invited admin :target on :date: the new invitation link went to the new address.',
+                'location_changed' => ':actor moved the admin :target to another location on :date.',
+                'employment_type_changed' => ':actor changed the employment type of the admin :target on :date.',
             ],
             'unexpected' => 'If this was not expected, tell the IT manager right away.',
         ],

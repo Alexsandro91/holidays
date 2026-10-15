@@ -15,6 +15,6 @@ final class UserRoleController extends Controller
     {
         $updated = $users->changeRole($user, Role::from($request->validated('role')), $this->actor($request), $request);
 
-        return new ManagedUserResource($updated->load('invitation'));
+        return new ManagedUserResource($updated->load(['invitation', 'location']));
     }
 }

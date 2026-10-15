@@ -88,10 +88,11 @@ class UserModelTest extends TestCase
     {
         $user = User::factory()->admin()->create(['last_login_at' => now()]);
 
-        $data = (new UserResource($user))->toArray(Request::create('/'));
+        // resolve() come nella risposta: la sede non caricata non compare
+        $data = (new UserResource($user))->resolve(Request::create('/'));
 
         $this->assertSame(
-            ['id', 'first_name', 'last_name', 'name', 'email', 'role', 'role_label', 'status', 'locale', 'last_login_at'],
+            ['id', 'first_name', 'last_name', 'name', 'email', 'role', 'role_label', 'employment_type', 'employment_type_label', 'status', 'locale', 'last_login_at'],
             array_keys($data),
         );
         $this->assertSame('admin', $data['role']);

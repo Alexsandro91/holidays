@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
@@ -24,7 +25,7 @@ final class AdministratorController extends Controller
     public function index(): AnonymousResourceCollection
     {
         return ManagedUserResource::collection(
-            User::query()->where('role', Role::Admin)->with('invitation')->orderBy('last_name')->orderBy('first_name')->orderBy('id')->get(),
+            User::query()->where('role', Role::Admin)->with(['invitation', 'location'])->orderBy('last_name')->orderBy('first_name')->orderBy('id')->get(),
         );
     }
 
@@ -37,7 +38,7 @@ final class AdministratorController extends Controller
             return response()->json(['message' => Translate::text('users.not_promotable')], Response::HTTP_CONFLICT);
         }
 
-        return new ManagedUserResource($this->users->grantAdmin($target, $this->actor($request), $request));
+        return new ManagedUserResource($this->users->grantAdmin($target, $this->actor($request), $request)->load(['invitation', 'location']));
     }
 
     /**
@@ -45,15 +46,18 @@ final class AdministratorController extends Controller
      */
     public function invite(InviteAdminRequest $request): JsonResponse
     {
+        $actor = $this->actor($request);
         $invited = $this->users->inviteAdmin(
             $request->string('first_name')->value(),
             $request->string('last_name')->value(),
             $request->string('email')->value(),
-            $this->actor($request),
+            $request->chosenEmploymentType() ?? EmploymentType::Employee,
+            $request->invitationLocation($actor),
+            $actor,
             $request,
         );
 
-        return (new ManagedUserResource($invited->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
+        return (new ManagedUserResource($invited->load(['invitation', 'location'])))->response()->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function destroy(RevokeAdminRequest $request, User $user): JsonResponse|ManagedUserResource
@@ -66,6 +70,6 @@ final class AdministratorController extends Controller
             return response()->json(['message' => Translate::text('users.admin_not_active')], Response::HTTP_CONFLICT);
         }
 
-        return new ManagedUserResource($this->users->revokeAdmin($user, Role::from($request->validated('role')), $this->actor($request), $request));
+        return new ManagedUserResource($this->users->revokeAdmin($user, Role::from($request->validated('role')), $this->actor($request), $request)->load(['invitation', 'location']));
     }
 }

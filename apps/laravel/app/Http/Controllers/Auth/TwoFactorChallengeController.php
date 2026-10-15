@@ -98,7 +98,7 @@ final class TwoFactorChallengeController extends Controller
         $user->forceFill(['last_login_at' => now()])->save();
         $this->events->log(AuthEventType::LoginSucceeded, $request, $user);
 
-        return (new UserResource($user))->response()->setStatusCode(Response::HTTP_OK);
+        return (new UserResource($user->loadMissing('location')))->response()->setStatusCode(Response::HTTP_OK);
     }
 
     private function invalidCode(Request $request, LoginChallenge $challenge, User $user): JsonResponse

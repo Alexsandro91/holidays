@@ -12,11 +12,13 @@ use App\Models\Location;
 use App\Models\User;
 use App\Services\Concerns\RechecksUserPermissions;
 use App\Services\Concerns\RejectsDuplicateEmail;
+use App\Support\InternRule;
 use App\Support\Translate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
@@ -44,17 +46,17 @@ final class InvitationService
     public function __construct(private readonly AuthEventLogger $events, private readonly UserHistoryRecorder $history) {}
 
     /**
-     * Invito di un dipendente o di un responsabile.
+     * Invito di un dipendente o di un responsabile, nella sede indicata.
      */
-    public function invite(string $firstName, string $lastName, string $email, Role $role, User $inviter, Request $request): User
+    public function invite(string $firstName, string $lastName, string $email, Role $role, EmploymentType $employmentType, Location $location, User $inviter, Request $request): User
     {
         // Un nuovo admin passa solo da inviteAdmin(): blocco degli admin, evento ed email agli admin dedicati
         if ($role === Role::Admin) {
             throw new InvalidArgumentException('Admins are invited only through UserManagementService::inviteAdmin().');
         }
 
-        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($firstName, $lastName, $email, $role, $inviter, $request): User {
-            $user = $this->createInvited($firstName, $lastName, $email, $role, $inviter);
+        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($firstName, $lastName, $email, $role, $employmentType, $location, $inviter, $request): User {
+            $user = $this->createInvited($firstName, $lastName, $email, $role, $employmentType, $location, $inviter);
             $this->events->log(AuthEventType::InvitationSent, $request, $user, $inviter);
 
             return $user;
@@ -65,18 +67,29 @@ final class InvitationService
      * Invito di un nuovo admin (spec del 14/10, §4). Da chiamare solo da UserManagementService::inviteAdmin(),
      * che dentro la stessa transazione blocca gli admin attivi, verifica chi agisce e avvisa gli altri admin.
      */
-    public function inviteAdmin(string $firstName, string $lastName, string $email, User $inviter, Request $request): User
+    public function inviteAdmin(string $firstName, string $lastName, string $email, EmploymentType $employmentType, Location $location, User $inviter, Request $request): User
     {
-        return DB::transaction(function () use ($firstName, $lastName, $email, $inviter, $request): User {
-            $user = $this->createInvited($firstName, $lastName, $email, Role::Admin, $inviter);
+        return DB::transaction(function () use ($firstName, $lastName, $email, $employmentType, $location, $inviter, $request): User {
+            $user = $this->createInvited($firstName, $lastName, $email, Role::Admin, $employmentType, $location, $inviter);
             $this->events->log(AuthEventType::AdminInvited, $request, $user, $inviter);
 
             return $user;
         });
     }
 
-    private function createInvited(string $firstName, string $lastName, string $email, Role $role, User $inviter): User
+    /**
+     * La sede si rilegge bloccata: l'archiviazione blocca la stessa riga prima di contare le persone, quindi nessuno
+     * finisce in una sede archiviata nel frattempo (spec §4.2).
+     */
+    private function createInvited(string $firstName, string $lastName, string $email, Role $role, EmploymentType $employmentType, Location $location, User $inviter): User
     {
+        InternRule::ensureAllowed($employmentType, $role, $role === Role::Admin ? 'employment_type' : 'role');
+        $lockedLocation = Location::query()->lockForUpdate()->find($location->id);
+
+        if ($lockedLocation === null || $lockedLocation->isArchived()) {
+            throw ValidationException::withMessages(['location_id' => [Translate::text('locations.archived')]]);
+        }
+
         $user = new User;
         $user->forceFill([
             'first_name' => $firstName,
@@ -84,8 +97,8 @@ final class InvitationService
             'email' => $email,
             'password' => null,
             'role' => $role,
-            'employment_type' => EmploymentType::Employee,
-            'location_id' => Location::primary()->id,
+            'employment_type' => $employmentType,
+            'location_id' => $lockedLocation->id,
             'status' => UserStatus::Invited,
             'locale' => app()->getLocale(),
         ])->save();

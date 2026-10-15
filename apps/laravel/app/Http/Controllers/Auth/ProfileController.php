@@ -27,7 +27,7 @@ final class ProfileController extends Controller
         // Con la lingua cambiata la risposta è già nella nuova
         App::setLocale($updated->locale);
 
-        return (new CurrentUserResource($updated))->response()->setStatusCode(HttpResponse::HTTP_OK);
+        return (new CurrentUserResource($updated->loadMissing('location')))->response()->setStatusCode(HttpResponse::HTTP_OK);
     }
 
     public function password(ChangePasswordRequest $request, ProfileService $profile): Response

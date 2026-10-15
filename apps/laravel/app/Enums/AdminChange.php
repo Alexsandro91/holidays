@@ -11,4 +11,6 @@ enum AdminChange: string
     case Invited = 'invited';
     case EmailChanged = 'email_changed';
     case PasswordResetSent = 'password_reset_sent';
+    case LocationChanged = 'location_changed';
+    case EmploymentTypeChanged = 'employment_type_changed';
 }

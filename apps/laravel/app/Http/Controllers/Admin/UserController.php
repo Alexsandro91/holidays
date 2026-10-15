@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserSort;
 use App\Enums\UserStatus;
@@ -10,9 +11,11 @@ use App\Http\Requests\Users\ListUsersRequest;
 use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\ManagedUserResource;
+use App\Models\Location;
 use App\Models\User;
 use App\Services\InvitationService;
 use App\Services\UserManagementService;
+use App\Support\UserChanges;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -46,6 +49,8 @@ final class UserController extends Controller
         $words = array_slice(array_values(array_unique($words)), 0, self::MAX_SEARCH_WORDS);
         $role = $request->enum('filter.role', Role::class);
         $status = $request->enum('filter.status', UserStatus::class);
+        $type = $request->enum('filter.employment_type', EmploymentType::class);
+        $locationId = $request->locationFilter();
 
         // Solo le persone che chi agisce può vedere (la sua sede per il responsabile);
         // gli admin non sono mai in questa lista (si gestiscono dalla pagina Amministratori), né nei conteggi.
@@ -53,7 +58,9 @@ final class UserController extends Controller
         $base = User::query()
             ->visibleTo($this->actor($request))
             ->where('role', '!=', Role::Admin)
-            ->when($role !== null, fn (Builder $query) => $query->where('role', $role));
+            ->when($role !== null, fn (Builder $query) => $query->where('role', $role))
+            ->when($type !== null, fn (Builder $query) => $query->where('employment_type', $type))
+            ->when($locationId !== null, fn (Builder $query) => $query->where('location_id', $locationId));
 
         // Ogni parola deve comparire in nome, cognome o email: "Mario Rossi" e "Rossi Mario" trovano la stessa persona
         foreach ($words as $word) {
@@ -81,7 +88,7 @@ final class UserController extends Controller
 
         $users = (clone $base)
             ->when($status !== null, fn (Builder $query) => $query->where('status', $status))
-            ->with('invitation')
+            ->with(['invitation', 'location'])
             ->tap(fn (Builder $query) => $this->applySort($query, $request->sort()))
             ->paginate($request->perPage())
             ->withQueryString();
@@ -96,31 +103,38 @@ final class UserController extends Controller
 
     public function store(StoreUserRequest $request, InvitationService $invitations): JsonResponse
     {
+        $actor = $this->actor($request);
         $user = $invitations->invite(
             $request->string('first_name')->value(),
             $request->string('last_name')->value(),
             $request->string('email')->value(),
             $request->enum('role', Role::class) ?? Role::Employee,
-            $this->actor($request),
+            $request->chosenEmploymentType() ?? EmploymentType::Employee,
+            $request->invitationLocation($actor),
+            $actor,
             $request,
         );
 
-        return (new ManagedUserResource($user->load('invitation')))->response()->setStatusCode(Response::HTTP_CREATED);
+        return (new ManagedUserResource($user->load(['invitation', 'location'])))->response()->setStatusCode(Response::HTTP_CREATED);
     }
 
     public function update(UpdateUserRequest $request, User $user, UserManagementService $users): ManagedUserResource
     {
         $updated = $users->update(
             $user,
-            $request->string('first_name')->value(),
-            $request->string('last_name')->value(),
-            $request->newEmail(),
+            new UserChanges(
+                firstName: $request->string('first_name')->value(),
+                lastName: $request->string('last_name')->value(),
+                email: $request->newEmail(),
+                locationId: $request->chosenLocationId(),
+                employmentType: $request->chosenEmploymentType(),
+            ),
             $this->actor($request),
             $request,
             passwordConfirmed: $request->targetIsAnotherAdmin(),
         );
 
-        return new ManagedUserResource($updated->load('invitation'));
+        return new ManagedUserResource($updated->load(['invitation', 'location']));
     }
 
     /**
@@ -139,7 +153,12 @@ final class UserController extends Controller
         $column = $sort->column();
         $ranks = self::RANKS[$column] ?? null;
 
-        if ($ranks === null) {
+        if ($column === 'location') {
+            // Per nome della sede, poi come l'ordinamento predefinito
+            $query->orderBy(Location::query()->select('name')->whereColumn('locations.id', 'users.location_id'), $sort->direction())
+                ->orderBy('last_name')
+                ->orderBy('first_name');
+        } elseif ($ranks === null) {
             $query->orderBy($column, $sort->direction());
 
             // A parità di cognome conta il nome e viceversa (default: cognome, nome, id)

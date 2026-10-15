@@ -4,11 +4,13 @@ namespace Tests\Feature\Users;
 
 use App\Enums\AdminChange;
 use App\Enums\AuthEventType;
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Mail\AdminChangeMail;
 use App\Mail\InvitationMail;
 use App\Mail\LoginCodeMail;
+use App\Models\Location;
 use App\Models\User;
 use App\Services\InvitationService;
 use App\Services\UserManagementService;
@@ -244,7 +246,7 @@ class InviteAdminTest extends TestCase
             ->assertJsonValidationErrors('role');
 
         try {
-            app(InvitationService::class)->invite('Nora', 'Neri', 'nora@example.test', Role::Admin, $this->admin, Request::create('/'));
+            app(InvitationService::class)->invite('Nora', 'Neri', 'nora@example.test', Role::Admin, EmploymentType::Employee, Location::primary(), $this->admin, Request::create('/'));
             $this->fail('Un admin si invita solo dalla sezione Amministratori');
         } catch (InvalidArgumentException) {
             $this->assertDatabaseMissing('users', ['email' => 'nora@example.test']);
@@ -257,7 +259,7 @@ class InviteAdminTest extends TestCase
         User::query()->whereKey($stale->id)->update(['role' => 'manager']);
 
         try {
-            app(UserManagementService::class)->inviteAdmin('Nora', 'Neri', 'nora@example.test', $stale, Request::create('/'));
+            app(UserManagementService::class)->inviteAdmin('Nora', 'Neri', 'nora@example.test', EmploymentType::Employee, Location::primary(), $stale, Request::create('/'));
             $this->fail('Expected AuthorizationException');
         } catch (AuthorizationException) {
             $this->assertDatabaseMissing('users', ['email' => 'nora@example.test']);
@@ -270,8 +272,8 @@ class InviteAdminTest extends TestCase
         // La seconda richiesta ha superato la validazione prima che la prima salvasse l'utente
         User::factory()->create(['email' => 'nora@example.test']);
         $calls = [
-            'invito admin' => fn () => app(UserManagementService::class)->inviteAdmin('Nora', 'Neri', 'nora@example.test', $this->admin, Request::create('/')),
-            'invito normale' => fn () => app(InvitationService::class)->invite('Nora', 'Neri', 'nora@example.test', Role::Employee, $this->admin, Request::create('/')),
+            'invito admin' => fn () => app(UserManagementService::class)->inviteAdmin('Nora', 'Neri', 'nora@example.test', EmploymentType::Employee, Location::primary(), $this->admin, Request::create('/')),
+            'invito normale' => fn () => app(InvitationService::class)->invite('Nora', 'Neri', 'nora@example.test', Role::Employee, EmploymentType::Employee, Location::primary(), $this->admin, Request::create('/')),
         ];
 
         foreach ($calls as $label => $call) {

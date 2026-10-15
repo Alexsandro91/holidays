@@ -18,6 +18,7 @@ return [
     'reset_link_throttled' => 'Un link è stato inviato da poco a questo utente. Riprova tra :seconds secondi.',
     'reset_link_cap' => 'Troppi link inviati a questo utente nell’ultima ora. Riprova tra :minutes minuti.',
     'password_locked' => 'Troppi tentativi con la password. Riprova tra :minutes minuti.',
+    'intern_role' => 'Uno stagista può avere solo il ruolo Utente.',
     'mail' => [
         'admin_change' => [
             'subject' => [
@@ -28,6 +29,8 @@ return [
                 'invited' => 'Holidays: nuovo amministratore invitato',
                 'password_reset_sent' => 'Holidays: reset password di un amministratore',
                 'email_changed' => 'Holidays: email di un amministratore invitato modificata',
+                'location_changed' => 'Holidays: sede di un amministratore cambiata',
+                'employment_type_changed' => 'Holidays: tipo di rapporto di un amministratore cambiato',
             ],
             'body' => [
                 'granted' => ':actor ha reso amministratore :target il :date.',
@@ -37,6 +40,8 @@ return [
                 'invited' => ':actor ha invitato :target come amministratore il :date. L’account sarà attivo quando :target accetterà l’invito.',
                 'password_reset_sent' => ':actor ha inviato a :target il link per reimpostare la password il :date. La password attuale resta valida finché non viene cambiata.',
                 'email_changed' => ':actor ha cambiato l’email dell’amministratore invitato :target il :date: il nuovo link d’invito è partito verso il nuovo indirizzo.',
+                'location_changed' => ':actor ha spostato l’amministratore :target in un’altra sede il :date.',
+                'employment_type_changed' => ':actor ha cambiato il tipo di rapporto dell’amministratore :target il :date.',
             ],
             'unexpected' => 'Se non era previsto, avvisa subito il responsabile IT.',
         ],

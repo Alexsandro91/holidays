@@ -13,6 +13,6 @@ final class CurrentUserController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         // Stato esplicito: senza, un utente appena creato risponderebbe 201
-        return (new CurrentUserResource($request->user()))->response()->setStatusCode(Response::HTTP_OK);
+        return (new CurrentUserResource($this->actor($request)->loadMissing('location')))->response()->setStatusCode(Response::HTTP_OK);
     }
 }

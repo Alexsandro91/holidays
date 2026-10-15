@@ -22,7 +22,7 @@ final class UserStatusController extends Controller
             return response()->json(['message' => Translate::text('users.not_active')], Response::HTTP_CONFLICT);
         }
 
-        return new ManagedUserResource($this->users->disable($user, $this->actor($request), $request, $user->isAdmin()));
+        return new ManagedUserResource($this->users->disable($user, $this->actor($request), $request, $user->isAdmin())->load('location'));
     }
 
     public function enable(UserStatusRequest $request, User $user): JsonResponse|ManagedUserResource
@@ -31,6 +31,6 @@ final class UserStatusController extends Controller
             return response()->json(['message' => Translate::text('users.not_disabled')], Response::HTTP_CONFLICT);
         }
 
-        return new ManagedUserResource($this->users->enable($user, $this->actor($request), $request, $user->isAdmin()));
+        return new ManagedUserResource($this->users->enable($user, $this->actor($request), $request, $user->isAdmin())->load('location'));
     }
 }

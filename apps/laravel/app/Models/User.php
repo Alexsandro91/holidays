@@ -39,6 +39,7 @@ class User extends Authenticatable implements HasLocalePreference
             'password' => 'hashed',
             'role' => Role::class,
             'employment_type' => EmploymentType::class,
+            'location_id' => 'integer',
             'status' => UserStatus::class,
         ];
     }

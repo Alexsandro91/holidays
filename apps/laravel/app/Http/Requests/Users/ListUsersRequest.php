@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Users;
 
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserSort;
 use App\Enums\UserStatus;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -38,7 +40,10 @@ class ListUsersRequest extends FormRequest
             'filter.email' => ['sometimes', 'nullable', 'string', 'max:'.self::FILTER_MAX_LENGTH],
             'filter.role' => ['sometimes', 'nullable', Rule::enum(Role::class)->only([Role::Employee, Role::Manager])],
             'filter.status' => ['sometimes', 'nullable', Rule::enum(UserStatus::class)],
-            'sort' => ['sometimes', 'nullable', Rule::enum(UserSort::class)],
+            'filter.employment_type' => ['sometimes', 'nullable', Rule::enum(EmploymentType::class)],
+            // Sede: solo l'admin, il responsabile vede già solo la sua (spec §4.5)
+            'filter.location' => $this->actorIsAdmin() ? ['sometimes', 'nullable', 'integer'] : ['prohibited'],
+            'sort' => ['sometimes', 'nullable', Rule::enum(UserSort::class)->except($this->actorIsAdmin() ? [] : [UserSort::Location, UserSort::LocationDesc])],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', Rule::in(self::PER_PAGE_OPTIONS)],
         ];
@@ -60,5 +65,17 @@ class ListUsersRequest extends FormRequest
     public function perPage(): int
     {
         return $this->integer('per_page', self::DEFAULT_PER_PAGE);
+    }
+
+    public function locationFilter(): ?int
+    {
+        return $this->filled('filter.location') ? $this->integer('filter.location') : null;
+    }
+
+    private function actorIsAdmin(): bool
+    {
+        $user = $this->user();
+
+        return $user instanceof User && $user->isAdmin();
     }
 }

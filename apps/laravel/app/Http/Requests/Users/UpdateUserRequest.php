@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Users;
 
 use App\Enums\UserStatus;
+use App\Http\Requests\Concerns\ChoosesLocationAndType;
 use App\Http\Requests\Concerns\ConfirmsCurrentPassword;
 use App\Http\Requests\Concerns\ValidatesInvitee;
 use App\Models\User;
@@ -12,13 +13,13 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 /**
- * Modifica di nome, cognome ed email (spec del 14/10, §7.3). L'email cambia solo per chi è ancora invitato:
- * dopo l'attivazione è l'indirizzo con cui la persona accede. Modificare un altro admin chiede la password di chi
- * agisce, con lo stesso blocco delle altre azioni sugli admin; sé stessi e chi non è admin no.
+ * Modifica di nome, cognome, email, sede e tipo di rapporto (spec del 14/10 §7.3, spec del 15/10 §4.5). L'email cambia
+ * solo per chi è ancora invitato: dopo l'attivazione è l'indirizzo con cui la persona accede. Modificare un altro admin
+ * chiede la password di chi agisce, con lo stesso blocco delle altre azioni sugli admin; sé stessi e chi non è admin no.
  */
 class UpdateUserRequest extends FormRequest
 {
-    use ConfirmsCurrentPassword, ValidatesInvitee;
+    use ChoosesLocationAndType, ConfirmsCurrentPassword, ValidatesInvitee;
 
     public function authorize(): bool
     {
@@ -44,6 +45,7 @@ class UpdateUserRequest extends FormRequest
         return [
             ...$rules,
             'email' => ['sometimes', ...$rules['email']],
+            ...$this->locationAndTypeRules(),
             ...($this->targetIsAnotherAdmin() ? ['current_password' => $this->currentPasswordRules()] : []),
         ];
     }
@@ -78,7 +80,7 @@ class UpdateUserRequest extends FormRequest
      */
     public function messages(): array
     {
-        return $this->inviteeMessages();
+        return [...$this->inviteeMessages(), ...$this->locationMessages()];
     }
 
     /**

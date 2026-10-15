@@ -13,6 +13,7 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Services\InvitationService;
 use App\Services\UserManagementService;
+use App\Support\UserChanges;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -188,7 +189,7 @@ class UpdateUserTest extends TestCase
         User::query()->whereKey($stale->id)->update(['status' => 'active']);
 
         try {
-            app(UserManagementService::class)->update($stale, 'Sara', 'Colombo', 'nuova@example.test', $this->admin, Request::create('/'));
+            app(UserManagementService::class)->update($stale, new UserChanges('Sara', 'Colombo', 'nuova@example.test'), $this->admin, Request::create('/'));
             $this->fail('Expected ValidationException');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('email', $exception->errors());
@@ -205,7 +206,7 @@ class UpdateUserTest extends TestCase
         User::query()->whereKey($stale->id)->update(['role' => Role::Admin->value]);
 
         try {
-            app(UserManagementService::class)->update($stale, 'Sara', 'Colombo', null, $manager, Request::create('/'));
+            app(UserManagementService::class)->update($stale, new UserChanges('Sara', 'Colombo'), $manager, Request::create('/'));
             $this->fail('Expected ConflictHttpException');
         } catch (ConflictHttpException) {
             $this->assertSame('Rossi', $stale->fresh()?->last_name);
@@ -219,7 +220,7 @@ class UpdateUserTest extends TestCase
         $invited = User::factory()->invited()->create(['email' => 'sara@example.test']);
 
         try {
-            app(UserManagementService::class)->update($invited, 'Sara', 'Colombo', 'presa@example.test', $this->admin, Request::create('/'));
+            app(UserManagementService::class)->update($invited, new UserChanges('Sara', 'Colombo', 'presa@example.test'), $this->admin, Request::create('/'));
             $this->fail('Expected ValidationException');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('email', $exception->errors());
@@ -316,7 +317,7 @@ class UpdateUserTest extends TestCase
         User::query()->whereKey($stale->id)->update(['role' => Role::Admin->value]);
 
         try {
-            app(UserManagementService::class)->update($stale, 'Sara', 'Colombo', null, $this->admin, Request::create('/'), passwordConfirmed: false);
+            app(UserManagementService::class)->update($stale, new UserChanges('Sara', 'Colombo'), $this->admin, Request::create('/'), passwordConfirmed: false);
             $this->fail('Expected ConflictHttpException');
         } catch (ConflictHttpException $exception) {
             $this->assertSame(__('users.state_changed'), $exception->getMessage());

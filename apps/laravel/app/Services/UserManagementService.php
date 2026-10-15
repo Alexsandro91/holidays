@@ -4,16 +4,20 @@ namespace App\Services;
 
 use App\Enums\AdminChange;
 use App\Enums\AuthEventType;
+use App\Enums\EmploymentType;
 use App\Enums\Role;
 use App\Enums\UserStatus;
 use App\Mail\AdminChangeMail;
 use App\Models\Invitation;
+use App\Models\Location;
 use App\Models\LoginChallenge;
 use App\Models\User;
 use App\Services\Concerns\RechecksUserPermissions;
 use App\Services\Concerns\RejectsDuplicateEmail;
 use App\Support\AuthSession;
+use App\Support\InternRule;
 use App\Support\Translate;
+use App\Support\UserChanges;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -64,6 +68,7 @@ final class UserManagementService
             }
 
             $this->ensureStillAllowed('changeRole', $actor, $freshActor, $fresh);
+            InternRule::ensureAllowed($fresh->employment_type, $role, 'role');
 
             $from = $fresh->role;
             $fresh->forceFill(['role' => $role])->save();
@@ -75,18 +80,18 @@ final class UserManagementService
     }
 
     /**
-     * Nome, cognome ed email (spec del 14/10, §7.3). L'email cambia solo per un invitato: nuovo link al nuovo
-     * indirizzo e il vecchio smette di valere. L'evento `user_updated` elenca i campi cambiati, mai i valori.
+     * Nome, cognome, email, sede e tipo di rapporto (spec del 14/10 §7.3, spec del 15/10 §4.5 e §7.3). L'email cambia
+     * solo per un invitato: nuovo link al nuovo indirizzo. La sede la cambia solo l'admin, verso una sede attiva.
+     * L'evento `user_updated` elenca i campi cambiati, mai i valori; tipo e sede lasciano anche la loro tappa.
      *
-     * Un altro admin come destinatario richiede la password di chi agisce (verificata dalla request) e il cambio
-     * della sua email avvisa gli altri admin attivi, come le altre azioni sugli admin.
+     * Un altro admin come destinatario richiede la password di chi agisce (verificata dalla request); il cambio della
+     * sua email, sede o tipo avvisa gli admin.
      *
-     * @param  string|null  $email  nuova email, null se non cambia
      * @param  bool  $passwordConfirmed  se la request ha verificato la password di chi agisce
      */
-    public function update(User $target, string $firstName, string $lastName, ?string $email, User $actor, Request $request, bool $passwordConfirmed = false): User
+    public function update(User $target, UserChanges $changes, User $actor, Request $request, bool $passwordConfirmed = false): User
     {
-        return $this->rejectingDuplicateEmail((string) $email, fn (): User => DB::transaction(function () use ($target, $firstName, $lastName, $email, $actor, $request, $passwordConfirmed): User {
+        return $this->rejectingDuplicateEmail((string) $changes->email, fn (): User => DB::transaction(function () use ($target, $changes, $actor, $request, $passwordConfirmed): User {
             $this->lockActiveAdminIds();
             $freshActor = $this->lockUserManager($actor);
             // Invito prima dell'utente, come in accettazione, reinvio e annullamento
@@ -100,17 +105,25 @@ final class UserManagementService
                 throw new ConflictHttpException(Translate::text('users.state_changed'));
             }
 
-            $changeEmail = $email !== null && $email !== $fresh->email;
+            $changeEmail = $changes->email !== null && $changes->email !== $fresh->email;
 
             // Nel frattempo l'invito può essere stato accettato: l'email ora è quella di accesso
             if ($changeEmail && $fresh->status !== UserStatus::Invited) {
                 throw ValidationException::withMessages(['email' => [Translate::text('users.email_locked')]]);
             }
 
+            $newLocation = $this->lockNewLocation($changes->locationId, $fresh, $freshActor);
+            $newType = $changes->employmentType ?? $fresh->employment_type;
+            InternRule::ensureAllowed($newType, $fresh->role, 'employment_type');
+            $fromLocationId = $fresh->location_id;
+            $fromType = $fresh->employment_type;
+
             $fresh->forceFill([
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                ...($changeEmail ? ['email' => $email] : []),
+                'first_name' => $changes->firstName,
+                'last_name' => $changes->lastName,
+                'employment_type' => $newType,
+                ...($changeEmail ? ['email' => $changes->email] : []),
+                ...($newLocation !== null ? ['location_id' => $newLocation->id] : []),
             ]);
             $changedFields = array_keys($fresh->getDirty());
 
@@ -120,6 +133,8 @@ final class UserManagementService
 
             $fresh->save();
             $this->events->log(AuthEventType::UserUpdated, $request, $fresh, $actor, $changedFields);
+            $this->history->employmentTypeChanged($fresh, $fromType, $newType, $actor);
+            $this->history->locationChanged($fresh, $fromLocationId, $fresh->location_id, $actor);
 
             if ($changeEmail) {
                 $this->invitations->send($fresh, $actor);
@@ -129,6 +144,14 @@ final class UserManagementService
                 if ($fresh->isAdmin()) {
                     $this->notifyAdmins(AdminChange::EmailChanged, $fresh, $actor, notifyTarget: false);
                 }
+            }
+
+            if ($targetIsAnotherAdmin && $fromLocationId !== $fresh->location_id) {
+                $this->notifyAdmins(AdminChange::LocationChanged, $fresh, $actor);
+            }
+
+            if ($targetIsAnotherAdmin && $fromType !== $newType) {
+                $this->notifyAdmins(AdminChange::EmploymentTypeChanged, $fresh, $actor);
             }
 
             return $fresh;
@@ -234,6 +257,8 @@ final class UserManagementService
                 throw new ConflictHttpException(Translate::text('users.not_promotable'));
             }
 
+            InternRule::ensureAllowed($fresh->employment_type, Role::Admin, 'user_id');
+
             $from = $fresh->role;
             $fresh->forceFill(['role' => Role::Admin])->save();
             $this->events->log(AuthEventType::AdminGranted, $request, $fresh, $actor);
@@ -248,11 +273,11 @@ final class UserManagementService
      * Invita un nuovo admin (spec del 14/10, §4): utente admin invitato, evento admin_invited ed email agli altri
      * admin attivi dopo il commit. L'invitato riceve solo l'invito.
      */
-    public function inviteAdmin(string $firstName, string $lastName, string $email, User $actor, Request $request): User
+    public function inviteAdmin(string $firstName, string $lastName, string $email, EmploymentType $employmentType, Location $location, User $actor, Request $request): User
     {
-        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($firstName, $lastName, $email, $actor, $request): User {
+        return $this->rejectingDuplicateEmail($email, fn (): User => DB::transaction(function () use ($firstName, $lastName, $email, $employmentType, $location, $actor, $request): User {
             $this->lockActiveAdmins($actor);
-            $invited = $this->invitations->inviteAdmin($firstName, $lastName, $email, $actor, $request);
+            $invited = $this->invitations->inviteAdmin($firstName, $lastName, $email, $employmentType, $location, $actor, $request);
             $this->notifyAdmins(AdminChange::Invited, $invited, $actor, notifyTarget: false);
 
             return $invited;
@@ -316,6 +341,30 @@ final class UserManagementService
         }
 
         return $fresh;
+    }
+
+    /**
+     * Nuova sede, bloccata: null se la sede non cambia. Solo l'admin sposta le persone (lo garantisce la request,
+     * qui si riverifica sulla riga riletta) e solo verso una sede attiva. La sede si blocca dopo l'utente;
+     * l'archiviazione blocca solo la sede e conta le persone senza bloccarle, quindi i blocchi non si incrociano.
+     */
+    private function lockNewLocation(?int $locationId, User $target, User $freshActor): ?Location
+    {
+        if ($locationId === null || $locationId === $target->location_id) {
+            return null;
+        }
+
+        if (! $freshActor->isAdmin()) {
+            throw new AuthorizationException(Translate::text('users.no_longer_allowed'));
+        }
+
+        $location = Location::query()->lockForUpdate()->find($locationId);
+
+        if ($location === null || $location->isArchived()) {
+            throw ValidationException::withMessages(['location_id' => [Translate::text('locations.archived')]]);
+        }
+
+        return $location;
     }
 
     /**

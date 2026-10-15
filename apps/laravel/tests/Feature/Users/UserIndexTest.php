@@ -31,7 +31,7 @@ class UserIndexTest extends TestCase
 
         $response->assertJsonCount(2, 'data');
         $this->assertSame(
-            ['id', 'first_name', 'last_name', 'name', 'email', 'role', 'role_label', 'status', 'status_label', 'invitation_expires_at', 'is_current_user', 'can'],
+            ['id', 'first_name', 'last_name', 'name', 'email', 'role', 'role_label', 'employment_type', 'employment_type_label', 'status', 'status_label', 'location', 'invitation_expires_at', 'is_current_user', 'can'],
             array_keys($response->json('data.0')),
         );
         $response->assertJsonPath('data.0.first_name', 'Anna')
@@ -47,7 +47,7 @@ class UserIndexTest extends TestCase
     {
         $manager = User::factory()->manager()->create(['last_name' => 'A']);
         User::factory()->create(['last_name' => 'C']);
-        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true];
+        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true, 'change_location' => false, 'manage_schedule' => false, 'view_history' => true];
 
         $this->actingAs($manager)->getJson('/api/users')
             ->assertOk()
@@ -63,8 +63,8 @@ class UserIndexTest extends TestCase
         // Gli admin non sono più nella lista utenti: i loro permessi si leggono dalla pagina Amministratori
         $this->actingAs($admin)->getJson('/api/administrators')
             ->assertOk()
-            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true, 'update' => true, 'send_password_reset' => false])
-            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true]);
+            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true, 'update' => true, 'send_password_reset' => false, 'change_location' => true, 'manage_schedule' => true, 'view_history' => true])
+            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true, 'change_location' => true, 'manage_schedule' => true, 'view_history' => true]);
     }
 
     public function test_admins_never_appear_in_the_list_nor_in_the_counts(): void

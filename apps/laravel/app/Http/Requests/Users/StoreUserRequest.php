@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Users;
 
 use App\Enums\Role;
+use App\Http\Requests\Concerns\ChoosesLocationAndType;
 use App\Http\Requests\Concerns\ValidatesInvitee;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class StoreUserRequest extends FormRequest
 {
-    use ValidatesInvitee;
+    use ChoosesLocationAndType, ValidatesInvitee;
 
     public function authorize(): bool
     {
@@ -29,6 +30,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             ...$this->inviteeRules(),
+            ...$this->locationAndTypeRules(),
             // Un nuovo admin si invita solo dalla sezione Amministratori (InviteAdminRequest)
             'role' => ['required', Rule::enum(Role::class)->only([Role::Employee, Role::Manager])],
         ];
@@ -39,6 +41,6 @@ class StoreUserRequest extends FormRequest
      */
     public function messages(): array
     {
-        return $this->inviteeMessages();
+        return [...$this->inviteeMessages(), ...$this->locationMessages()];
     }
 }
