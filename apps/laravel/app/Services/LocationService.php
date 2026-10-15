@@ -113,7 +113,11 @@ final class LocationService
                 throw new ConflictHttpException(Translate::text('locations.primary'));
             }
 
-            // Persone in qualunque stato, invitati e disattivati compresi
+            // Persone in qualunque stato, invitati e disattivati compresi. Questo `exists()` non bloccante deve restare
+            // la prima lettura consistente della transazione, dopo il blocco della sede: la fotografia REPEATABLE READ
+            // nasce qui, quindi vede gli inviti e gli spostamenti già committati da chi aveva la sede prima di noi.
+            // Una lettura semplice aggiunta prima del blocco fisserebbe la fotografia troppo presto e riaprirebbe la
+            // corsa tra archiviazione e invito.
             if ($fresh->users()->exists()) {
                 throw new ConflictHttpException(Translate::text('locations.has_users'));
             }
