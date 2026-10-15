@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property CarbonImmutable $valid_from
  * @property bool $follows_location
+ * @property-read Location|null $location null nelle versioni personali
+ * @property-read User|null $user null nelle versioni della sede
  */
 class WorkSchedule extends Model
 {
@@ -64,6 +66,17 @@ class WorkSchedule extends Model
     public function isStarted(CarbonInterface $today): bool
     {
         return $this->valid_from->toDateString() <= $today->toDateString();
+    }
+
+    /**
+     * Fuso di chi possiede la versione, per "oggi" in `isStarted()`: la sede, o la sede della persona. I controller
+     * impostano le relazioni prima di serializzare, così la resource non fa query.
+     */
+    public function ownerTimezone(): string
+    {
+        $location = $this->location_id !== null ? $this->location : $this->user?->location;
+
+        return $location->timezone ?? Location::DEFAULT_TIMEZONE;
     }
 
     /**

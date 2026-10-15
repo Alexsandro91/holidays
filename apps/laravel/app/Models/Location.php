@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * sola principale; le sedi non si cancellano, si archiviano.
  *
  * `primary_marker` e `archived_at` si impostano solo nei servizi con `forceFill`.
+ *
+ * @property-read int|null $users_count conteggio di `withCount('users')`
+ * @property-read int|null $managers_count responsabili attivi, da `withCount`
  */
 #[Fillable(['name', 'city', 'patron_day', 'patron_month'])]
 class Location extends Model
