@@ -328,6 +328,8 @@ describe('SessionExpiryDialog', () => {
     const reads = signedIn()
     const { router } = renderRoutes(routes, ['/profile'], { toaster: false, advanceTimers: (delay) => vi.advanceTimersByTime(delay) })
     await screen.findByRole('heading', { level: 1, name: 'Profilo' })
+    // Lo storico del profilo ha finito di caricare: la scadenza non coglie una richiesta a metà
+    await screen.findByText('Ancora nessuna tappa.')
 
     await advance(120 * MINUTE + 1000)
 

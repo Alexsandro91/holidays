@@ -322,6 +322,8 @@
       "lastName": "Last name",
       "email": "Email",
       "role": "Role",
+      "employmentType": "Employment type",
+      "location": "Location",
       "emailNote": "Only an administrator can change your email.",
       "submit": "Save",
       "done": "Details saved."
@@ -530,5 +532,17 @@
     "weeklyRestSince": "From {{date}}, weekly rest: {{days}}.",
     "noWeeklyRest": "No weekly rest day."
   },
-  "a11y": { "pageAnnouncement": "Page: {{title}}" }
+  "a11y": { "pageAnnouncement": "Page: {{title}}" },
+  "history": {
+    "title": "History",
+    "description": "The steps of your account, most recent first.",
+    "empty": "No steps yet.",
+    "loadError": "The history could not be loaded.",
+    "notVisible": "This person is no longer among those you can see.",
+    "showAll": "Show all",
+    "loadMore": "Load more",
+    "by": "by {{name}}",
+    "dialogTitle": "History of {{name}}",
+    "dialogDescription": "The steps of the account, most recent first, with who made them."
+  }
 }

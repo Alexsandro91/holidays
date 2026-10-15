@@ -6,6 +6,7 @@ import { routes } from '@/routes'
 import { expectNoA11yViolations } from '@/test/axe'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { adminUser, currentUserResponse } from '@/test/fixtures'
+import { historyEntry, historyPage } from '@/test/historyFixtures'
 import { waitForStrayRequests } from '@/test/network'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -332,5 +333,74 @@ describe('ProfilePage', () => {
     const { container } = await openProfile()
 
     await expectNoA11yViolations(container)
+  })
+  it('shows employment type and, with more than one location, the location as read-only fields', async () => {
+    const contractor: User = { ...employee, employment_type: 'contractor', employment_type_label: 'Collaboratore esterno', location: { id: 2, name: 'Bergamo' } }
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(contractor, { multipleLocations: true }))))
+    await openProfile()
+
+    const personal = card('Dati personali')
+    expect(within(personal).getByLabelText('Tipo di rapporto')).toHaveValue('Collaboratore esterno')
+    expect(within(personal).getByLabelText('Tipo di rapporto')).toHaveAttribute('readonly')
+    expect(within(personal).getByLabelText('Sede')).toHaveValue('Bergamo')
+  })
+
+  it('hides the location when the company has only one', async () => {
+    signedIn()
+    await openProfile()
+
+    expect(within(card('Dati personali')).queryByLabelText('Sede')).not.toBeInTheDocument()
+    expect(within(card('Dati personali')).getByLabelText('Tipo di rapporto')).toHaveValue('Dipendente')
+  })
+
+  it('shows the last five steps of the account and the others on request', async () => {
+    signedIn()
+    const entries = Array.from({ length: 7 }, (_, index) =>
+      historyEntry({ id: index + 1, summary: `Tappa ${index + 1}`, occurred_at: `2026-0${index + 1}-10T10:00:00+01:00` }),
+    )
+    server.use(http.get('/api/profile/history', () => HttpResponse.json(historyPage(entries))))
+    const { user } = await openProfile()
+
+    const history = card('Storico')
+    expect(await within(history).findByText('Tappa 1')).toBeInTheDocument()
+    expect(within(history).getAllByRole('listitem')).toHaveLength(5)
+    expect(within(history).getByText('10 gennaio 2026')).toBeInTheDocument()
+
+    await user.click(within(history).getByRole('button', { name: 'Mostra tutto' }))
+
+    expect(within(history).getAllByRole('listitem')).toHaveLength(7)
+    // Il pulsante sparisce: il focus va alla prima tappa comparsa, non si perde sul body
+    await waitFor(() => expect(within(history).getByText('Tappa 6').closest('li')).toHaveFocus())
+    expect(within(history).queryByRole('button', { name: 'Mostra tutto' })).not.toBeInTheDocument()
+  })
+
+  it('loads the next pages of the history', async () => {
+    signedIn()
+    const pages: string[] = []
+    server.use(
+      http.get('/api/profile/history', ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '1'
+        pages.push(page)
+        const entries = page === '1' ? Array.from({ length: 20 }, (_, index) => historyEntry({ id: index + 1, summary: `Tappa ${index + 1}` })) : [historyEntry({ id: 21, summary: 'Tappa 21' })]
+        return HttpResponse.json(historyPage(entries, { page: Number(page), lastPage: 2 }))
+      }),
+    )
+    const { user } = await openProfile()
+
+    const history = card('Storico')
+    await within(history).findByText('Tappa 1')
+    await user.click(within(history).getByRole('button', { name: 'Mostra tutto' }))
+    await user.click(within(history).getByRole('button', { name: 'Carica altre' }))
+
+    expect(await within(history).findByText('Tappa 21')).toBeInTheDocument()
+    expect(pages).toEqual(['1', '2'])
+    expect(within(history).queryByRole('button', { name: 'Carica altre' })).not.toBeInTheDocument()
+  })
+
+  it('says when there are no steps yet', async () => {
+    signedIn()
+    await openProfile()
+
+    expect(await within(card('Storico')).findByText('Ancora nessuna tappa.')).toBeInTheDocument()
   })
 })

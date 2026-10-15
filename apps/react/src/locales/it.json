@@ -322,6 +322,8 @@
       "lastName": "Cognome",
       "email": "Email",
       "role": "Ruolo",
+      "employmentType": "Tipo di rapporto",
+      "location": "Sede",
       "emailNote": "L’email la cambia un amministratore.",
       "submit": "Salva",
       "done": "Dati salvati."
@@ -530,5 +532,17 @@
     "weeklyRestSince": "Dal {{date}}, riposo settimanale: {{days}}.",
     "noWeeklyRest": "Nessun giorno di riposo settimanale."
   },
-  "a11y": { "pageAnnouncement": "Pagina: {{title}}" }
+  "a11y": { "pageAnnouncement": "Pagina: {{title}}" },
+  "history": {
+    "title": "Storico",
+    "description": "Le tappe del tuo account, dalla più recente.",
+    "empty": "Ancora nessuna tappa.",
+    "loadError": "Non è stato possibile caricare lo storico.",
+    "notVisible": "Questa persona non è più tra quelle che puoi vedere.",
+    "showAll": "Mostra tutto",
+    "loadMore": "Carica altre",
+    "by": "da {{name}}",
+    "dialogTitle": "Storico di {{name}}",
+    "dialogDescription": "Le tappe dell’account dalla più recente, con chi le ha fatte."
+  }
 }

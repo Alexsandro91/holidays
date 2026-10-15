@@ -139,6 +139,20 @@ const PersonalDetailsCard = ({ user }: PersonalDetailsCardProps) => {
             <Input id="profile-role" value={user.role_label} readOnly className="cursor-default bg-muted text-muted-foreground" />
           </Field>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Li decide l'amministrazione (spec SP2 fase 1 §7.4): in sola lettura come email e ruolo */}
+          <Field>
+            <FieldLabel htmlFor="profile-employment-type">{t('profile.personal.employmentType')}</FieldLabel>
+            <Input id="profile-employment-type" value={user.employment_type_label} readOnly className="cursor-default bg-muted text-muted-foreground" />
+          </Field>
+          {/* Con una sola sede il campo non compare (spec §5.5) */}
+          {user.multipleLocations === true && (
+            <Field>
+              <FieldLabel htmlFor="profile-location">{t('profile.personal.location')}</FieldLabel>
+              <Input id="profile-location" value={user.location.name} readOnly className="cursor-default bg-muted text-muted-foreground" />
+            </Field>
+          )}
+        </div>
       </FieldGroup>
     </ProfileCard>
   )
