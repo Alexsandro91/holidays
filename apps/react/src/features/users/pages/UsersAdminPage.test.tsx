@@ -364,7 +364,7 @@ describe('UsersAdminPage', () => {
 
     await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
     expect(within(dialog).getByRole('button', { name: 'Salva ruolo' })).toBeEnabled()
-    await user.click(within(dialog).getByRole('radio', { name: 'Dipendente' }))
+    await user.click(within(dialog).getByRole('radio', { name: 'Utente' }))
     expect(within(dialog).getByRole('button', { name: 'Salva ruolo' })).toBeDisabled()
   })
 

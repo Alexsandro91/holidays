@@ -4,6 +4,16 @@ import { isApiError, request, requestData } from '@/lib/api'
 import { userQueryKey } from '@/lib/queryKeys'
 import { clearSessionData, forgetSessionEnd } from '@/lib/sessionEnd'
 
+/** Tipo di rapporto (spec SP2 fase 1 §7): diverso dal ruolo, che dice cosa si può fare nell'app. */
+export type EmploymentType = 'employee' | 'contractor' | 'intern'
+
+export const EMPLOYMENT_TYPES: EmploymentType[] = ['employee', 'contractor', 'intern']
+
+export const isEmploymentType = (value: string): value is EmploymentType => EMPLOYMENT_TYPES.some((type) => type === value)
+
+/** Sede di una persona come la manda il server: id e nome attuale. */
+export const locationRefSchema = z.object({ id: z.number(), name: z.string() })
+
 export const userSchema = z.object({
   id: z.number(),
   first_name: z.string(),
@@ -16,6 +26,9 @@ export const userSchema = z.object({
   status: z.enum(['invited', 'active', 'disabled']),
   locale: z.enum(['it', 'en']),
   last_login_at: z.string().nullable(),
+  location: locationRefSchema,
+  employment_type: z.enum(['employee', 'contractor', 'intern']),
+  employment_type_label: z.string(),
 })
 
 /** Limiti della sessione in millisecondi del dispositivo, ricavati da `meta.session` alla lettura (spec fase 4 §3.3). */
@@ -25,16 +38,21 @@ export interface SessionLimits {
   absoluteDeadline: number
 }
 
-/** Utente corrente. `session` c'è solo dopo una lettura di `/api/auth/user` o `/api/profile` (la risposta del codice non la ha). */
-export type User = z.infer<typeof userSchema> & { session?: SessionLimits }
+/** Utente corrente. `session` e `multipleLocations` ci sono solo dopo una lettura di `/api/auth/user` o `/api/profile`. */
+export type User = z.infer<typeof userSchema> & {
+  session?: SessionLimits
+  /** Almeno due sedi attive (spec §5.5): senza, i campi Sede non compaiono */
+  multipleLocations?: boolean
+}
 
-const userResponseSchema = z.object({ data: userSchema })
-
-/** Risposta di `GET /api/auth/user` e `PATCH /api/profile`: l'utente con i limiti della sessione. */
+/** Risposta di `GET /api/auth/user` e `PATCH /api/profile`: l'utente, i limiti della sessione e il numero di sedi. */
 export const currentUserResponseSchema = z
   .object({
     data: userSchema,
-    meta: z.object({ session: z.object({ idle_timeout_seconds: z.number(), absolute_remaining_seconds: z.number() }) }),
+    meta: z.object({
+      session: z.object({ idle_timeout_seconds: z.number(), absolute_remaining_seconds: z.number() }),
+      multiple_locations: z.boolean(),
+    }),
   })
   .transform(({ data, meta }): User => ({
     ...data,
@@ -42,7 +60,10 @@ export const currentUserResponseSchema = z
       idleTimeoutMs: meta.session.idle_timeout_seconds * 1000,
       absoluteDeadline: Date.now() + Math.max(0, meta.session.absolute_remaining_seconds) * 1000,
     },
+    multipleLocations: meta.multiple_locations,
   }))
+
+const userResponseSchema = z.object({ data: userSchema })
 
 /** Metadati degli errori sul codice restituiti da Laravel. */
 export const codeErrorMetaSchema = z.object({
@@ -61,6 +82,12 @@ const fetchCurrentUser = (): Promise<User> => requestData('GET', '/api/auth/user
 /** Utente corrente. `null` = logout esplicito; errore 401 = nessuna sessione (o sessione scaduta). */
 export const useCurrentUser = () =>
   useQuery<User | null>({ queryKey: userQueryKey, queryFn: fetchCurrentUser, retry: false, staleTime: 5 * 60_000 })
+
+/** true con almeno due sedi attive. Prima della lettura (o dopo la sola risposta del codice) vale una sede sola. */
+export const useMultipleLocations = (): boolean => {
+  const { data } = useCurrentUser()
+  return data?.multipleLocations ?? false
+}
 
 /** Rilegge subito l'utente corrente (anche senza componenti che lo osservano) e aggiorna la cache. */
 export const useRefreshCurrentUser = () => {

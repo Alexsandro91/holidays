@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { request, requestData } from '@/lib/api'
-import type { User } from '@/features/auth/api'
+import { locationRefSchema, type User } from '@/features/auth/api'
 import { adminQueryKey, userQueryKey } from '@/lib/queryKeys'
 
 export const managedUserSchema = z.object({
@@ -17,6 +17,10 @@ export const managedUserSchema = z.object({
   status_label: z.string(),
   invitation_expires_at: z.string().nullable(),
   is_current_user: z.boolean(),
+  // Sede e tipo di rapporto (spec SP2 fase 1 §4.5 e §7.4)
+  location: locationRefSchema,
+  employment_type: z.enum(['employee', 'contractor', 'intern']),
+  employment_type_label: z.string(),
   // Azioni permesse a chi guarda, calcolate dal server (spec §2): il frontend non ricalcola le regole dei ruoli
   can: z.object({
     resend_invitation: z.boolean(),
@@ -27,6 +31,10 @@ export const managedUserSchema = z.object({
     update: z.boolean(),
     // Link di reset della password all'email della persona (spec fase 4 §6)
     send_password_reset: z.boolean(),
+    // Solo l'admin cambia la sede e l'orario personale; storico per admin e responsabile (spec SP2 fase 1 §4.4, §8.3)
+    change_location: z.boolean(),
+    manage_schedule: z.boolean(),
+    view_history: z.boolean(),
   }),
 })
 

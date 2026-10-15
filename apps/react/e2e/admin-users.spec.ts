@@ -122,7 +122,7 @@ test('an admin promotes and revokes another admin, every admin is warned', async
 
   await admin.getByRole('button', { name: `Revoca ${NEW_USER_NAME}` }).click()
   const revoke = admin.getByRole('alertdialog')
-  await revoke.getByRole('radio', { name: 'Dipendente' }).check()
+  await revoke.getByRole('radio', { name: 'Utente' }).check()
   await revoke.getByLabel('La tua password').fill(PASSWORD)
   await revoke.getByRole('button', { name: `Revoca ${NEW_USER_NAME}` }).click()
   await expect(admin.getByText(`${NEW_USER_NAME} non è più amministratore.`)).toBeVisible()
@@ -169,7 +169,7 @@ test('an admin sends a password reset link to an employee from the users table',
   await admin.getByRole('menuitem', { name: 'Invia reset password' }).click()
   const dialog = admin.getByRole('alertdialog', { name: 'Inviare il link per reimpostare la password a Sara Colombo?' })
   await expect(dialog.getByText(`Riceverà un’email a ${EMPLOYEE} con un link valido 60 minuti.`, { exact: false })).toBeVisible()
-  // Dipendente: nessuna password di chi agisce
+  // Utente (ruolo base): nessuna password di chi agisce
   await expect(dialog.getByLabel('La tua password')).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Invia il link' }).click()
   await expect(admin.getByText(`Link inviato a ${EMPLOYEE}.`)).toBeVisible()

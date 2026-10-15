@@ -18,7 +18,7 @@ const employee: User = {
   name: 'Marco Bianchi',
   email: 'marco@holidays.test',
   role: 'employee',
-  role_label: 'Dipendente',
+  role_label: 'Utente',
 }
 
 const signedIn = (user = employee) => server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(user))))
@@ -62,7 +62,7 @@ describe('ProfilePage', () => {
     expect(email).toHaveValue('marco@holidays.test')
     expect(email).toHaveAttribute('readonly')
     expect(email).toHaveAccessibleDescription('L’email la cambia un amministratore.')
-    expect(within(personal).getByLabelText('Ruolo')).toHaveValue('Dipendente')
+    expect(within(personal).getByLabelText('Ruolo')).toHaveValue('Utente')
     expect(within(personal).getByLabelText('Ruolo')).toHaveAttribute('readonly')
 
     const password = card('Password')

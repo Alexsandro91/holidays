@@ -163,8 +163,8 @@
       "-first_name": "First name (Z → A)",
       "email": "Email (A → Z)",
       "-email": "Email (Z → A)",
-      "role": "Role (employee → admin)",
-      "-role": "Role (admin → employee)",
+      "role": "Role (user → admin)",
+      "-role": "Role (admin → user)",
       "status": "Status (active → disabled)",
       "-status": "Status (disabled → active)"
     },
@@ -207,7 +207,8 @@
       "submitting": "Sending…",
       "done": "Invitation sent to {{email}}."
     },
-    "roles": { "employee": "Employee", "manager": "Manager", "admin": "HR / Admin" },
+    "roles": { "employee": "User", "manager": "Manager", "admin": "HR / Admin" },
+    "employmentTypes": { "employee": "Employee", "contractor": "External contractor", "intern": "Intern" },
     "editDialog": {
       "title": "Edit {{name}}",
       "description": "First name, last name and email of a Holidays user.",

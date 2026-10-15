@@ -163,8 +163,8 @@
       "-first_name": "Nome (Z → A)",
       "email": "Email (A → Z)",
       "-email": "Email (Z → A)",
-      "role": "Ruolo (dipendente → admin)",
-      "-role": "Ruolo (admin → dipendente)",
+      "role": "Ruolo (utente → admin)",
+      "-role": "Ruolo (admin → utente)",
       "status": "Stato (attivo → disattivato)",
       "-status": "Stato (disattivato → attivo)"
     },
@@ -207,7 +207,8 @@
       "submitting": "Invio in corso…",
       "done": "Invito inviato a {{email}}."
     },
-    "roles": { "employee": "Dipendente", "manager": "Responsabile", "admin": "HR / Admin" },
+    "roles": { "employee": "Utente", "manager": "Responsabile", "admin": "HR / Admin" },
+    "employmentTypes": { "employee": "Dipendente", "contractor": "Collaboratore esterno", "intern": "Stagista" },
     "editDialog": {
       "title": "Modifica {{name}}",
       "description": "Nome, cognome ed email di chi usa Holidays.",

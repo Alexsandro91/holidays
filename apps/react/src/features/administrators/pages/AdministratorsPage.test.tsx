@@ -6,6 +6,7 @@ import AdministratorsPage from '@/features/administrators/pages/AdministratorsPa
 import type { User } from '@/features/auth/api'
 import { expectNoA11yViolations } from '@/test/axe'
 import { holdDialogExitAnimation } from '@/test/dialogExit'
+import { adminUser } from '@/test/fixtures'
 import { managedUser, NO_ACTIONS, userListResponse } from '@/test/usersFixtures'
 import { expectBlockedButFocusable } from '@/test/blocked'
 import { waitForStrayRequests } from '@/test/network'
@@ -145,7 +146,7 @@ describe('AdministratorsPage', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Revoca Bruno Admin' }))
     const dialog = await screen.findByRole('alertdialog', { name: 'Revocare il ruolo di amministratore a Bruno Admin?' })
-    expect(within(dialog).getByRole('radio', { name: 'Dipendente' })).toBeChecked()
+    expect(within(dialog).getByRole('radio', { name: 'Utente' })).toBeChecked()
     await user.click(within(dialog).getByRole('radio', { name: 'Responsabile' }))
     await user.type(within(dialog).getByLabelText('La tua password'), 'password')
     await user.click(within(dialog).getByRole('button', { name: 'Revoca Bruno Admin' }))
@@ -823,7 +824,7 @@ describe('AdministratorsPage', () => {
       }),
     )
     const { user, queryClient } = renderRoutes(routes, ['/admin/administrators'])
-    const current: User = { id: 1, first_name: 'Anna', last_name: 'Admin', name: 'Anna Admin', email: me.email, role: 'admin', role_label: 'HR / Admin', status: 'active', locale: 'it', last_login_at: null }
+    const current: User = { ...adminUser, first_name: 'Anna', last_name: 'Admin', name: 'Anna Admin', email: me.email }
     queryClient.setQueryData(userQueryKey, current)
 
     await user.click(await screen.findByRole('button', { name: 'Modifica Anna Admin' }))

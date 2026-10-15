@@ -117,7 +117,7 @@ describe('AppShell', () => {
     expect(screen.queryByRole('link', { name: 'Amministratori' })).not.toBeInTheDocument()
     second.unmount()
 
-    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'employee', role_label: 'Dipendente' }))))
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'employee', role_label: 'Utente' }))))
     renderRoutes(routes, ['/'], { toaster: false })
 
     await screen.findByRole('heading', { level: 1, name: 'Ciao, Giulia' })
@@ -138,7 +138,7 @@ describe('AppShell', () => {
   })
 
   it('shows the forbidden page to employees on /users', async () => {
-    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'employee', role_label: 'Dipendente' }))))
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse({ ...adminUser, role: 'employee', role_label: 'Utente' }))))
     renderRoutes(routes, ['/users'], { toaster: false })
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Non hai i permessi per questa pagina' })).toBeInTheDocument()

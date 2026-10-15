@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useCurrentUser, useVerifyCode } from '@/features/auth/api'
+import { useCurrentUser, useMultipleLocations, useVerifyCode } from '@/features/auth/api'
 import { createQueryClient } from '@/lib/queryClient'
 import { userQueryKey } from '@/lib/queryKeys'
 import { adminUser, currentUserResponse } from '@/test/fixtures'
@@ -18,6 +18,27 @@ const renderWithClient = <T,>(hook: () => T) => {
 describe('current user', () => {
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('reads location, employment type and whether there is more than one location', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { multipleLocations: true }))))
+
+    const { result } = renderWithClient(() => ({ current: useCurrentUser(), multiple: useMultipleLocations() }))
+
+    await waitFor(() => expect(result.current.current.data).toBeTruthy())
+    expect(result.current.current.data?.location).toEqual({ id: 1, name: 'Sede principale' })
+    expect(result.current.current.data?.employment_type).toBe('employee')
+    expect(result.current.multiple).toBe(true)
+  })
+
+  it('treats a single location as the default before and after the read', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))))
+
+    const { result } = renderWithClient(() => ({ current: useCurrentUser(), multiple: useMultipleLocations() }))
+
+    expect(result.current.multiple).toBe(false)
+    await waitFor(() => expect(result.current.current.data).toBeTruthy())
+    expect(result.current.multiple).toBe(false)
   })
 
   it('reads first and last name and the session limits, measured from the moment of the read', async () => {
