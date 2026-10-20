@@ -17,7 +17,11 @@ interface AbsenceTypesTableProps {
 }
 
 /** Nome con il badge "Predefinito" e, per i tipi con abilitazione, quante persone la hanno. */
-const NameCell = ({ absenceType }: { absenceType: AbsenceType }) => {
+interface NameCellProps {
+  absenceType: AbsenceType
+}
+
+const NameCell = ({ absenceType }: NameCellProps) => {
   const { t } = useTranslation()
   return (
     <span className="grid gap-1">

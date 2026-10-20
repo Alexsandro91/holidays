@@ -228,6 +228,26 @@ describe('AbsenceTypesPage', () => {
     expect(calls).toBe(1)
   })
 
+  it('returns the focus to the row menu after closing the edit dialog and to New type after cancelling a creation', async () => {
+    listing()
+    const { user } = renderRoutes(routes, ['/admin/absence-types'])
+
+    const menu = within(await row('Banca ore')).getByRole('button', { name: 'Azioni per Banca ore' })
+    await user.click(menu)
+    await user.click(await screen.findByRole('menuitem', { name: 'Modifica' }))
+    await screen.findByRole('dialog', { name: 'Modifica Banca ore' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(menu).toHaveFocus()
+
+    const add = screen.getByRole('button', { name: 'Nuovo tipo' })
+    await user.click(add)
+    await screen.findByRole('dialog', { name: 'Nuovo tipo di assenza' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(add).toHaveFocus()
+  })
+
   it('opens the new type dialog from the button', async () => {
     listing()
     const { user } = renderRoutes(routes, ['/admin/absence-types'])

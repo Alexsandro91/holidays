@@ -16,6 +16,7 @@ import { useCreateAbsenceType, useUpdateAbsenceType, type AbsenceType, type Abse
 import AbsenceTypeCheckboxField from '@/features/absenceTypes/components/AbsenceTypeCheckboxField'
 import { balanceTypeSchema, BALANCE_TYPES } from '@/features/balances/api'
 import { isApiError } from '@/lib/api'
+import { ABSENCE_TYPE_TRIGGER_ATTRIBUTE, focusTrigger, NEW_ABSENCE_TYPE_TRIGGER } from '@/lib/focusTrigger'
 
 const NAME_MAX_LENGTH = 100
 const LIMIT_MAX = 65535
@@ -330,9 +331,10 @@ const AbsenceTypeForm = ({ absenceType, onClose, onBusyChange }: AbsenceTypeForm
             name="employmentTypes"
             render={({ field }) => (
               <>
-                {EMPLOYMENT_TYPES.map((item) => (
+                {EMPLOYMENT_TYPES.map((item, index) => (
                   <AbsenceTypeCheckboxField
                     key={item}
+                    ref={index === 0 ? field.ref : undefined}
                     id={`absence-type-employment-${item}`}
                     label={t(`absenceTypes.employment.${item}`)}
                     // Con un saldo si vede solo Dipendenti, spento e bloccato; il valore scelto prima torna se il saldo si toglie
@@ -365,9 +367,9 @@ const AbsenceTypeForm = ({ absenceType, onClose, onBusyChange }: AbsenceTypeForm
             name="dayCount"
             render={({ field }) => (
               <RadioGroup value={field.value} onValueChange={choose(dayCountSchema, field.onChange)} aria-label={t('absenceTypes.form.dayCount')}>
-                {dayCountSchema.options.map((item) => (
+                {dayCountSchema.options.map((item, index) => (
                   <Field key={item} orientation="horizontal">
-                    <RadioGroupItem id={`absence-type-day-count-${item}`} value={item} />
+                    <RadioGroupItem ref={index === 0 ? field.ref : undefined} id={`absence-type-day-count-${item}`} value={item} />
                     <FieldLabel htmlFor={`absence-type-day-count-${item}`} className="font-normal">
                       {t(`absenceTypes.form.${item}`)}
                     </FieldLabel>
@@ -467,9 +469,9 @@ const AbsenceTypeForm = ({ absenceType, onClose, onBusyChange }: AbsenceTypeForm
 const AbsenceTypeFormDialog = ({ open, absenceType, onClose }: AbsenceTypeFormDialogProps) => {
   const { t } = useTranslation()
   // Titolo conservato durante l'animazione di chiusura
-  const [last, setLast] = useState<AbsenceType | null>(absenceType)
-  if (absenceType !== null && absenceType !== last) setLast(absenceType)
-  const shown = open ? absenceType : last
+  const [last, setLast] = useState<{ type: AbsenceType | null }>({ type: absenceType })
+  if (open && absenceType !== last.type) setLast({ type: absenceType })
+  const shown = open ? absenceType : last.type
   const [openCount, setOpenCount] = useState(0)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
@@ -481,7 +483,14 @@ const AbsenceTypeFormDialog = ({ open, absenceType, onClose }: AbsenceTypeFormDi
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+      <DialogContent
+        className="max-h-[90dvh] overflow-y-auto"
+        onCloseAutoFocus={(event) => {
+          // Il menu di riga non c'è più: il focus torna al suo pulsante, o a "Nuovo tipo" dopo una creazione
+          event.preventDefault()
+          focusTrigger(ABSENCE_TYPE_TRIGGER_ATTRIBUTE, shown?.id ?? NEW_ABSENCE_TYPE_TRIGGER)
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{shown === null ? t('absenceTypes.form.createTitle') : t('absenceTypes.form.editTitle', { name: shown.name })}</DialogTitle>
           <DialogDescription>{shown === null ? t('absenceTypes.form.createDescription') : t('absenceTypes.form.editDescription')}</DialogDescription>

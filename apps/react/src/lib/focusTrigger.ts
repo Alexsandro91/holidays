@@ -11,6 +11,8 @@ export const INVITATION_TRIGGER_ATTRIBUTE = 'data-admin-invitation-trigger'
 export const LOCATION_TRIGGER_ATTRIBUTE = 'data-location-actions-trigger'
 /** Menu di riga dei tipi di assenza */
 export const ABSENCE_TYPE_TRIGGER_ATTRIBUTE = 'data-absence-type-actions-trigger'
+/** Valore dell'attributo sul pulsante "Nuovo tipo" */
+export const NEW_ABSENCE_TYPE_TRIGGER = 'new'
 /** Pulsanti del dettaglio di una sede (Modifica, Cambia orario, chiusure): il valore dice quale */
 export const LOCATION_DETAIL_TRIGGER_ATTRIBUTE = 'data-location-detail-trigger'
 

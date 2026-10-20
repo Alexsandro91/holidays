@@ -13,6 +13,7 @@ import AbsenceTypeConfirmDialog, { type AbsenceTypeConfirmAction } from '@/featu
 import AbsenceTypeFormDialog from '@/features/absenceTypes/components/AbsenceTypeFormDialog'
 import AbsenceTypesTable from '@/features/absenceTypes/components/AbsenceTypesTable'
 import { isApiError } from '@/lib/api'
+import { ABSENCE_TYPE_TRIGGER_ATTRIBUTE, NEW_ABSENCE_TYPE_TRIGGER } from '@/lib/focusTrigger'
 
 const STATUSES: AbsenceTypeStatus[] = ['active', 'archived']
 
@@ -95,7 +96,7 @@ const AbsenceTypesPage = () => {
     <>
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <PageHeading title={t('absenceTypes.title')} description={t('absenceTypes.subtitle')} className="mb-0" />
-        <Button onClick={() => setEditing({ absenceType: null })}>
+        <Button onClick={() => setEditing({ absenceType: null })} {...{ [ABSENCE_TYPE_TRIGGER_ATTRIBUTE]: NEW_ABSENCE_TYPE_TRIGGER }}>
           <Plus aria-hidden="true" />
           {t('absenceTypes.add')}
         </Button>
