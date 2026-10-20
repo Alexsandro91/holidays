@@ -262,6 +262,10 @@ Schede:
   - azioni Approva, Rifiuta con motivo facoltativo, Approva annullamento, Rifiuta annullamento;
   - l'admin ha il filtro per sede;
   - dal dettaglio di una richiesta approvata, l'approvatore può Annullare direttamente.
+    *(scelta mia)* Nella tappa 1 l'azione si raggiunge solo quando il dettaglio si apre da un elenco che contiene
+    richieste approvate di altri: Da approvare mostra solo le richieste in attesa e gli annullamenti chiesti, quindi
+    l'ingresso arriva con il calendario del team della tappa 2 (§8.2). Rotta, permesso `can.cancel` e azione nel
+    dettaglio esistono già.
 - **Team:** tappa 2.
 
 ### 7.3 Scheda saldi (fase 2)
@@ -446,3 +450,6 @@ Il ritiro di una richiesta in attesa non manda email *(scelta mia)*.
 19. Sovrapposizioni contate solo sui giorni con minuti (§5.1).
 20. Ferie collettive solo sui giorni futuri; l'assenza personale prevale sulla chiusura; richieste di chiusura non
     ritirabili né annullabili a mano e fuori da "Da approvare" (§9.1).
+21. Annullamento diretto dell'approvatore senza un punto d'ingresso nell'interfaccia della tappa 1: arriva con il
+    calendario del team della tappa 2, che apre il dettaglio di ogni richiesta approvata con le sue azioni (§7.2,
+    §8.2).
