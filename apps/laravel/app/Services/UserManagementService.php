@@ -48,6 +48,7 @@ final class UserManagementService
         private readonly InvitationService $invitations,
         private readonly PasswordResetService $passwordResets,
         private readonly UserHistoryRecorder $history,
+        private readonly LeaveRequestService $leaveRequests,
     ) {}
 
     public function changeRole(User $target, Role $role, User $actor, Request $request): User
@@ -183,6 +184,8 @@ final class UserManagementService
             DB::table((string) config('auth.passwords.users.table'))->where('email', $fresh->email)->delete();
             $this->events->log(AuthEventType::UserDisabled, $request, $fresh, $actor);
             $this->history->disabled($fresh, $actor);
+            // Nella stessa transazione: le richieste future si chiudono, senza email (spec di fase 3, §4)
+            $this->leaveRequests->cancelFutureFor($fresh, $freshActor);
 
             if ($fresh->isAdmin()) {
                 $this->notifyAdmins(AdminChange::Disabled, $fresh, $actor);

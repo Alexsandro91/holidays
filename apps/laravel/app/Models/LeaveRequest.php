@@ -81,6 +81,23 @@ class LeaveRequest extends Model
     }
 
     /**
+     * Assenza già iniziata (spec §4, "prima che inizi"): `$now` è l'ora nel fuso della sede. Una richiesta a ore di
+     * oggi inizia a `starts_at`; tutte le altre di oggi sono già iniziate.
+     */
+    public function hasStarted(CarbonImmutable $now): bool
+    {
+        $today = $now->toDateString();
+        $startsOn = $this->starts_on->toDateString();
+
+        if ($startsOn !== $today) {
+            return $startsOn < $today;
+        }
+
+        // Orari `H:i` a due cifre: il confronto tra stringhe segue l'ordine del giorno
+        return $this->unit !== LeaveUnit::Hours || (string) $this->starts_at <= $now->format('H:i');
+    }
+
+    /**
      * @param  Builder<LeaveRequest>  $query
      */
     public function scopeActive(Builder $query): void

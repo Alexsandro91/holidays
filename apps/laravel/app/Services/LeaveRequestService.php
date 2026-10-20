@@ -15,14 +15,22 @@ use App\Models\User;
 use App\Support\LeaveComputation;
 use App\Support\LeaveDraft;
 use App\Support\Translate;
+use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
  * Unico servizio delle richieste di assenza (spec §4, §5). Le regole che dipendono da calendario, ora o dati (tipo
  * richiedibile, giorni lavorativi, sovrapposizione) stanno qui; quelle sulla sola forma dell'input nella FormRequest.
  * Le scritture bloccano la riga dell'utente: due richieste insieme si accodano e la seconda vede la prima.
+ *
+ * Transizioni (spec §4): ognuna blocca la riga della richiesta e ricontrolla stato e permesso sulla riga riletta (uno
+ * stato cambiato nel frattempo è 409 `leave.state_changed`). Quelle che scrivono movimenti bloccano prima la riga del
+ * proprietario: l'ordine fisso utente → richiesta, lo stesso della creazione e della disattivazione, evita i deadlock.
  */
 final class LeaveRequestService
 {
@@ -127,6 +135,245 @@ final class LeaveRequestService
         $request->setAttribute('warnings', $warnings);
 
         return $request;
+    }
+
+    /**
+     * Ritiro di una richiesta in attesa da parte di chi l'ha chiesta, in qualunque momento.
+     */
+    public function withdraw(LeaveRequest $request, User $actor): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'withdraw', 'withdraw', LeaveRequestStatus::Pending, writesBalance: false, onlyBeforeStart: false,
+            apply: function (LeaveRequest $fresh): void {
+                $fresh->forceFill(['status' => LeaveRequestStatus::Withdrawn])->save();
+            });
+    }
+
+    /**
+     * Chi l'ha chiesta chiede l'annullamento di una richiesta approvata, solo prima che inizi. Il saldo resta scalato.
+     */
+    public function requestCancellation(LeaveRequest $request, User $actor): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'request_cancellation', 'requestCancellation', LeaveRequestStatus::Approved, writesBalance: false, onlyBeforeStart: true,
+            apply: function (LeaveRequest $fresh): void {
+                $fresh->forceFill([
+                    'status' => LeaveRequestStatus::CancellationRequested,
+                    'cancellation_requested_at' => now(),
+                ])->save();
+            });
+    }
+
+    /**
+     * Approvazione, anche di una richiesta già iniziata (l'approvatore può essere in ritardo): scala il saldo.
+     */
+    public function approve(LeaveRequest $request, User $actor): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'approve', 'decide', LeaveRequestStatus::Pending, writesBalance: true, onlyBeforeStart: false,
+            apply: function (LeaveRequest $fresh) use ($actor): void {
+                $fresh->forceFill([
+                    'status' => LeaveRequestStatus::Approved,
+                    'decided_by' => $actor->id,
+                    'decided_at' => now(),
+                ])->save();
+                $this->usage->charge($fresh, $actor);
+            });
+    }
+
+    /**
+     * Rifiuto con motivo facoltativo.
+     */
+    public function reject(LeaveRequest $request, User $actor, ?string $note): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'reject', 'decide', LeaveRequestStatus::Pending, writesBalance: false, onlyBeforeStart: false,
+            apply: function (LeaveRequest $fresh) use ($actor, $note): void {
+                $fresh->forceFill([
+                    'status' => LeaveRequestStatus::Rejected,
+                    'decided_by' => $actor->id,
+                    'decided_at' => now(),
+                    'decision_note' => $note,
+                ])->save();
+            });
+    }
+
+    /**
+     * Annullamento approvato: la richiesta è annullata e il saldo restituito per tutti i suoi giorni.
+     */
+    public function approveCancellation(LeaveRequest $request, User $actor): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'approve_cancellation', 'decide', LeaveRequestStatus::CancellationRequested, writesBalance: true, onlyBeforeStart: false,
+            apply: function (LeaveRequest $fresh) use ($actor): void {
+                $this->markCancelled($fresh, $actor);
+                $this->usage->refund($fresh, $actor);
+            });
+    }
+
+    /**
+     * Annullamento rifiutato: la richiesta torna approvata, senza annullamento in sospeso, e il saldo resta scalato.
+     */
+    public function rejectCancellation(LeaveRequest $request, User $actor): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'reject_cancellation', 'decide', LeaveRequestStatus::CancellationRequested, writesBalance: false, onlyBeforeStart: false,
+            apply: function (LeaveRequest $fresh): void {
+                $fresh->forceFill([
+                    'status' => LeaveRequestStatus::Approved,
+                    'cancellation_requested_at' => null,
+                ])->save();
+            });
+    }
+
+    /**
+     * Annullamento diretto di un approvatore su una richiesta approvata, solo prima che inizi: restituisce il saldo.
+     */
+    public function cancel(LeaveRequest $request, User $actor): LeaveRequest
+    {
+        return $this->transition($request, $actor, 'cancel', 'decide', LeaveRequestStatus::Approved, writesBalance: true, onlyBeforeStart: true,
+            apply: function (LeaveRequest $fresh) use ($actor): void {
+                $this->markCancelled($fresh, $actor);
+                $this->usage->refund($fresh, $actor);
+            });
+    }
+
+    /**
+     * Disattivazione dell'account (spec §4): le richieste attive che iniziano da domani (nel fuso della loro sede)
+     * passano a `withdrawn` se in attesa, a `cancelled` con il saldo restituito per i giorni da domani se approvate o
+     * con annullamento chiesto; `cancelled_by` è chi disattiva. Quelle già iniziate restano come sono. Nessuna email.
+     * Gira dentro la transazione della disattivazione, che ha già bloccato la riga della persona.
+     */
+    public function cancelFutureFor(User $user, User $actor): void
+    {
+        $changes = DB::transaction(function () use ($user, $actor): array {
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            // Da ieri in UTC: copre ogni fuso; il filtro esatto per sede si fa sotto
+            $candidates = LeaveRequest::query()
+                ->where('user_id', $user->id)
+                ->active()
+                ->where('starts_on', '>=', CarbonImmutable::now()->subDay()->toDateString())
+                ->with('location:id,timezone')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $withdrawn = [];
+            $cancelled = [];
+
+            foreach ($candidates as $request) {
+                $today = $this->now($request)->toDateString();
+
+                if ($request->starts_on->toDateString() <= $today) {
+                    continue;
+                }
+
+                if ($request->status === LeaveRequestStatus::Pending) {
+                    $withdrawn[] = $request->id;
+
+                    continue;
+                }
+
+                $cancelled[] = $request->id;
+                $this->usage->refund($request, $actor, $this->now($request)->startOfDay()->addDay());
+            }
+
+            if ($withdrawn !== []) {
+                LeaveRequest::query()->whereKey($withdrawn)->update(['status' => LeaveRequestStatus::Withdrawn->value]);
+            }
+
+            if ($cancelled !== []) {
+                LeaveRequest::query()->whereKey($cancelled)->update([
+                    'status' => LeaveRequestStatus::Cancelled->value,
+                    'cancelled_by' => $actor->id,
+                    'cancelled_at' => now(),
+                ]);
+            }
+
+            return ['withdrawn' => $withdrawn, 'cancelled' => $cancelled];
+        }, self::TRANSACTION_ATTEMPTS);
+
+        if ($changes['withdrawn'] === [] && $changes['cancelled'] === []) {
+            return;
+        }
+
+        // Dopo il commit della disattivazione: un rollback non lascia log di transizioni mai avvenute
+        DB::afterCommit(fn () => Log::info('Leave requests closed on account disable', [
+            'user_id' => $user->id,
+            'actor_id' => $actor->id,
+            'withdrawn_ids' => $changes['withdrawn'],
+            'cancelled_ids' => $changes['cancelled'],
+        ]));
+    }
+
+    /**
+     * Schema comune delle transizioni: blocchi (utente, se si scrive il saldo, poi richiesta), ricontrollo di stato e
+     * permesso sulla riga riletta, "prima che inizi" se richiesto, modifica e log dopo il commit.
+     *
+     * @param  Closure(LeaveRequest): void  $apply
+     *
+     * @throws ConflictHttpException
+     */
+    private function transition(
+        LeaveRequest $request,
+        User $actor,
+        string $action,
+        string $ability,
+        LeaveRequestStatus $from,
+        bool $writesBalance,
+        bool $onlyBeforeStart,
+        Closure $apply,
+    ): LeaveRequest {
+        $fresh = DB::transaction(function () use ($request, $actor, $ability, $from, $writesBalance, $onlyBeforeStart, $apply): LeaveRequest {
+            $owner = $writesBalance
+                ? User::query()->whereKey($request->user_id)->lockForUpdate()->firstOrFail()
+                : null;
+
+            /** @var LeaveRequest $fresh */
+            $fresh = LeaveRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
+            // La policy non fa query: il proprietario riletto serve a `decide` (ruolo e sede attuali)
+            $fresh->setRelation('user', $owner ?? User::query()->findOrFail($fresh->user_id));
+
+            if ($fresh->status !== $from || Gate::forUser($actor)->denies($ability, $fresh)) {
+                throw new ConflictHttpException(Translate::text('leave.state_changed'));
+            }
+
+            if ($onlyBeforeStart && $fresh->hasStarted($this->now($fresh))) {
+                throw new ConflictHttpException(Translate::text('leave.already_started'));
+            }
+
+            $apply($fresh);
+
+            return $fresh;
+        }, self::TRANSACTION_ATTEMPTS);
+
+        Log::info('Leave request transition', [
+            'leave_request_id' => $fresh->id,
+            'user_id' => $fresh->user_id,
+            'action' => $action,
+            'from' => $from->value,
+            'to' => $fresh->status->value,
+            'actor_id' => $actor->id,
+        ]);
+
+        return $fresh;
+    }
+
+    private function markCancelled(LeaveRequest $request, User $actor): void
+    {
+        $request->forceFill([
+            'status' => LeaveRequestStatus::Cancelled,
+            'cancelled_by' => $actor->id,
+            'cancelled_at' => now(),
+        ])->save();
+    }
+
+    /**
+     * Ora nel fuso della sede della richiesta.
+     */
+    private function now(LeaveRequest $request): CarbonImmutable
+    {
+        /** @var Location $location */
+        $location = $request->relationLoaded('location')
+            ? $request->location
+            : Location::query()->findOrFail($request->location_id, ['id', 'timezone']);
+
+        return CarbonImmutable::now($location->timezone);
     }
 
     /**

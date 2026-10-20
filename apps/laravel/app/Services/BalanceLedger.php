@@ -123,7 +123,8 @@ final class BalanceLedger
     }
 
     /**
-     * Movimenti dal più recente, 20 per pagina. Chi ha agito si carica solo per lo staff: nel profilo resta nascosto.
+     * Movimenti dal più recente, 20 per pagina, con la richiesta dei movimenti `usage`. Chi ha agito si carica solo per
+     * lo staff: nel profilo resta nascosto.
      *
      * @return LengthAwarePaginator<int, BalanceMovement>
      */
@@ -134,6 +135,11 @@ final class BalanceLedger
             ->when($balance !== null, fn (Builder $query) => $query->where('balance', $balance))
             ->when($year !== null, fn (Builder $query) => $query->whereBetween('effective_on', ["{$year}-01-01", "{$year}-12-31"]))
             ->when($withActor, fn (Builder $query) => $query->with('actor:id,first_name,last_name'))
+            // Tipo e date della richiesta per descrivere i movimenti `usage`
+            ->with([
+                'leaveRequest:id,absence_type_id,starts_on,ends_on,source',
+                'leaveRequest.absenceType:id,code,name',
+            ])
             ->orderByDesc('effective_on')
             ->orderByDesc('id')
             ->paginate(self::MOVEMENTS_PER_PAGE);

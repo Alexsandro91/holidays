@@ -24,6 +24,7 @@ use App\Http\Controllers\Auth\ProfileAbsenceTypeController;
 use App\Http\Controllers\Auth\ProfileBalanceController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
+use App\Http\Controllers\Leave\LeaveDecisionController;
 use App\Http\Controllers\Leave\LeaveRequestController;
 use App\Http\Controllers\Leave\ProfileCalendarController;
 use App\Models\AbsenceType;
@@ -50,6 +51,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/leave-requests/preview', [LeaveRequestController::class, 'preview'])->name('leave-requests.preview');
     Route::post('/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');
     Route::get('/leave-requests/{leaveRequest}', [LeaveRequestController::class, 'show'])->can('view', 'leaveRequest')->name('leave-requests.show');
+    // Transizioni (spec §6): ritiro e annullamento da chi l'ha chiesta, decisioni dagli approvatori (`decide`)
+    Route::post('/leave-requests/{leaveRequest}/withdraw', [LeaveDecisionController::class, 'withdraw'])->can('withdraw', 'leaveRequest')->name('leave-requests.withdraw');
+    Route::post('/leave-requests/{leaveRequest}/cancellation', [LeaveDecisionController::class, 'requestCancellation'])->can('requestCancellation', 'leaveRequest')->name('leave-requests.cancellation');
+    Route::post('/leave-requests/{leaveRequest}/approve', [LeaveDecisionController::class, 'approve'])->can('decide', 'leaveRequest')->name('leave-requests.approve');
+    Route::post('/leave-requests/{leaveRequest}/reject', [LeaveDecisionController::class, 'reject'])->can('decide', 'leaveRequest')->name('leave-requests.reject');
+    Route::post('/leave-requests/{leaveRequest}/cancellation/approve', [LeaveDecisionController::class, 'approveCancellation'])->can('decide', 'leaveRequest')->name('leave-requests.cancellation.approve');
+    Route::post('/leave-requests/{leaveRequest}/cancellation/reject', [LeaveDecisionController::class, 'rejectCancellation'])->can('decide', 'leaveRequest')->name('leave-requests.cancellation.reject');
+    Route::post('/leave-requests/{leaveRequest}/cancel', [LeaveDecisionController::class, 'cancel'])->can('decide', 'leaveRequest')->name('leave-requests.cancel');
 
     // Gestione utenti: responsabili e admin, mai sugli admin per il responsabile (UserPolicy)
     Route::get('/users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');

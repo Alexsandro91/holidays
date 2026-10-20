@@ -6,15 +6,17 @@ use App\Enums\LeaveRequestStatus;
 use App\Models\AbsenceType;
 use App\Models\LeaveRequest;
 use App\Models\LeaveRequestDay;
+use App\Models\Location;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Una richiesta di assenza. Le relazioni (`user`, `absenceType`, `decider`, `canceller`) le caricano i controller:
- * nessuna query qui. `days` solo nel dettaglio (relazione caricata), `warnings` solo dove il servizio li ha calcolati
+ * Una richiesta di assenza. Le relazioni (`user`, `absenceType`, `decider`, `canceller`, `location`) le caricano i
+ * controller: nessuna query qui. `days` solo nel dettaglio (relazione caricata), `warnings` solo dove il servizio li ha calcolati
  * (creazione, Da approvare). `can` combina policy e stato.
  *
  * @mixin LeaveRequest
@@ -24,7 +26,7 @@ final class LeaveRequestResource extends JsonResource
     /**
      * Relazioni da caricare prima di usare la resource (`days` solo per il dettaglio).
      */
-    public const RELATIONS = ['user', 'absenceType', 'decider', 'canceller'];
+    public const RELATIONS = ['user', 'absenceType', 'decider', 'canceller', 'location:id,timezone'];
 
     /**
      * @return array<string, mixed>
@@ -71,23 +73,31 @@ final class LeaveRequestResource extends JsonResource
     }
 
     /**
-     * Policy (senza query) più stato. Le decisioni e l'annullamento arrivano con le loro rotte: per ora falsi.
+     * Policy (senza query) più stato più "prima che inizi" (fuso della sede, spec §4). Senza la sede caricata la
+     * richiesta si considera iniziata: nessuna azione che lo richiede viene offerta.
      *
      * @return array{withdraw: bool, request_cancellation: bool, approve: bool, reject: bool, approve_cancellation: bool, reject_cancellation: bool, cancel: bool}
      */
     private function permissions(Request $request): array
     {
         $gate = Gate::forUser($request->user());
+        $decide = $gate->allows('decide', $this->resource);
+        $location = $this->relationLoaded('location') ? $this->location : null;
+        $notStarted = $location instanceof Location && ! $this->resource->hasStarted(CarbonImmutable::now($location->timezone));
+        $pending = $this->status === LeaveRequestStatus::Pending;
+        $approved = $this->status === LeaveRequestStatus::Approved;
+        $cancellationRequested = $this->status === LeaveRequestStatus::CancellationRequested;
 
         return [
             // Il ritiro di una richiesta in attesa è ammesso in qualunque momento (spec §4)
-            'withdraw' => $this->status === LeaveRequestStatus::Pending && $gate->allows('withdraw', $this->resource),
-            'request_cancellation' => false,
-            'approve' => false,
-            'reject' => false,
-            'approve_cancellation' => false,
-            'reject_cancellation' => false,
-            'cancel' => false,
+            'withdraw' => $pending && $gate->allows('withdraw', $this->resource),
+            'request_cancellation' => $approved && $notStarted && $gate->allows('requestCancellation', $this->resource),
+            // L'approvazione di una richiesta già iniziata è ammessa: l'approvatore può essere in ritardo
+            'approve' => $pending && $decide,
+            'reject' => $pending && $decide,
+            'approve_cancellation' => $cancellationRequested && $decide,
+            'reject_cancellation' => $cancellationRequested && $decide,
+            'cancel' => $approved && $notStarted && $decide,
         ];
     }
 }
