@@ -10,10 +10,12 @@ interface BalancesFiltersProps {
   setParams: (next: Partial<BalanceListParams>, options?: { replace?: boolean }) => void
   /** Filtro per sede: solo admin con più sedi */
   withLocation: boolean
+  /** Cambia con Indietro, Avanti e "Mostra tutte le persone": il testo ancora in debounce si scarta */
+  resetKey: number
 }
 
 /** Ricerca per nome, Sede (solo admin con più sedi) e "Solo saldi negativi"; lo stato è nell'URL. */
-const BalancesFilters = ({ params, setParams, withLocation }: BalancesFiltersProps) => {
+const BalancesFilters = ({ params, setParams, withLocation, resetKey }: BalancesFiltersProps) => {
   const { t } = useTranslation()
 
   return (
@@ -26,7 +28,7 @@ const BalancesFilters = ({ params, setParams, withLocation }: BalancesFiltersPro
         // I testi aggiornano l'URL con replace: ogni battuta non diventa una voce della cronologia
         onCommit={(search) => setParams({ search, page: 1 }, { replace: true })}
         onDraft={() => undefined}
-        resetKey={0}
+        resetKey={resetKey}
         className="min-w-0 flex-1 basis-60 sm:max-w-md"
       />
       {withLocation && (

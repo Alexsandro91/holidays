@@ -218,4 +218,66 @@ describe('BalancesPage', () => {
     await screen.findByRole('table')
     await expectNoA11yViolations(container)
   })
+
+  it('returns the focus to the name button after Allinea and Rettifica opened from the row menu', async () => {
+    respond()
+    asUser()
+    server.use(
+      http.get('/api/users/2/balances', () => HttpResponse.json({ data: balanceSummary() })),
+      http.get('/api/balances/at', () => HttpResponse.json({ data: { date: '2026-09-30', balances: { vacation: 0, rol: 0, ex_holidays: 0 }, last_alignment: { vacation: null, rol: null, ex_holidays: null } } })),
+      http.get('/api/users/2/balances/at', () => HttpResponse.json({ data: { date: '2026-09-30', balances: { vacation: 0, rol: 0, ex_holidays: 0 }, last_alignment: { vacation: null, rol: null, ex_holidays: null } } })),
+    )
+    const { user } = renderRoutes(routes, ['/balances'])
+    const nameButton = async () => within(await rowOf('Sara Colombo')).getByRole('button', { name: 'Sara Colombo' })
+
+    await user.click(within(await rowOf('Sara Colombo')).getByRole('button', { name: 'Azioni per Sara Colombo' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Allinea alla busta paga' }))
+    await screen.findByRole('dialog', { name: /Allinea/ })
+    await user.keyboard('{Escape}')
+    await waitFor(async () => expect(await nameButton()).toHaveFocus())
+
+    await user.click(within(await rowOf('Sara Colombo')).getByRole('button', { name: 'Azioni per Sara Colombo' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rettifica' }))
+    await screen.findByRole('dialog', { name: /Rettifica/ })
+    await user.keyboard('{Escape}')
+    await waitFor(async () => expect(await nameButton()).toHaveFocus())
+  })
+
+  it('shows a loading state and then an error with Riprova when Rettifica cannot load the balances', async () => {
+    respond()
+    asUser()
+    let fail = true
+    server.use(http.get('/api/users/2/balances', () => (fail ? HttpResponse.json({ message: 'boom' }, { status: 500 }) : HttpResponse.json({ data: balanceSummary() }))))
+    const { user } = renderRoutes(routes, ['/balances'])
+
+    await user.click(within(await rowOf('Sara Colombo')).getByRole('button', { name: 'Azioni per Sara Colombo' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rettifica' }))
+
+    const dialog = await screen.findByRole('dialog', { name: /Rettifica/ })
+    expect(await within(dialog).findByText('Non è stato possibile caricare i saldi.')).toBeInTheDocument()
+    fail = false
+    await user.click(within(dialog).getByRole('button', { name: 'Riprova' }))
+    expect(await within(await screen.findByRole('dialog', { name: /Rettifica/ })).findByRole('radio', { name: 'Ferie' })).toBeInTheDocument()
+  })
+
+  it('goes back to page 1 when a filter changes', async () => {
+    const urls: URL[] = []
+    respond((url) => urls.push(url), rows, 3)
+    asUser()
+    const { user, router } = renderRoutes(routes, ['/balances?page=3'])
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Solo saldi negativi' }))
+    expect(router.state.location.search).toBe('?negative=1')
+    await waitFor(() => expect(urls.at(-1)?.searchParams.has('page')).toBe(false))
+  })
+
+  it('clears the search field on "Mostra tutte le persone"', async () => {
+    respond((url) => url, [])
+    asUser()
+    const { user, router } = renderRoutes(routes, ['/balances?search=zzz'])
+
+    await user.click(await screen.findByRole('button', { name: 'Mostra tutte le persone' }))
+    expect(router.state.location.search).toBe('')
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+  })
 })

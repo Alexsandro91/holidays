@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { balanceTypeSchema, useAdjustBalance, type BalanceSummary } from '@/features/balances/api'
 import { formatHours, parseHours } from '@/features/balances/hoursFormat'
 import { isApiError } from '@/lib/api'
+import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
 interface AdjustBalanceDialogProps {
   userId: number
@@ -22,6 +23,8 @@ interface AdjustBalanceDialogProps {
   summary: BalanceSummary
   open: boolean
   onClose: () => void
+  /** Persona il cui pulsante (USER_TRIGGER_ATTRIBUTE) riprende il focus alla chiusura: per i dialog aperti da un menu che non esiste più */
+  returnFocusToUser?: number
 }
 
 const MAX_MINUTES = 600000
@@ -170,11 +173,18 @@ const AdjustForm = ({ userId, summary, onClose }: FormProps) => {
 }
 
 /** Rettifica di un saldo: aggiungi o togli ore con un motivo obbligatorio (spec SP2 fase 2 §7.5). */
-const AdjustBalanceDialog = ({ userId, userName, summary, open, onClose }: AdjustBalanceDialogProps) => {
+const AdjustBalanceDialog = ({ userId, userName, summary, open, onClose, returnFocusToUser }: AdjustBalanceDialogProps) => {
   const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          // Senza la prop vale il comportamento di Radix (dialog dentro la scheda saldi)
+          if (returnFocusToUser === undefined) return
+          event.preventDefault()
+          focusTrigger(USER_TRIGGER_ATTRIBUTE, returnFocusToUser)
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t('balances.adjust.title', { name: userName })}</DialogTitle>
           <DialogDescription>{t('balances.adjust.description')}</DialogDescription>

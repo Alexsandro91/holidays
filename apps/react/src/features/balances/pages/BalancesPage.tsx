@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigationType } from 'react-router'
 import PageHeading from '@/components/layout/PageHeading'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,6 +31,15 @@ const BalancesPage = () => {
   const withLocation = currentUser?.role === 'admin' && multipleLocations
   const { params, setParams } = useBalanceListParams(withLocation)
   const title = currentUser?.role === 'manager' && multipleLocations ? t('balances.titleWithLocation', { location: currentUser.location.name }) : t('balances.title')
+  // Indietro e Avanti riportano il campo di ricerca al valore dell'URL, scartando il testo in debounce
+  const location = useLocation()
+  const navigationType = useNavigationType()
+  const [resetKey, setResetKey] = useState(0)
+  const [seenKey, setSeenKey] = useState(location.key)
+  if (seenKey !== location.key) {
+    setSeenKey(location.key)
+    if (navigationType === 'POP') setResetKey(resetKey + 1)
+  }
   const [opened, setOpened] = useState<Target | null>(null)
   // La persona resta dopo la chiusura: il dialog finisce la sua animazione e riporta il focus
   const [alignTarget, setAlignTarget] = useState<Target | null>(null)
@@ -47,6 +57,7 @@ const BalancesPage = () => {
 
   const filtered = params.search !== '' || params.onlyNegative || params.location !== null
   const clearFilters = () => {
+    setResetKey((key) => key + 1)
     setParams({ search: '', onlyNegative: false, location: null, page: 1 })
     // Il pulsante sparisce senza filtri: il focus va alla ricerca, sempre visibile
     document.getElementById('balances-search')?.focus()
@@ -69,7 +80,7 @@ const BalancesPage = () => {
   return (
     <>
       <PageHeading title={title} description={t('balances.page.subtitle', { date: today })} />
-      <BalancesFilters params={params} setParams={setParams} withLocation={withLocation} />
+      <BalancesFilters params={params} setParams={setParams} withLocation={withLocation} resetKey={resetKey} />
       {/* Live region stabile: montata sempre, fuori dai rami di caricamento, errore e lista vuota */}
       <p role="status" className="sr-only">
         {result}
@@ -113,7 +124,7 @@ const BalancesPage = () => {
         </div>
       )}
       <UserBalancesDialog userId={opened?.id ?? null} userName={opened?.name ?? ''} locationId={opened?.locationId} locationName={opened?.locationName} onClose={() => setOpened(null)} />
-      {alignTarget !== null && <AlignBalancesDialog userId={alignTarget.id} userName={alignTarget.name} open={aligning} onClose={() => setAligning(false)} />}
+      {alignTarget !== null && <AlignBalancesDialog userId={alignTarget.id} userName={alignTarget.name} open={aligning} onClose={() => setAligning(false)} returnFocusToUser={alignTarget.id} />}
       <RowAdjustDialog target={adjusting} onClose={() => setAdjusting(null)} />
     </>
   )

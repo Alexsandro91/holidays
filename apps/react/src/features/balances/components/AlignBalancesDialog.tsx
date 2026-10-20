@@ -14,12 +14,15 @@ import { BALANCE_TYPES, useAlignBalances, useBalancesAt, type BalanceType } from
 import { formatNumericDate } from '@/features/balances/describeMovement'
 import { formatHours, parseHours } from '@/features/balances/hoursFormat'
 import { isApiError } from '@/lib/api'
+import { focusTrigger, USER_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 
 interface AlignBalancesDialogProps {
   userId: number
   userName: string
   open: boolean
   onClose: () => void
+  /** Persona il cui pulsante (USER_TRIGGER_ATTRIBUTE) riprende il focus alla chiusura: per i dialog aperti da un menu che non esiste più */
+  returnFocusToUser?: number
 }
 
 const MAX_MINUTES = 600000
@@ -171,11 +174,18 @@ const AlignForm = ({ userId, onClose }: FormProps) => {
 }
 
 /** Allinea alla busta paga: per ogni saldo il valore nell'app a quella data e quello della busta (spec SP2 fase 2 §7.4). */
-const AlignBalancesDialog = ({ userId, userName, open, onClose }: AlignBalancesDialogProps) => {
+const AlignBalancesDialog = ({ userId, userName, open, onClose, returnFocusToUser }: AlignBalancesDialogProps) => {
   const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          // Senza la prop vale il comportamento di Radix (dialog dentro la scheda saldi)
+          if (returnFocusToUser === undefined) return
+          event.preventDefault()
+          focusTrigger(USER_TRIGGER_ATTRIBUTE, returnFocusToUser)
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t('balances.align.title', { name: userName })}</DialogTitle>
           <DialogDescription>{t('balances.align.description')}</DialogDescription>
