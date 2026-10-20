@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AbsenceTypeController;
 use App\Http\Controllers\Admin\AdministratorController;
 use App\Http\Controllers\Admin\ClosureController;
 use App\Http\Controllers\Admin\LocationCalendarController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Admin\UserStatusController;
 use App\Http\Controllers\Auth\CurrentUserController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
+use App\Models\AbsenceType;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +63,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::delete('/locations/{location}/schedules/{schedule}', [LocationScheduleController::class, 'destroy'])
         ->can('update', 'location')->scopeBindings()->name('locations.schedules.destroy');
     Route::get('/locations/{location}/calendar', LocationCalendarController::class)->can('view', 'location')->name('locations.calendar');
+
+    // Tipi di assenza: solo admin (AbsenceTypePolicy). `order` prima di `{absenceType}`
+    Route::get('/absence-types', [AbsenceTypeController::class, 'index'])->can('viewAny', AbsenceType::class)->name('absence-types.index');
+    Route::post('/absence-types', [AbsenceTypeController::class, 'store'])->can('create', AbsenceType::class)->name('absence-types.store');
+    Route::put('/absence-types/order', [AbsenceTypeController::class, 'order'])->can('update', AbsenceType::class)->name('absence-types.order');
+    Route::patch('/absence-types/{absenceType}', [AbsenceTypeController::class, 'update'])->can('update', 'absenceType')->name('absence-types.update');
+    Route::post('/absence-types/{absenceType}/archive', [AbsenceTypeController::class, 'archive'])->can('update', 'absenceType')->name('absence-types.archive');
+    Route::post('/absence-types/{absenceType}/restore', [AbsenceTypeController::class, 'restore'])->can('update', 'absenceType')->name('absence-types.restore');
 
     // Orario personale: solo admin (UserPolicy::manageSchedule)
     Route::get('/users/{user}/schedules', [UserScheduleController::class, 'index'])->can('manageSchedule', 'user')->name('users.schedules.index');
