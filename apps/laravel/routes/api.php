@@ -61,6 +61,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/leave-requests/{leaveRequest}/cancellation/reject', [LeaveDecisionController::class, 'rejectCancellation'])->can('decide', 'leaveRequest')->name('leave-requests.cancellation.reject');
     Route::post('/leave-requests/{leaveRequest}/cancel', [LeaveDecisionController::class, 'cancel'])->can('decide', 'leaveRequest')->name('leave-requests.cancel');
 
+    // Da approvare: responsabili e admin; cosa possono decidere lo stabilisce LeaveApprovers
+    Route::get('/approvals', [ApprovalController::class, 'index'])->can('viewBalanceOverview', User::class)->name('approvals.index');
+
     // Gestione utenti: responsabili e admin, mai sugli admin per il responsabile (UserPolicy)
     Route::get('/users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->can('create', User::class)->name('users.store');
@@ -117,9 +120,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/users/{user}/accrual', [UserAccrualController::class, 'update'])->can('manageAccrual', 'user')->name('users.accrual.update');
 
     // Saldi di una persona: li vede chi può agire su di lei, li corregge anche, ma mai i propri (UserPolicy)
-    // Da approvare: responsabili e admin; cosa possono decidere lo stabilisce LeaveApprovers
-    Route::get('/approvals', [ApprovalController::class, 'index'])->can('viewBalanceOverview', User::class)->name('approvals.index');
-
     Route::get('/balances', BalanceOverviewController::class)->can('viewBalanceOverview', User::class)->name('balances.index');
     Route::get('/users/{user}/balances', [UserBalanceController::class, 'summary'])->can('viewBalances', 'user')->name('users.balances.show');
     Route::get('/users/{user}/balances/at', [UserBalanceController::class, 'at'])->can('viewBalances', 'user')->name('users.balances.at');
