@@ -12,6 +12,9 @@ export const NO_ACTIONS: ManagedUser['can'] = {
   change_location: false,
   manage_schedule: false,
   view_history: false,
+  view_balances: false,
+  adjust_balances: false,
+  manage_absence_types: false,
 }
 
 /** Azioni della fase 3 e 4 permesse: lo stato decide poi quali compaiono. Orario, storico e sede si attivano nei test che le provano. */
@@ -26,6 +29,9 @@ export const ALL_ACTIONS: ManagedUser['can'] = {
   change_location: false,
   manage_schedule: false,
   view_history: false,
+  view_balances: false,
+  adjust_balances: false,
+  manage_absence_types: false,
 }
 
 /** Tutte le azioni, comprese orario personale, storico e cambio sede (vista dell'admin). */

@@ -35,6 +35,10 @@ export const managedUserSchema = z.object({
     change_location: z.boolean(),
     manage_schedule: z.boolean(),
     view_history: z.boolean(),
+    // Saldi: vederli, rettificarli e allinearli, gestire i tipi di assenza e le abilitazioni (spec SP2 fase 2 §8)
+    view_balances: z.boolean(),
+    adjust_balances: z.boolean(),
+    manage_absence_types: z.boolean(),
   }),
 })
 

@@ -13,3 +13,9 @@ export const locationsQueryKey: readonly ['admin', 'locations'] = [adminQueryKey
 
 /** Storico delle persone (profilo e Utenti): fuori dall'utente corrente, quindi il logout lo cancella (clearSessionData). */
 export const historyQueryKey: readonly ['history'] = ['history']
+
+/** Saldi, movimenti e valori annui: fuori dall'area admin perché li usa anche il dipendente; il logout li cancella (clearSessionData). */
+export const balancesQueryKey: readonly ['balances'] = ['balances']
+
+/** Tipi di assenza, abilitazioni e l'elenco del profilo: sotto il prefisso admin. */
+export const absenceTypesQueryKey: readonly ['admin', 'absence-types'] = [adminQueryKey[0], 'absence-types']
