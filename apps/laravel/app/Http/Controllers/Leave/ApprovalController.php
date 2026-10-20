@@ -11,7 +11,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * Da approvare (spec §6): richieste e annullamenti in attesa che l'attore può decidere, dalla più vecchia, con gli
- * avvisi calcolati al momento.
+ * avvisi calcolati al momento. L'ordine segue l'ingresso in coda (creazione o richiesta di annullamento).
  */
 final class ApprovalController extends Controller
 {
@@ -33,7 +33,8 @@ final class ApprovalController extends Controller
 
         $requests = $query
             ->with(LeaveRequestResource::RELATIONS)
-            ->orderBy('created_at')
+            // In coda da quando l'elemento è entrato: un annullamento dal momento in cui è stato chiesto
+            ->orderByRaw('COALESCE(cancellation_requested_at, created_at)')
             ->orderBy('id')
             ->limit(self::LIMIT)
             ->get();

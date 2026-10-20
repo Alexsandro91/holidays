@@ -43,7 +43,7 @@ class ApprovalsTest extends TestCase
         $elsewhere = User::factory()->at(Location::factory()->create())->create();
 
         $mine = LeaveRequest::factory()->for($this->manager)->create(['created_at' => '2026-10-10 10:00:00']);
-        $theirs = LeaveRequest::factory()->for($employee)->cancellationRequested()->create(['created_at' => '2026-10-05 10:00:00']);
+        $theirs = LeaveRequest::factory()->for($employee)->cancellationRequested()->create(['created_at' => '2026-10-01 10:00:00', 'cancellation_requested_at' => '2026-10-05 10:00:00']);
         $colleague = LeaveRequest::factory()->for($otherManager)->create(['created_at' => '2026-10-15 10:00:00']);
         LeaveRequest::factory()->for($admin)->create();
         LeaveRequest::factory()->for($elsewhere)->create();
@@ -61,6 +61,24 @@ class ApprovalsTest extends TestCase
             ->assertJsonPath('data.0.can.approve_cancellation', true)
             ->assertJsonPath('data.1.can.approve', true)
             ->assertJsonMissingPath('data.0.days');
+    }
+
+    public function test_cancellation_queues_from_when_it_was_requested(): void
+    {
+        $employee = User::factory()->at($this->location)->create();
+
+        // Una richiesta vecchia di cui si chiede ora l'annullamento entra in coda adesso, non quando fu creata
+        $lateCancellation = LeaveRequest::factory()->for($employee)->cancellationRequested()
+            ->create(['created_at' => '2026-09-01 10:00:00', 'cancellation_requested_at' => '2026-10-20 10:00:00']);
+        $older = LeaveRequest::factory()->for($employee)->create(['created_at' => '2026-10-10 10:00:00']);
+        $newer = LeaveRequest::factory()->for($employee)->create(['created_at' => '2026-10-21 08:00:00']);
+        $earlyCancellation = LeaveRequest::factory()->for($employee)->cancellationRequested()
+            ->create(['created_at' => '2026-09-15 10:00:00', 'cancellation_requested_at' => '2026-10-05 10:00:00']);
+
+        $this->actingAs($this->manager)
+            ->getJson('/api/approvals')
+            ->assertOk()
+            ->assertJsonPath('data.*.id', [$earlyCancellation->id, $older->id, $lateCancellation->id, $newer->id]);
     }
 
     public function test_admin_sees_all_with_location_filter(): void
