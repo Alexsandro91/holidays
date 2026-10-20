@@ -24,6 +24,7 @@ use App\Http\Controllers\Auth\ProfileAbsenceTypeController;
 use App\Http\Controllers\Auth\ProfileBalanceController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
+use App\Http\Controllers\Leave\ApprovalController;
 use App\Http\Controllers\Leave\LeaveDecisionController;
 use App\Http\Controllers\Leave\LeaveRequestController;
 use App\Http\Controllers\Leave\ProfileCalendarController;
@@ -116,6 +117,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/users/{user}/accrual', [UserAccrualController::class, 'update'])->can('manageAccrual', 'user')->name('users.accrual.update');
 
     // Saldi di una persona: li vede chi può agire su di lei, li corregge anche, ma mai i propri (UserPolicy)
+    // Da approvare: responsabili e admin; cosa possono decidere lo stabilisce LeaveApprovers
+    Route::get('/approvals', [ApprovalController::class, 'index'])->can('viewBalanceOverview', User::class)->name('approvals.index');
+
     Route::get('/balances', BalanceOverviewController::class)->can('viewBalanceOverview', User::class)->name('balances.index');
     Route::get('/users/{user}/balances', [UserBalanceController::class, 'summary'])->can('viewBalances', 'user')->name('users.balances.show');
     Route::get('/users/{user}/balances/at', [UserBalanceController::class, 'at'])->can('viewBalances', 'user')->name('users.balances.at');

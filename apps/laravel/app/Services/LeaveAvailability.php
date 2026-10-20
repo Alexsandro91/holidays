@@ -8,13 +8,16 @@ use App\Enums\AbsenceLimitUnit;
 use App\Enums\BalanceMovementKind;
 use App\Enums\BalanceType;
 use App\Enums\LeaveRequestStatus;
+use App\Models\AbsenceType;
 use App\Models\BalanceMovement;
 use App\Models\LeaveRequest;
+use App\Models\LeaveRequestDay;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\LeaveComputation;
 use App\Support\LeaveDraft;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 /**
  * Saldo disponibile e avvisi di una richiesta (spec §5.2). Gli avvisi non bloccano mai: li mostrano l'anteprima, la
@@ -84,6 +87,154 @@ final class LeaveAvailability
     }
 
     /**
+     * Avvisi aggiornati di più richieste in attesa (Da approvare), con un numero di query che non dipende da quante
+     * sono: ogni richiesta è valutata come se fosse appena stata fatta, senza contare sé stessa tra le in attesa.
+     * Richiede `user`, `absenceType` e `location` caricati. Le richieste che non sono `pending` non hanno avvisi.
+     *
+     * @param  Collection<int, LeaveRequest>  $requests
+     * @return array<int, list<array{code: string, params: array<string, int|float|string>}>> per id richiesta
+     */
+    public function warningsForRequests(Collection $requests): array
+    {
+        $pending = $requests->filter(fn (LeaveRequest $request): bool => $request->status === LeaveRequestStatus::Pending);
+        $result = array_fill_keys($requests->pluck('id')->all(), []);
+
+        if ($pending->isEmpty()) {
+            return $result;
+        }
+
+        $days = LeaveRequestDay::query()
+            ->whereIn('leave_request_id', $pending->pluck('id')->all())
+            ->toBase()
+            ->get(['leave_request_id', 'date', 'minutes'])
+            ->groupBy('leave_request_id');
+
+        $balances = $this->balanceFigures($pending);
+        $existingByKey = $this->existingForLimits($pending);
+
+        foreach ($pending as $request) {
+            $type = $request->absenceType;
+            $draftDays = array_map(
+                fn (object $day): array => ['date' => substr((string) $day->date, 0, 10), 'minutes' => (int) $day->minutes],
+                ($days->get($request->id) ?? collect())->all(),
+            );
+            $warnings = [];
+
+            if ($type->balance !== null) {
+                $figures = $balances[$request->user_id][$type->balance->value] ?? ['balance' => 0, 'planned' => 0, 'pending' => 0];
+                $after = $figures['balance'] - $figures['planned'] - ($figures['pending'] - $request->minutes) - $request->minutes;
+
+                if ($after < 0) {
+                    $warnings[] = ['code' => 'balance_insufficient', 'params' => ['after_minutes' => $after]];
+                }
+            }
+
+            $others = array_filter($existingByKey["{$request->user_id}:{$type->id}"] ?? [], fn (LeaveRequest $other): bool => $other->id !== $request->id);
+            $limit = $this->evaluateLimit($type, $draftDays, (float) $request->working_days, $request->minutes, $others);
+
+            if ($limit !== null) {
+                $warnings[] = $limit;
+            }
+
+            $result[$request->id] = $warnings;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Saldo a oggi, usato futuro e minuti in attesa per persona e saldo, in una query per ogni "oggi" distinto
+     * (le sedi in fusi diversi) più una per le richieste in attesa.
+     *
+     * @param  Collection<int, LeaveRequest>  $requests
+     * @return array<int, array<string, array{balance: int, planned: int, pending: int}>>
+     */
+    private function balanceFigures(Collection $requests): array
+    {
+        $figures = [];
+        $withBalance = $requests->filter(fn (LeaveRequest $request): bool => $request->absenceType->balance !== null);
+
+        $byToday = $withBalance->groupBy(fn (LeaveRequest $request): string => $this->schedules->today($request->location)->toDateString());
+
+        foreach ($byToday as $today => $group) {
+            $rows = BalanceMovement::query()
+                ->whereIn('user_id', $group->pluck('user_id')->unique()->all())
+                ->groupBy('user_id', 'balance')
+                ->selectRaw(
+                    'user_id, balance, SUM(CASE WHEN effective_on <= ? THEN minutes ELSE 0 END) AS total, SUM(CASE WHEN kind = ? AND effective_on > ? THEN -minutes ELSE 0 END) AS planned',
+                    [$today, BalanceMovementKind::Usage->value, $today],
+                )
+                ->toBase()
+                ->get();
+
+            foreach ($rows as $row) {
+                $figures[(int) $row->user_id][(string) $row->balance] = ['balance' => (int) $row->total, 'planned' => (int) $row->planned, 'pending' => 0];
+            }
+        }
+
+        if ($withBalance->isEmpty()) {
+            return $figures;
+        }
+
+        $pendingRows = LeaveRequest::query()
+            ->join('absence_types', 'absence_types.id', '=', 'leave_requests.absence_type_id')
+            ->where('leave_requests.status', LeaveRequestStatus::Pending)
+            ->whereNotNull('absence_types.balance')
+            ->whereIn('leave_requests.user_id', $withBalance->pluck('user_id')->unique()->all())
+            ->groupBy('leave_requests.user_id', 'absence_types.balance')
+            ->selectRaw('leave_requests.user_id AS user_id, absence_types.balance AS balance, SUM(leave_requests.minutes) AS total')
+            ->toBase()
+            ->get();
+
+        foreach ($pendingRows as $row) {
+            $current = $figures[(int) $row->user_id][(string) $row->balance] ?? ['balance' => 0, 'planned' => 0, 'pending' => 0];
+            $current['pending'] = (int) $row->total;
+            $figures[(int) $row->user_id][(string) $row->balance] = $current;
+        }
+
+        return $figures;
+    }
+
+    /**
+     * Richieste attive (con `days`) delle stesse persone e degli stessi tipi con limite, in una query: un
+     * soprainsieme di quelle che servono, filtrato per periodo da `evaluateLimit`.
+     *
+     * @param  Collection<int, LeaveRequest>  $requests
+     * @return array<string, list<LeaveRequest>> per `userId:typeId`
+     */
+    private function existingForLimits(Collection $requests): array
+    {
+        $limited = $requests->filter(fn (LeaveRequest $request): bool => $request->absenceType->limit_amount !== null
+            && $request->absenceType->limit_period !== null
+            && $request->absenceType->limit_period !== AbsenceLimitPeriod::Request);
+
+        if ($limited->isEmpty()) {
+            return [];
+        }
+
+        $grouped = [];
+        foreach ($this->activeRequestsWithDays($limited) as $other) {
+            $grouped["{$other->user_id}:{$other->absence_type_id}"][] = $other;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * @param  Collection<int, LeaveRequest>  $limited
+     * @return Collection<int, LeaveRequest>
+     */
+    private function activeRequestsWithDays(Collection $limited): Collection
+    {
+        return LeaveRequest::query()
+            ->whereIn('user_id', $limited->pluck('user_id')->unique()->all())
+            ->whereIn('absence_type_id', $limited->pluck('absence_type_id')->unique()->all())
+            ->active()
+            ->with('days')
+            ->get();
+    }
+
+    /**
      * @return array{code: string, params: array<string, int|float|string>}|null
      */
     private function balanceWarning(LeaveDraft $draft, LeaveComputation $computation, ?int $excludeRequestId): ?array
@@ -112,35 +263,62 @@ final class LeaveAvailability
             return null;
         }
 
-        $inHours = $type->limit_unit === AbsenceLimitUnit::Hours;
-        $new = $this->contributions($computation->days, $computation->workingDays, $computation->minutes, $inHours, $type->day_count === AbsenceDayCount::Calendar);
-
-        // Per richiesta conta solo la richiesta stessa, altrimenti si sommano quelle già presenti nello stesso periodo
-        $totals = [];
-        foreach ($new as $day => $value) {
-            $totals[$this->bucket($type->limit_period, $day)] = ($totals[$this->bucket($type->limit_period, $day)] ?? 0) + $value;
-        }
+        $existing = [];
 
         if ($type->limit_period !== AbsenceLimitPeriod::Request) {
+            $buckets = array_unique(array_map(fn (array $day): string => $this->bucket($type->limit_period, $day['date']), $computation->days));
+
             $existing = LeaveRequest::query()
                 ->where('user_id', $draft->user->id)
                 ->where('absence_type_id', $type->id)
                 ->active()
                 ->when($excludeRequestId !== null, fn ($query) => $query->whereKeyNot($excludeRequestId))
-                ->whereHas('days', fn ($query) => $query->whereBetween('date', $this->bounds($type->limit_period, array_keys($totals))))
+                ->whereHas('days', fn ($query) => $query->whereBetween('date', $this->bounds($type->limit_period, $buckets)))
                 ->with('days')
-                ->get();
+                ->get()
+                ->all();
+        }
 
-            foreach ($existing as $request) {
-                $days = array_map(fn ($day): array => ['date' => $day->date->toDateString(), 'minutes' => $day->minutes], $request->days->all());
-                $values = $this->contributions($days, (float) $request->working_days, $request->minutes, $inHours, $type->day_count === AbsenceDayCount::Calendar);
+        return $this->evaluateLimit($type, $computation->days, $computation->workingDays, $computation->minutes, $existing);
+    }
 
-                foreach ($values as $day => $value) {
-                    $key = $this->bucket($type->limit_period, $day);
+    /**
+     * Confronta con il limite del tipo la richiesta (giorni, giorni contati, minuti) sommata alle altre già attive
+     * (con `days` caricati) nello stesso periodo.
+     *
+     * @param  list<array{date: string, minutes: int}>  $days
+     * @param  iterable<LeaveRequest>  $existing
+     * @return array{code: string, params: array<string, int|float|string>}|null
+     */
+    private function evaluateLimit(AbsenceType $type, array $days, float $workingDays, int $minutes, iterable $existing): ?array
+    {
+        if ($type->limit_amount === null || $type->limit_unit === null || $type->limit_period === null) {
+            return null;
+        }
 
-                    if (array_key_exists($key, $totals)) {
-                        $totals[$key] += $value;
-                    }
+        $inHours = $type->limit_unit === AbsenceLimitUnit::Hours;
+        $calendar = $type->day_count === AbsenceDayCount::Calendar;
+
+        // Per richiesta conta solo la richiesta stessa, altrimenti si sommano quelle già presenti nello stesso periodo
+        $totals = [];
+        foreach ($this->contributions($days, $workingDays, $minutes, $inHours, $calendar) as $day => $value) {
+            $key = $this->bucket($type->limit_period, $day);
+            $totals[$key] = ($totals[$key] ?? 0) + $value;
+        }
+
+        if ($totals === []) {
+            return null;
+        }
+
+        foreach ($existing as $request) {
+            $otherDays = array_map(fn ($day): array => ['date' => $day->date->toDateString(), 'minutes' => $day->minutes], $request->days->all());
+            $values = $this->contributions($otherDays, (float) $request->working_days, $request->minutes, $inHours, $calendar);
+
+            foreach ($values as $day => $value) {
+                $key = $this->bucket($type->limit_period, $day);
+
+                if (array_key_exists($key, $totals)) {
+                    $totals[$key] += $value;
                 }
             }
         }

@@ -2,7 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\Role;
 use App\Models\Location;
+use App\Models\User;
+use App\Services\LeaveApprovers;
 use App\Support\AuthSession;
 use Illuminate\Http\Request;
 
@@ -17,6 +20,8 @@ class CurrentUserResource extends UserResource
      */
     public function with(Request $request): array
     {
+        $user = $request->user();
+
         return [
             'meta' => [
                 'session' => [
@@ -25,6 +30,10 @@ class CurrentUserResource extends UserResource
                 ],
                 // Con una sola sede attiva la SPA nasconde colonne, filtri e campi Sede (spec §5.5): una query per risposta
                 'multiple_locations' => Location::query()->active()->count() > 1,
+                // Richieste da approvare per responsabili e admin, `null` per gli altri: una query in più (spec §6)
+                'pending_approvals' => $user instanceof User && ($user->isAdmin() || $user->role === Role::Manager)
+                    ? app(LeaveApprovers::class)->pendingCount($user)
+                    : null,
             ],
         ];
     }
