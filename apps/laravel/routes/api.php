@@ -24,6 +24,8 @@ use App\Http\Controllers\Auth\ProfileAbsenceTypeController;
 use App\Http\Controllers\Auth\ProfileBalanceController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
+use App\Http\Controllers\Leave\LeaveRequestController;
+use App\Http\Controllers\Leave\ProfileCalendarController;
 use App\Models\AbsenceType;
 use App\Models\AccrualSetting;
 use App\Models\Location;
@@ -40,6 +42,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/profile/absence-types', ProfileAbsenceTypeController::class)->name('profile.absence-types');
     Route::get('/profile/balances', [ProfileBalanceController::class, 'summary'])->name('profile.balances');
     Route::get('/profile/balance-movements', [ProfileBalanceController::class, 'movements'])->name('profile.balance-movements');
+    Route::get('/profile/calendar', ProfileCalendarController::class)->name('profile.calendar');
+
+    // Richieste di assenza: ognuno chiede per sé; il dettaglio lo vedono anche gli approvatori (LeaveRequestPolicy).
+    // `preview` prima di `{leaveRequest}`
+    Route::get('/leave-requests', [LeaveRequestController::class, 'index'])->name('leave-requests.index');
+    Route::post('/leave-requests/preview', [LeaveRequestController::class, 'preview'])->name('leave-requests.preview');
+    Route::post('/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');
+    Route::get('/leave-requests/{leaveRequest}', [LeaveRequestController::class, 'show'])->can('view', 'leaveRequest')->name('leave-requests.show');
 
     // Gestione utenti: responsabili e admin, mai sugli admin per il responsabile (UserPolicy)
     Route::get('/users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');

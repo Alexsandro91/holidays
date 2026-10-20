@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\LeaveRequest;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Markdown;
@@ -60,6 +62,22 @@ class AppServiceProvider extends ServiceProvider
             $query = $actor instanceof User && Gate::forUser($actor)->allows('viewAny', User::class)
                 ? User::query()->visibleTo($actor)
                 : User::query();
+
+            return $query->findOrFail($value);
+        });
+
+        // `{leaveRequest}`: per chi gestisce gli utenti si cerca tra le proprie richieste e quelle delle persone che può
+        // vedere, così la richiesta di un'altra sede è 404 come `{user}`. Il dipendente riceve il 403 della policy.
+        // `user` caricato: la policy non fa query
+        Route::bind('leaveRequest', function (string $value): LeaveRequest {
+            $actor = request()->user();
+            $query = LeaveRequest::query()->with('user');
+
+            if ($actor instanceof User && Gate::forUser($actor)->allows('viewAny', User::class)) {
+                $query->where(fn (Builder $query) => $query
+                    ->where('user_id', $actor->id)
+                    ->orWhereHas('user', fn (Builder $users) => $users->visibleTo($actor)));
+            }
 
             return $query->findOrFail($value);
         });
