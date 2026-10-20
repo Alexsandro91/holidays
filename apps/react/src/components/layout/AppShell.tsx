@@ -74,7 +74,13 @@ const AppShell = () => {
                     <SidebarNavLink to="/" end label={t('nav.home')} icon={<House aria-hidden="true" />} />
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarNavLink to="/leave" label={t('nav.leave')} icon={<CalendarDays aria-hidden="true" />} />
+                    <SidebarNavLink
+                      to="/leave"
+                      label={t('nav.leave')}
+                      icon={<CalendarDays aria-hidden="true" />}
+                      badge={user.pendingApprovals ?? 0}
+                      badgeLabel={t('nav.leave', { count: user.pendingApprovals ?? 0 })}
+                    />
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>

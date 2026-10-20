@@ -122,6 +122,8 @@
     "skip": "Skip to content",
     "home": "Home",
     "leave": "Leave and time off",
+    "leave_one": "Leave and time off, {{count}} to approve",
+    "leave_other": "Leave and time off, {{count}} to approve",
     "management": "Management",
     "users": "Users",
     "administrators": "Administrators",
@@ -881,19 +883,63 @@
       "actions": {
         "withdraw": "Withdraw",
         "cancellation": "Request cancellation",
+        "approve": "Approve",
+        "reject": "Reject",
+        "approve_cancellation": "Approve cancellation",
+        "reject_cancellation": "Reject cancellation",
         "cancel": "Cancel the request"
       },
       "confirm": {
         "withdraw": "Withdraw the request? This cannot be undone: you will need a new request.",
         "cancellation": "Request the cancellation? The balance comes back only when a manager approves it.",
+        "approve": "Approve the request? The balance is updated and the person receives an email.",
+        "reject": "Reject the request? The person receives an email.",
+        "approve_cancellation": "Approve the cancellation? The balance is returned and the person receives an email.",
+        "reject_cancellation": "Reject the cancellation? The absence stays valid and the person receives an email.",
         "cancel": "Cancel the request? The balance is returned and the person receives an email."
       },
       "back": "Back",
       "done": {
         "withdraw": "Request withdrawn",
         "cancellation": "Cancellation requested",
+        "approve": "Request approved",
+        "reject": "Request rejected",
+        "approve_cancellation": "Cancellation approved",
+        "reject_cancellation": "Cancellation rejected",
         "cancel": "Request cancelled"
       }
+    },
+    "approvals": {
+      "title": "To approve",
+      "loadError": "The requests to approve could not be loaded.",
+      "empty": "No requests to approve.",
+      "location": "Location",
+      "allLocations": "All locations",
+      "conflict": "The request has already changed: the list was updated.",
+      "cancellationRequested": "Asks for cancellation",
+      "open": "Open the details of {{name}}",
+      "truncated": "Showing the first {{shown}} requests out of {{count}}.",
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "approve_cancellation": "Approve cancellation",
+        "reject_cancellation": "Reject cancellation"
+      },
+      "done": {
+        "approve": "{{name}}’s request approved",
+        "reject": "{{name}}’s request rejected",
+        "approve_cancellation": "{{name}}’s cancellation approved",
+        "reject_cancellation": "{{name}}’s cancellation rejected"
+      }
+    },
+    "reject": {
+      "title": "Reject the request",
+      "description": "{{name}}’s request: {{period}}.",
+      "label": "Reason (optional)",
+      "hint": "The person reads it in the email. At most {{max}} characters.",
+      "counter": "{{count}} / {{max}}",
+      "cancel": "Cancel",
+      "confirm": "Reject"
     },
     "list": {
       "title": "My requests",

@@ -20,13 +20,18 @@ const page = (data: LeaveRequest[]) => ({ data, links: {}, meta: { current_page:
 
 /** Risposte della pagina; `requests` sono quelle del calendario e dell'elenco, modificabili durante il test. */
 const respond = ({ user = employee, pending = null }: { user?: User; pending?: number | null } = {}) => {
-  const state = { requests: [leaveRequest({ id: 1, status: 'approved', starts_on: '2026-10-29', ends_on: '2026-10-29' })], calendarReads: 0 }
+  const state = {
+    requests: [leaveRequest({ id: 1, status: 'approved', starts_on: '2026-10-29', ends_on: '2026-10-29' })],
+    approvals: [] as LeaveRequest[],
+    calendarReads: 0,
+  }
   server.use(
     http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(user, { pendingApprovals: pending }))),
     http.get('/api/profile/calendar', () => {
       state.calendarReads += 1
       return HttpResponse.json({ data: { days: [], requests: state.requests } })
     }),
+    http.get('/api/approvals', () => HttpResponse.json({ data: state.approvals, meta: { count: state.approvals.length } })),
     http.get('/api/leave-requests', () => HttpResponse.json(page(state.requests))),
     http.get('/api/leave-requests/1', () => HttpResponse.json({ data: { ...state.requests[0], days: [] } })),
     http.get('/api/profile/absence-types', () => HttpResponse.json({ data: [absenceTypeOption()] })),
@@ -76,6 +81,23 @@ describe('LeavePage', () => {
 
     expect(await screen.findByRole('tab', { name: 'Da approvare 3' })).toHaveAttribute('aria-selected', 'true')
     await expectNoA11yViolations(document.body)
+  })
+
+  it('lists the requests to approve in the tab and returns the focus to the row after closing the detail', async () => {
+    const state = respond({ user: { ...adminUser, role: 'manager', role_label: 'Responsabile' }, pending: 1 })
+    const pending = leaveRequest({ id: 21, status: 'pending', can: { ...leaveRequest().can, withdraw: false, approve: true, reject: true } })
+    state.approvals = [pending]
+    server.use(http.get('/api/leave-requests/21', () => HttpResponse.json({ data: { ...pending, days: [] } })))
+    const { user } = renderRoutes(routes, ['/leave?tab=approvals'])
+
+    const list = await screen.findByRole('list', { name: 'Da approvare' })
+    const open = within(list).getByRole('button', { name: 'Apri il dettaglio di Sara Colombo' })
+    await user.click(open)
+    expect(await screen.findByRole('dialog', { name: 'Ferie' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(open).toHaveFocus()
   })
 
   it('returns the focus to the New request button after closing the dialog', async () => {

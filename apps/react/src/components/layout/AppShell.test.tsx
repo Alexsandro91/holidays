@@ -54,6 +54,34 @@ describe('AppShell', () => {
     expect(within(nav).queryByText('presto')).not.toBeInTheDocument()
   })
 
+  it('shows the number to approve on Leave with an accessible name, only when there is something to approve', async () => {
+    const manager: User = { ...adminUser, role: 'manager', role_label: 'Responsabile' }
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(manager, { pendingApprovals: 3 }))))
+    const { unmount } = renderRoutes(routes, ['/'], { toaster: false })
+
+    const nav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
+    const link = await within(nav).findByRole('link', { name: 'Ferie e permessi, 3 da approvare' })
+    expect(link).toHaveAttribute('href', '/leave')
+    expect(link).toHaveTextContent('3')
+    unmount()
+
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(manager, { pendingApprovals: 0 }))))
+    renderRoutes(routes, ['/'], { toaster: false })
+    const zeroNav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
+    expect(await within(zeroNav).findByRole('link', { name: 'Ferie e permessi' })).toBeInTheDocument()
+    expect(within(zeroNav).queryByText('0')).not.toBeInTheDocument()
+  })
+
+  it('shows no number on Leave to an employee', async () => {
+    const employee: User = { ...adminUser, role: 'employee', role_label: 'Utente' }
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(employee))))
+    renderRoutes(routes, ['/'], { toaster: false })
+
+    const nav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
+    const link = await within(nav).findByRole('link', { name: 'Ferie e permessi' })
+    expect(link).not.toHaveTextContent(/\d/)
+  })
+
   it('signs out from the account menu', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))

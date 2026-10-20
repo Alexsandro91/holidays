@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { LeaveRequest } from '@/features/leave/api'
 import LeaveRequestDetailDialog from '@/features/leave/components/LeaveRequestDetailDialog'
 import { expectNoA11yViolations } from '@/test/axe'
+import { adminUser, currentUserResponse } from '@/test/fixtures'
 import { leaveRequest } from '@/test/leaveFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
@@ -141,5 +142,85 @@ describe('LeaveRequestDetailDialog', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('L’assenza è già iniziata.')
     await waitFor(() => expect(reads.reads()).toBeGreaterThan(1))
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  describe('as an approver', () => {
+    const signIn = () => server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { pendingApprovals: 1 }))))
+    const someoneElse = { id: 2, name: 'Sara Colombo' }
+
+    it('cancels directly an approved request of someone else, after confirmation', async () => {
+      signIn()
+      respondWith(leaveRequest({ id: 5, status: 'approved', user: someoneElse, days, can: { ...NO_ACTIONS, cancel: true } }))
+      let cancelled = 0
+      server.use(http.post('/api/leave-requests/5/cancel', () => ((cancelled += 1), HttpResponse.json({ data: leaveRequest({ id: 5, status: 'cancelled' }) }))))
+      const { user, onClose } = renderDialog()
+      const dialog = await findDialog()
+
+      await user.click(await within(dialog).findByRole('button', { name: 'Annulla la richiesta' }))
+      expect(within(dialog).getByText(/^Annullare la richiesta\?/)).toBeInTheDocument()
+      expect(cancelled).toBe(0)
+      await user.click(within(dialog).getByRole('button', { name: 'Annulla la richiesta' }))
+
+      await waitFor(() => expect(cancelled).toBe(1))
+      expect(await screen.findByText('Richiesta annullata')).toBeInTheDocument()
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('hides the direct cancel on the approver own request, which keeps the cancellation request', async () => {
+      signIn()
+      respondWith(leaveRequest({ id: 5, status: 'approved', user: { id: adminUser.id, name: adminUser.name }, days, can: { ...NO_ACTIONS, cancel: true, request_cancellation: true } }))
+      renderDialog()
+      const dialog = await findDialog()
+
+      expect(await within(dialog).findByRole('button', { name: 'Chiedi annullamento' })).toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: 'Annulla la richiesta' })).not.toBeInTheDocument()
+    })
+
+    it('approves a pending request after confirmation', async () => {
+      signIn()
+      respondWith(leaveRequest({ id: 5, status: 'pending', user: someoneElse, days, can: { ...NO_ACTIONS, approve: true, reject: true } }))
+      let approved = 0
+      server.use(http.post('/api/leave-requests/5/approve', () => ((approved += 1), HttpResponse.json({ data: leaveRequest({ id: 5, status: 'approved' }) }))))
+      const { user } = renderDialog()
+      const dialog = await findDialog()
+
+      await user.click(await within(dialog).findByRole('button', { name: 'Approva' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Approva' }))
+
+      await waitFor(() => expect(approved).toBe(1))
+      expect(await screen.findByText('Richiesta approvata')).toBeInTheDocument()
+    })
+
+    it('rejects a pending request with the reason written in the confirmation', async () => {
+      signIn()
+      respondWith(leaveRequest({ id: 5, status: 'pending', user: someoneElse, days, can: { ...NO_ACTIONS, approve: true, reject: true } }))
+      const bodies: unknown[] = []
+      server.use(http.post('/api/leave-requests/5/reject', async ({ request }) => (bodies.push(await request.json()), HttpResponse.json({ data: leaveRequest({ id: 5, status: 'rejected' }) }))))
+      const { user } = renderDialog()
+      const dialog = await findDialog()
+
+      await user.click(await within(dialog).findByRole('button', { name: 'Rifiuta' }))
+      await user.type(within(dialog).getByRole('textbox', { name: 'Motivo (facoltativo)' }), 'Chiusura progetto')
+      await user.click(within(dialog).getByRole('button', { name: 'Rifiuta' }))
+
+      await waitFor(() => expect(bodies).toEqual([{ decision_note: 'Chiusura progetto' }]))
+      expect(await screen.findByText('Richiesta rifiutata')).toBeInTheDocument()
+    })
+
+    it('approves a cancellation request', async () => {
+      signIn()
+      respondWith(leaveRequest({ id: 5, status: 'cancellation_requested', user: someoneElse, days, can: { ...NO_ACTIONS, approve_cancellation: true, reject_cancellation: true } }))
+      let approved = 0
+      server.use(http.post('/api/leave-requests/5/cancellation/approve', () => ((approved += 1), HttpResponse.json({ data: leaveRequest({ id: 5, status: 'cancelled' }) }))))
+      const { user } = renderDialog()
+      const dialog = await findDialog()
+
+      expect(within(dialog).getByRole('button', { name: 'Rifiuta annullamento' })).toBeInTheDocument()
+      await user.click(await within(dialog).findByRole('button', { name: 'Approva annullamento' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Approva annullamento' }))
+
+      await waitFor(() => expect(approved).toBe(1))
+      expect(await screen.findByText('Annullamento approvato')).toBeInTheDocument()
+    })
   })
 })

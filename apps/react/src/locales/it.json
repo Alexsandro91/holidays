@@ -122,6 +122,8 @@
     "skip": "Vai al contenuto",
     "home": "Home",
     "leave": "Ferie e permessi",
+    "leave_one": "Ferie e permessi, {{count}} da approvare",
+    "leave_other": "Ferie e permessi, {{count}} da approvare",
     "management": "Gestione",
     "users": "Utenti",
     "administrators": "Amministratori",
@@ -881,19 +883,63 @@
       "actions": {
         "withdraw": "Ritira",
         "cancellation": "Chiedi annullamento",
+        "approve": "Approva",
+        "reject": "Rifiuta",
+        "approve_cancellation": "Approva annullamento",
+        "reject_cancellation": "Rifiuta annullamento",
         "cancel": "Annulla la richiesta"
       },
       "confirm": {
         "withdraw": "Ritirare la richiesta? Non si può tornare indietro: per riaverla serve una nuova richiesta.",
         "cancellation": "Chiedere l’annullamento? Il saldo torna solo quando un responsabile lo approva.",
+        "approve": "Approvare la richiesta? Il saldo si aggiorna e la persona riceve un’email.",
+        "reject": "Rifiutare la richiesta? La persona riceve un’email.",
+        "approve_cancellation": "Approvare l’annullamento? Il saldo viene restituito e la persona riceve un’email.",
+        "reject_cancellation": "Rifiutare l’annullamento? L’assenza resta valida e la persona riceve un’email.",
         "cancel": "Annullare la richiesta? Il saldo viene restituito e la persona riceve un’email."
       },
       "back": "Indietro",
       "done": {
         "withdraw": "Richiesta ritirata",
         "cancellation": "Annullamento chiesto",
+        "approve": "Richiesta approvata",
+        "reject": "Richiesta rifiutata",
+        "approve_cancellation": "Annullamento approvato",
+        "reject_cancellation": "Annullamento rifiutato",
         "cancel": "Richiesta annullata"
       }
+    },
+    "approvals": {
+      "title": "Da approvare",
+      "loadError": "Non è stato possibile caricare le richieste da approvare.",
+      "empty": "Nessuna richiesta da approvare.",
+      "location": "Sede",
+      "allLocations": "Tutte le sedi",
+      "conflict": "La richiesta è già cambiata: l’elenco è stato aggiornato.",
+      "cancellationRequested": "Chiede l’annullamento",
+      "open": "Apri il dettaglio di {{name}}",
+      "truncated": "Sono mostrate le prime {{shown}} richieste su {{count}}.",
+      "actions": {
+        "approve": "Approva",
+        "reject": "Rifiuta",
+        "approve_cancellation": "Approva annullamento",
+        "reject_cancellation": "Rifiuta annullamento"
+      },
+      "done": {
+        "approve": "Richiesta di {{name}} approvata",
+        "reject": "Richiesta di {{name}} rifiutata",
+        "approve_cancellation": "Annullamento di {{name}} approvato",
+        "reject_cancellation": "Annullamento di {{name}} rifiutato"
+      }
+    },
+    "reject": {
+      "title": "Rifiuta la richiesta",
+      "description": "Richiesta di {{name}}: {{period}}.",
+      "label": "Motivo (facoltativo)",
+      "hint": "Chi ha chiesto lo legge nell’email. Al massimo {{max}} caratteri.",
+      "counter": "{{count}} / {{max}}",
+      "cancel": "Annulla",
+      "confirm": "Rifiuta"
     },
     "list": {
       "title": "Le mie richieste",

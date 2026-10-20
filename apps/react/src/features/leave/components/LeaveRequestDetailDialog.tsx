@@ -1,13 +1,15 @@
 import { LoaderCircle } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useCurrentUser } from '@/features/auth/api'
 import { formatHours } from '@/features/balances/hoursFormat'
 import { useLeaveAction, useLeaveRequest, type LeaveRequest } from '@/features/leave/api'
 import LeaveStatusBadge from '@/features/leave/components/LeaveStatusBadge'
+import RejectNoteField from '@/features/leave/components/RejectNoteField'
 import { describeDuration, describePeriod } from '@/features/leave/describeRequest'
 import { formatDay } from '@/features/locations/dateFormat'
 import { isApiError } from '@/lib/api'
@@ -15,12 +17,19 @@ import { focusTrigger, LEAVE_TRIGGER_ATTRIBUTE } from '@/lib/focusTrigger'
 import { cn } from '@/lib/utils'
 
 /** Azioni del dettaglio, nell'ordine dei pulsanti, con il permesso di `can` che le abilita. */
-type DetailAction = 'withdraw' | 'cancellation' | 'cancel'
+type DetailAction = 'withdraw' | 'cancellation' | 'approve' | 'reject' | 'approve_cancellation' | 'reject_cancellation' | 'cancel'
 const ACTIONS: readonly { action: DetailAction; permission: keyof LeaveRequest['can'] }[] = [
   { action: 'withdraw', permission: 'withdraw' },
   { action: 'cancellation', permission: 'request_cancellation' },
+  { action: 'approve', permission: 'approve' },
+  { action: 'reject', permission: 'reject' },
+  { action: 'approve_cancellation', permission: 'approve_cancellation' },
+  { action: 'reject_cancellation', permission: 'reject_cancellation' },
   { action: 'cancel', permission: 'cancel' },
 ]
+
+/** Azioni che confermano senza distruggere nulla: pulsante pieno invece che rosso. */
+const isPositive = (action: DetailAction): boolean => action === 'approve' || action === 'approve_cancellation' || action === 'cancellation'
 
 const LONG_DATE: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
 
@@ -49,9 +58,14 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
   const { t, i18n } = useTranslation()
   const language = i18n.language
   const detail = useLeaveRequest(requestId)
+  const { data: viewer } = useCurrentUser()
+  const daysId = useId()
+  const confirmId = useId()
   const leaveAction = useLeaveAction()
   const [confirming, setConfirming] = useState<DetailAction | null>(null)
   const [conflict, setConflict] = useState<string | null>(null)
+  // Motivo del rifiuto, scritto nella conferma
+  const [rejectNote, setRejectNote] = useState('')
   const footerRef = useRef<HTMLDivElement>(null)
   const conflictRef = useRef<HTMLParagraphElement>(null)
   // Dopo "Indietro" il focus torna al pulsante dell'azione
@@ -108,7 +122,7 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
     onBusyChange(true)
     setConflict(null)
     try {
-      await leaveAction.mutateAsync({ id: request.id, action })
+      await leaveAction.mutateAsync({ id: request.id, action, note: action === 'reject' ? rejectNote : undefined })
       toast.success(t(`leave.detail.done.${action}`))
       onClose()
     } catch (error) {
@@ -126,7 +140,9 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
     }
   }
 
-  const available = ACTIONS.filter(({ permission }) => request.can[permission])
+  // Chi chiede un annullamento per sé lo approva poi da approvatore: l'annullamento diretto (con l'email alla persona) è solo per le richieste altrui
+  const isOwner = viewer?.id === request.user.id
+  const available = ACTIONS.filter(({ action, permission }) => request.can[permission] && !(action === 'cancel' && isOwner))
   const decisionLabel = request.status === 'rejected' ? t('leave.detail.rejectionReason') : t('leave.detail.decisionNote')
   const autoApproved = request.decided_by_name === null && request.decided_at !== null
 
@@ -158,11 +174,11 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
         {request.decision_note !== null && <DetailRow label={decisionLabel}>{request.decision_note}</DetailRow>}
       </dl>
       {request.days !== undefined && request.days.length > 0 && (
-        <section aria-labelledby="leave-detail-days" className="grid gap-2">
-          <h3 id="leave-detail-days" className="font-medium">
+        <section aria-labelledby={daysId} className="grid gap-2">
+          <h3 id={daysId} className="font-medium">
             {t('leave.detail.days')}
           </h3>
-          <ul aria-labelledby="leave-detail-days" tabIndex={request.days.length > 7 ? 0 : undefined} className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-border p-2">
+          <ul aria-labelledby={daysId} tabIndex={request.days.length > 7 ? 0 : undefined} className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-border p-2">
             {request.days.map((day) => (
               <li key={day.date} className={cn('flex justify-between gap-3', day.minutes === 0 && 'text-muted-foreground')}>
                 <span>{formatDay(day.date, language, LONG_DATE)}</span>
@@ -182,14 +198,15 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
           {confirming === null ? (
             <DialogFooter>
               {available.map(({ action }) => (
-                <Button key={action} variant={action === 'cancellation' ? 'outline' : 'destructive'} data-action={action} onClick={() => setConfirming(action)}>
+                <Button key={action} variant={action === 'cancellation' ? 'outline' : isPositive(action) ? 'default' : 'destructive'} data-action={action} onClick={() => setConfirming(action)}>
                   {t(`leave.detail.actions.${action}`)}
                 </Button>
               ))}
             </DialogFooter>
           ) : (
-            <div role="group" aria-labelledby="leave-detail-confirm" className="grid gap-3 rounded-md border border-border p-3">
-              <p id="leave-detail-confirm">{t(`leave.detail.confirm.${confirming}`)}</p>
+            <div role="group" aria-labelledby={confirmId} className="grid gap-3 rounded-md border border-border p-3">
+              <p id={confirmId}>{t(`leave.detail.confirm.${confirming}`)}</p>
+              {confirming === 'reject' && <RejectNoteField value={rejectNote} onChange={setRejectNote} disabled={leaveAction.isPending} />}
               <DialogFooter>
                 <Button
                   variant="outline"
@@ -202,7 +219,7 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
                 >
                   {t('leave.detail.back')}
                 </Button>
-                <Button variant={confirming === 'cancellation' ? 'default' : 'destructive'} disabled={leaveAction.isPending} onClick={() => void confirm(confirming)}>
+                <Button variant={confirming === 'cancellation' || isPositive(confirming) ? 'default' : 'destructive'} disabled={leaveAction.isPending} onClick={() => void confirm(confirming)}>
                   {leaveAction.isPending && <LoaderCircle className="animate-spin" aria-hidden="true" />}
                   {t(`leave.detail.actions.${confirming}`)}
                 </Button>

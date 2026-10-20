@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCurrentUser } from '@/features/auth/api'
 import type { LeaveDayRange } from '@/features/leave/calendarDates'
+import ApprovalsList from '@/features/leave/components/ApprovalsList'
 import LeaveMonthCalendar from '@/features/leave/components/LeaveMonthCalendar'
 import LeaveRequestDetailDialog from '@/features/leave/components/LeaveRequestDetailDialog'
 import LeaveRequestDialog from '@/features/leave/components/LeaveRequestDialog'
@@ -89,8 +90,9 @@ const LeavePage = () => {
           <TabsContent value="calendar" className="pt-4">
             {calendarPanel}
           </TabsContent>
-          {/* Da approvare: la riempie il Task 11 */}
-          <TabsContent value="approvals" className="pt-4" />
+          <TabsContent value="approvals" className="pt-4">
+            <ApprovalsList onOpen={openDetail} />
+          </TabsContent>
         </Tabs>
       ) : (
         calendarPanel
