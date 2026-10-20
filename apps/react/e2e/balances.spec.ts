@@ -306,8 +306,8 @@ test('the employee sees the same vacation balance and the alignment without an a
   const sara = await context.newPage()
   await signIn(sara, EMPLOYEE, PASSWORD)
 
-  await mainNavigation(sara).getByRole('link', { name: 'Ferie e permessi' }).click()
-  await expect(sara.getByRole('heading', { level: 1, name: 'Ferie e permessi' })).toBeVisible()
+  // Dalla fase 3 i saldi sono nella Home (dove atterra dopo l'accesso), non più in Ferie e permessi
+  await expect(sara.getByRole('heading', { name: /^Ciao, / })).toBeVisible()
   const vacation = sara.getByRole('region', { name: 'Ferie', exact: true })
   await expect(vacation.getByText(/^[−-]?[\d.,]+ h$/).first()).toHaveText(saraVacationText)
 

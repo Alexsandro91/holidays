@@ -439,6 +439,9 @@ test('admin pages fit a phone screen and work with the keyboard', async () => {
     expect(await horizontalOverflow(admin), title).toBeLessThanOrEqual(0)
   }
 
+  // La Home carica anche saldi e prossime assenze: le richieste dell'admin in questo file arrivano al limite di 60 al minuto, quindi si aspetta che la finestra si rinnovi
+  test.setTimeout(120_000)
+  await admin.waitForTimeout(61_000)
   await admin.setViewportSize({ width: 1280, height: 800 })
   await admin.goto('/users?search=marco')
   const triggerLabel = 'Azioni per Marco Bianchi'
