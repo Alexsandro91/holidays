@@ -134,7 +134,17 @@
   "home": {
     "greeting": "Hi, {{name}}",
     "subtitle": "Here you’ll find leave, time off and the team calendar.",
-    "comingSoon": "Leave and time-off management is coming in the next phases."
+    "upcoming": {
+      "title": "Upcoming absences",
+      "empty": "No absences scheduled.",
+      "loadError": "The upcoming absences could not be loaded.",
+      "calendar": "Go to the calendar"
+    },
+    "approvals": {
+      "title_one": "{{count}} request to approve",
+      "title_other": "{{count}} requests to approve",
+      "hint": "Open the To approve tab."
+    }
   },
   "notFound": {
     "title": "Page not found",
@@ -754,6 +764,7 @@
     "description": "Your vacation, ROL and ex-holiday balances and the absence types you can use.",
     "notApplicable": "You have no balances to accrue. Here you will be able to record your absences.",
     "loadError": "Your balances could not be loaded.",
+    "placeholder": "The calendar and requests are coming soon.",
     "types": {
       "title": "Absence types you can use",
       "empty": "No absence types available for now.",

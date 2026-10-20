@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import PageHeading from '@/components/layout/PageHeading'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProfileAbsenceTypes } from '@/features/absenceTypes/api'
@@ -11,7 +10,7 @@ import BalanceYearSelect from '@/features/balances/components/BalanceYearSelect'
 import { formatNumericDate } from '@/features/balances/describeMovement'
 import { formatHours } from '@/features/balances/hoursFormat'
 
-/** Tipi di assenza che valgono per chi è collegato (sola lettura: le richieste arrivano con la fase 3). */
+/** Tipi di assenza che valgono per chi è collegato. */
 const UsableTypes = () => {
   const { t } = useTranslation()
   const types = useProfileAbsenceTypes()
@@ -100,19 +99,12 @@ const OwnBalances = () => {
   )
 }
 
-/** Ferie e permessi di chi è collegato, per ogni ruolo (spec SP2 fase 2 §7.6). */
-const LeavePage = () => {
-  const { t } = useTranslation()
+/** Saldi e tipi di assenza di chi è collegato, per ogni ruolo (spec SP2 fase 3 §7.1): il corpo della Home. */
+const MyBalancesSection = () => (
+  <div className="grid gap-8">
+    <OwnBalances />
+    <UsableTypes />
+  </div>
+)
 
-  return (
-    <>
-      <PageHeading title={t('leave.title')} description={t('leave.description')} />
-      <div className="grid gap-8">
-        <OwnBalances />
-        <UsableTypes />
-      </div>
-    </>
-  )
-}
-
-export default LeavePage
+export default MyBalancesSection

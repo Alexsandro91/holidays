@@ -134,7 +134,17 @@
   "home": {
     "greeting": "Ciao, {{name}}",
     "subtitle": "Qui troverai ferie, permessi e il calendario del team.",
-    "comingSoon": "La gestione di ferie e permessi arriverà nelle prossime fasi."
+    "upcoming": {
+      "title": "Prossime assenze",
+      "empty": "Nessuna assenza in programma.",
+      "loadError": "Non è stato possibile caricare le prossime assenze.",
+      "calendar": "Vai al calendario"
+    },
+    "approvals": {
+      "title_one": "{{count}} richiesta da approvare",
+      "title_other": "{{count}} richieste da approvare",
+      "hint": "Apri la scheda Da approvare."
+    }
   },
   "notFound": {
     "title": "Pagina non trovata",
@@ -754,6 +764,7 @@
     "description": "I tuoi saldi di ferie, ROL ed ex festività e i tipi di assenza che puoi usare.",
     "notApplicable": "Non hai saldi da maturare. Qui potrai segnare le tue assenze.",
     "loadError": "Non è stato possibile caricare i tuoi saldi.",
+    "placeholder": "Il calendario e le richieste arriveranno a breve.",
     "types": {
       "title": "Tipi di assenza che puoi usare",
       "empty": "Nessun tipo di assenza disponibile per ora.",

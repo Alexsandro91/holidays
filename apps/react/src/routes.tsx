@@ -9,7 +9,7 @@ import LoginPage from '@/features/auth/pages/LoginPage'
 import VerifyCodePage from '@/features/auth/pages/VerifyCodePage'
 import ProtectedRoute from '@/features/auth/ProtectedRoute'
 import RoleRoute from '@/features/auth/RoleRoute'
-import HomePage from '@/pages/HomePage'
+import HomePage from '@/features/home/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
 // Caricate a richiesta: le pagine admin o poco usate restano fuori dal bundle iniziale. Layout dell'area riservata e
@@ -26,7 +26,7 @@ const BalancesPage = lazy(() => import('@/features/balances/pages/BalancesPage')
 const LocationsPage = lazy(() => import('@/features/locations/pages/LocationsPage'))
 const LocationDetailPage = lazy(() => import('@/features/locations/pages/LocationDetailPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
-const LeavePage = lazy(() => import('@/features/balances/pages/LeavePage'))
+const LeavePage = lazy(() => import('@/features/leave/pages/LeavePage'))
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'))
 
 // Errore di una pagina (es. chunk non scaricato dopo un deploy) mostrato dentro il layout, con la ricarica
@@ -69,7 +69,7 @@ export const routes: RouteObject[] = [
                   { path: '/', element: <HomePage />, handle: { titleKey: 'titles.home' } },
                   // Per tutti i ruoli: ognuno vede e modifica solo il proprio profilo
                   { path: '/profile', element: <ProfilePage />, handle: { titleKey: 'titles.profile' } },
-                  // Per tutti i ruoli: i propri saldi e i tipi di assenza che valgono per sé (spec SP2 fase 2 §7.6)
+                  // Per tutti i ruoli: ferie e permessi di ognuno (spec SP2 fase 3 §7.2)
                   { path: '/leave', element: <LeavePage />, handle: { titleKey: 'titles.leave' } },
                   {
                     element: <RoleRoute roles={['manager', 'admin']} />,

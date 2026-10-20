@@ -2,14 +2,14 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import LeavePage from '@/features/balances/pages/LeavePage'
+import MyBalancesSection from '@/features/home/components/MyBalancesSection'
 import { expectNoA11yViolations } from '@/test/axe'
 import { balanceMovement, balanceSummary, pageResponse } from '@/test/balancesFixtures'
 import { absenceTypeOption } from '@/test/absenceTypesFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
-const routes: RouteObject[] = [{ path: '/leave', element: <LeavePage /> }]
+const routes: RouteObject[] = [{ path: '/', element: <MyBalancesSection /> }]
 
 const ownSummary = (applicable = true) => balanceSummary({ applicable, can: { adjust: false, manage_accrual: false } })
 
@@ -25,12 +25,11 @@ const respond = (summary = ownSummary(), movements = [balanceMovement()]) =>
     http.get('/api/profile/absence-types', () => HttpResponse.json({ data: types })),
   )
 
-describe('LeavePage', () => {
+describe('MyBalancesSection', () => {
   it('shows the own cards and movements without actor, buttons or annual values, plus the usable types', async () => {
     respond()
-    renderRoutes(routes, ['/leave'])
+    renderRoutes(routes, ['/'])
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ferie e permessi' })).toBeInTheDocument()
     expect(await screen.findByRole('region', { name: 'Ferie' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'ROL' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Ex festività' })).toBeInTheDocument()
@@ -47,7 +46,7 @@ describe('LeavePage', () => {
 
   it('explains that a person without balances has none and still lists the types', async () => {
     respond(ownSummary(false))
-    renderRoutes(routes, ['/leave'])
+    renderRoutes(routes, ['/'])
 
     expect(await screen.findByText(/Non hai saldi/)).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Ferie' })).not.toBeInTheDocument()
@@ -60,7 +59,7 @@ describe('LeavePage', () => {
       http.get('/api/profile/balances', () => HttpResponse.json({ message: 'x' }, { status: 500 })),
       http.get('/api/profile/absence-types', () => HttpResponse.json({ data: types })),
     )
-    const { user } = renderRoutes(routes, ['/leave'])
+    const { user } = renderRoutes(routes, ['/'])
 
     const alert = await screen.findByRole('alert')
     respond()
@@ -71,7 +70,7 @@ describe('LeavePage', () => {
   it('shows an empty state when there are no usable types', async () => {
     respond()
     server.use(http.get('/api/profile/absence-types', () => HttpResponse.json({ data: [] })))
-    renderRoutes(routes, ['/leave'])
+    renderRoutes(routes, ['/'])
 
     expect(await screen.findByText('Nessun tipo di assenza disponibile per ora.')).toBeInTheDocument()
   })
