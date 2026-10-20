@@ -35,6 +35,11 @@ class BalanceMovement extends Model
     public const NOTE_MAX_LENGTH = 255;
 
     /**
+     * Valore massimo, in assoluto, di una rettifica o di un valore di allineamento: 10000 ore.
+     */
+    public const MAX_CORRECTION_MINUTES = 600000;
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

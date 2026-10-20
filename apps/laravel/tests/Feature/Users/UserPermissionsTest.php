@@ -311,7 +311,7 @@ class UserPermissionsTest extends TestCase
 
         $can = (new ManagedUserResource($subject))->toArray($request)['can'];
 
-        $abilities = ['resend_invitation' => 'resendInvitation', 'cancel_invitation' => 'cancelInvitation', 'change_role' => 'changeRole', 'disable' => 'disable', 'enable' => 'enable', 'update' => 'update', 'send_password_reset' => 'sendPasswordReset', 'change_location' => 'changeLocation', 'manage_schedule' => 'manageSchedule', 'view_history' => 'viewHistory', 'manage_absence_types' => 'manageAbsenceTypes'];
+        $abilities = ['resend_invitation' => 'resendInvitation', 'cancel_invitation' => 'cancelInvitation', 'change_role' => 'changeRole', 'disable' => 'disable', 'enable' => 'enable', 'update' => 'update', 'send_password_reset' => 'sendPasswordReset', 'change_location' => 'changeLocation', 'manage_schedule' => 'manageSchedule', 'view_history' => 'viewHistory', 'manage_absence_types' => 'manageAbsenceTypes', 'view_balances' => 'viewBalances', 'adjust_balances' => 'adjustBalances'];
         $this->assertSame(array_keys($abilities), array_keys($can));
         foreach ($abilities as $key => $ability) {
             $this->assertSame(Gate::forUser($actor)->allows($ability, $subject), $can[$key], $key);

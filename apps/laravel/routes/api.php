@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LocationScheduleController;
 use App\Http\Controllers\Admin\UserAbsenceTypeController;
 use App\Http\Controllers\Admin\UserAccrualController;
+use App\Http\Controllers\Admin\UserBalanceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserHistoryController;
 use App\Http\Controllers\Admin\UserInvitationController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Admin\UserScheduleController;
 use App\Http\Controllers\Admin\UserStatusController;
 use App\Http\Controllers\Auth\CurrentUserController;
 use App\Http\Controllers\Auth\ProfileAbsenceTypeController;
+use App\Http\Controllers\Auth\ProfileBalanceController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
 use App\Models\AbsenceType;
@@ -35,6 +37,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
     Route::get('/profile/history', ProfileHistoryController::class)->name('profile.history');
     Route::get('/profile/absence-types', ProfileAbsenceTypeController::class)->name('profile.absence-types');
+    Route::get('/profile/balances', [ProfileBalanceController::class, 'summary'])->name('profile.balances');
+    Route::get('/profile/balance-movements', [ProfileBalanceController::class, 'movements'])->name('profile.balance-movements');
 
     // Gestione utenti: responsabili e admin, mai sugli admin per il responsabile (UserPolicy)
     Route::get('/users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');
@@ -90,6 +94,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/locations/{location}/accrual', [LocationAccrualController::class, 'update'])->can('update', 'location')->name('locations.accrual.update');
     Route::get('/users/{user}/accrual', [UserAccrualController::class, 'show'])->can('manageAccrual', 'user')->name('users.accrual.show');
     Route::put('/users/{user}/accrual', [UserAccrualController::class, 'update'])->can('manageAccrual', 'user')->name('users.accrual.update');
+
+    // Saldi di una persona: li vede chi può agire su di lei, li corregge anche, ma mai i propri (UserPolicy)
+    Route::get('/users/{user}/balances', [UserBalanceController::class, 'summary'])->can('viewBalances', 'user')->name('users.balances.show');
+    Route::get('/users/{user}/balances/at', [UserBalanceController::class, 'at'])->can('viewBalances', 'user')->name('users.balances.at');
+    Route::get('/users/{user}/balance-movements', [UserBalanceController::class, 'movements'])->can('viewBalances', 'user')->name('users.balance-movements.index');
+    Route::post('/users/{user}/balance-adjustments', [UserBalanceController::class, 'adjust'])->can('adjustBalances', 'user')->name('users.balance-adjustments.store');
+    Route::post('/users/{user}/balance-alignments', [UserBalanceController::class, 'align'])->can('adjustBalances', 'user')->name('users.balance-alignments.store');
 
     // Orario personale: solo admin (UserPolicy::manageSchedule)
     Route::get('/users/{user}/schedules', [UserScheduleController::class, 'index'])->can('manageSchedule', 'user')->name('users.schedules.index');

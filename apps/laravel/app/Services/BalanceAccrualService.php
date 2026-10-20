@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\BalanceMovementKind;
 use App\Enums\BalanceType;
+use App\Models\BalanceAlignment;
 use App\Models\BalanceMovement;
 use App\Models\Location;
 use App\Models\User;
@@ -139,30 +140,32 @@ final class BalanceAccrualService
     }
 
     /**
-     * Saldi che il mese non può più maturare: già maturati, oppure con un allineamento datato dal 1° del mese in poi
-     * (la busta paga comprende già il mese, spec §4.3).
+     * Saldi che il mese non può più maturare: già maturati, oppure con un allineamento (anche senza differenza) datato
+     * dal 1° del mese in poi (la busta paga comprende già il mese, spec §4.3). Due query, qualunque sia il numero di
+     * persone.
      *
      * @param  list<int>  $userIds
      * @return array<int, list<string>> per persona, i `BalanceType->value` da saltare
      */
     private function blockedBalances(array $userIds, string $period): array
     {
-        return BalanceMovement::query()
+        $accrued = BalanceMovement::query()
             ->whereIn('user_id', $userIds)
-            ->where(fn (Builder $query) => $this->blocking($query, $period))
-            ->get(['user_id', 'balance'])
-            ->groupBy('user_id')
-            ->map(fn (Collection $movements): array => $movements->map(fn (BalanceMovement $movement): string => $movement->balance->value)->unique()->values()->all())
-            ->all();
-    }
+            ->where('kind', BalanceMovementKind::Accrual)
+            ->where('period', $period)
+            ->toBase()
+            ->get(['user_id', 'balance']);
+        $aligned = BalanceAlignment::query()
+            ->whereIn('user_id', $userIds)
+            ->whereNotNull('balance')
+            ->where('aligned_on', '>=', "{$period}-01")
+            ->toBase()
+            ->get(['user_id', 'balance']);
 
-    /**
-     * @param  Builder<BalanceMovement>  $query
-     */
-    private function blocking(Builder $query, string $period): void
-    {
-        $query->where(fn (Builder $accrued) => $accrued->where('kind', BalanceMovementKind::Accrual)->where('period', $period))
-            ->orWhere(fn (Builder $aligned) => $aligned->where('kind', BalanceMovementKind::Alignment)->where('effective_on', '>=', "{$period}-01"));
+        return $accrued->concat($aligned)
+            ->groupBy('user_id')
+            ->map(fn (Collection $rows): array => $rows->pluck('balance')->map(fn (mixed $balance): string => (string) $balance)->unique()->values()->all())
+            ->all();
     }
 
     /**
@@ -221,12 +224,7 @@ final class BalanceAccrualService
             return DB::transaction(function () use ($user, $period, $quotas): int {
                 User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-                $blocked = BalanceMovement::query()
-                    ->where('user_id', $user->id)
-                    ->where(fn (Builder $query) => $this->blocking($query, $period))
-                    ->pluck('balance')
-                    ->map(fn (BalanceType $balance): string => $balance->value)
-                    ->all();
+                $blocked = $this->blockedBalances([$user->id], $period)[$user->id] ?? [];
                 $createdAt = now();
                 $rows = [];
 

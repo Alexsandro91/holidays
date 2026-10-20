@@ -48,7 +48,7 @@ final class ManagedUserResource extends JsonResource
     /**
      * Calcolate dalla policy su ruoli e sedi già caricati: nessuna query per riga.
      *
-     * @return array{resend_invitation: bool, cancel_invitation: bool, change_role: bool, disable: bool, enable: bool, update: bool, send_password_reset: bool, change_location: bool, manage_schedule: bool, view_history: bool, manage_absence_types: bool}
+     * @return array{resend_invitation: bool, cancel_invitation: bool, change_role: bool, disable: bool, enable: bool, update: bool, send_password_reset: bool, change_location: bool, manage_schedule: bool, view_history: bool, manage_absence_types: bool, view_balances: bool, adjust_balances: bool}
      */
     private function permissions(Request $request): array
     {
@@ -66,6 +66,8 @@ final class ManagedUserResource extends JsonResource
             'manage_schedule' => $gate->allows('manageSchedule', $this->resource),
             'view_history' => $gate->allows('viewHistory', $this->resource),
             'manage_absence_types' => $gate->allows('manageAbsenceTypes', $this->resource),
+            'view_balances' => $gate->allows('viewBalances', $this->resource),
+            'adjust_balances' => $gate->allows('adjustBalances', $this->resource),
         ];
     }
 }

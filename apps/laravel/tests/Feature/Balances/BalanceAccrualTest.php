@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserHistory;
 use App\Models\WorkSchedule;
 use App\Services\BalanceAccrualService;
+use App\Services\BalanceCorrectionService;
 use App\Support\Translate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -288,6 +289,22 @@ class BalanceAccrualTest extends TestCase
         $this->assertSame(['ex_holidays' => 160, 'rol' => 360, 'vacation' => 800], $this->accruedMinutes($alignedBefore, '2026-10'));
     }
 
+    public function test_zero_delta_alignment_blocks_accrual(): void
+    {
+        $user = $this->employeeCreatedAt('2026-09-01 10:00');
+        $admin = User::factory()->admin()->create();
+
+        // Busta paga del 1° ottobre già in pari (delta 0): nessun movimento, ma il saldo è allineato a quella data
+        $this->travelTo(CarbonImmutable::parse('2026-10-01 00:10', 'Europe/Rome'));
+        $deltas = app(BalanceCorrectionService::class)->align($user, CarbonImmutable::parse('2026-10-01'), ['vacation' => 0], null, $admin);
+        $this->assertSame(['vacation' => 0], $deltas);
+        $this->assertSame(0, BalanceMovement::query()->where('user_id', $user->id)->count());
+
+        $this->runAt('2026-10-01 00:30')->assertSuccessful();
+
+        $this->assertSame(['ex_holidays' => 160, 'rol' => 360], $this->accruedMinutes($user, '2026-10'));
+    }
+
     public function test_month_option_recovers_a_past_month(): void
     {
         $user = $this->employeeCreatedAt('2026-08-15 10:00');
@@ -362,7 +379,7 @@ class BalanceAccrualTest extends TestCase
     private function alignVacation(User $user, string $date): void
     {
         BalanceMovement::factory()->for($user)->alignment($date, -120, 4000)->create();
-        (new BalanceAlignment)->forceFill(['user_id' => $user->id, 'aligned_on' => $date])->save();
+        (new BalanceAlignment)->forceFill(['user_id' => $user->id, 'balance' => BalanceType::Vacation, 'aligned_on' => $date])->save();
     }
 
     /**

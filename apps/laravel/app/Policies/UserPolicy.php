@@ -112,6 +112,22 @@ final class UserPolicy
         return $this->mayActOn($actor, $target);
     }
 
+    /**
+     * Saldi di una persona: chi può agire su di lei (spec §6.1); il responsabile non vede quelli di un admin.
+     */
+    public function viewBalances(User $actor, User $target): bool
+    {
+        return $this->mayActOn($actor, $target);
+    }
+
+    /**
+     * Rettifiche e allineamenti: come la vista, ma nessuno corregge i propri saldi (spec §6.1).
+     */
+    public function adjustBalances(User $actor, User $target): bool
+    {
+        return $this->mayActOn($actor, $target) && ! $actor->is($target);
+    }
+
     public function grantAdmin(User $actor, User $target): bool
     {
         return $this->manageAdministrators($actor);
