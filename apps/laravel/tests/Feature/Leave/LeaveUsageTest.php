@@ -256,6 +256,8 @@ class LeaveUsageTest extends TestCase
         $otherPending = LeaveRequest::factory()->for($other)->between('2026-10-26', '2026-10-26')->create();
         $admin = User::factory()->admin()->create();
         $this->travelTo(CarbonImmutable::parse('2026-10-21 10:00', 'Europe/Rome'));
+        // Le email dei passaggi di preparazione non contano: la disattivazione non ne manda (R4)
+        Mail::fake();
 
         $this->actingAs($admin)->postJson("/api/users/{$this->owner->id}/disable")->assertOk();
 

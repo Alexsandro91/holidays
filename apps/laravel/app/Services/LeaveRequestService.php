@@ -7,6 +7,8 @@ use App\Enums\DayHalf;
 use App\Enums\LeaveRequestStatus;
 use App\Enums\LeaveSource;
 use App\Enums\LeaveUnit;
+use App\Mail\LeaveRequestDecidedMail;
+use App\Mail\LeaveRequestSubmittedMail;
 use App\Models\AbsenceType;
 use App\Models\LeaveRequest;
 use App\Models\LeaveRequestDay;
@@ -20,6 +22,7 @@ use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -45,6 +48,7 @@ final class LeaveRequestService
         private readonly LeaveUsageWriter $usage,
         private readonly BalanceLedger $ledger,
         private readonly WorkScheduleService $schedules,
+        private readonly LeaveApprovers $approvers,
     ) {}
 
     /**
@@ -130,6 +134,8 @@ final class LeaveRequestService
             'status' => $request->status->value,
             'warnings' => array_column($warnings, 'code'),
         ]);
+
+        DB::afterCommit(fn () => $this->notifyApprovers($request, $request->status === LeaveRequestStatus::Approved ? 'auto_approved' : 'submitted'));
 
         // Attributo solo per la risposta: si imposta dopo l'ultimo salvataggio
         $request->setAttribute('warnings', $warnings);
@@ -353,7 +359,52 @@ final class LeaveRequestService
             'actor_id' => $actor->id,
         ]);
 
+        DB::afterCommit(fn () => $this->notifyAfterTransition($fresh, $action, $actor));
+
         return $fresh;
+    }
+
+    /**
+     * Email dell'evento: il ritiro non ne manda; gli esiti vanno alla persona, non a lei se ha deciso da sola.
+     */
+    private function notifyAfterTransition(LeaveRequest $request, string $action, User $actor): void
+    {
+        if ($action === 'request_cancellation') {
+            $this->notifyApprovers($request, 'cancellation_requested');
+
+            return;
+        }
+
+        $event = match ($action) {
+            'approve' => 'approved',
+            'reject' => 'rejected',
+            'approve_cancellation' => 'cancellation_approved',
+            'reject_cancellation' => 'cancellation_rejected',
+            'cancel' => 'cancelled',
+            default => null,
+        };
+
+        if ($event === null || $actor->id === $request->user_id) {
+            return;
+        }
+
+        $this->send($request->user, new LeaveRequestDecidedMail($request, $event, $actor->name));
+    }
+
+    private function notifyApprovers(LeaveRequest $request, string $event): void
+    {
+        foreach ($this->approvers->notifyRecipients($request) as $recipient) {
+            $this->send($recipient, new LeaveRequestSubmittedMail($request, $event));
+        }
+    }
+
+    /**
+     * Un invio per destinatario, nella sua lingua (lo decide `preferredLocale`). Una coda non raggiungibile non annulla
+     * la richiesta: l'errore è segnalato.
+     */
+    private function send(User $recipient, LeaveRequestDecidedMail|LeaveRequestSubmittedMail $mail): void
+    {
+        rescue(fn () => Mail::to($recipient)->send($mail), report: true);
     }
 
     private function markCancelled(LeaveRequest $request, User $actor): void
