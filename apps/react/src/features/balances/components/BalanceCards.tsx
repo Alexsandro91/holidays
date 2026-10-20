@@ -25,6 +25,9 @@ const BalanceCards = ({ summary }: BalanceCardsProps) => {
           [t('balances.cards.accrued'), balance.summary.accrued],
           [t('balances.cards.used'), balance.summary.used],
           [t('balances.cards.corrections'), balance.summary.corrections],
+          [t('balances.cards.planned'), balance.planned_minutes],
+          [t('balances.cards.pending'), balance.pending_minutes],
+          [t('balances.cards.available'), balance.available_minutes],
         ]
         return (
           <Card key={balance.balance} size="sm" role="region" aria-label={balance.label}>

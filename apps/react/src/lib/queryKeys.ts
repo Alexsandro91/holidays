@@ -19,3 +19,6 @@ export const balancesQueryKey: readonly ['balances'] = ['balances']
 
 /** Tipi di assenza, abilitazioni e l'elenco del profilo: sotto il prefisso admin. */
 export const absenceTypesQueryKey: readonly ['admin', 'absence-types'] = [adminQueryKey[0], 'absence-types']
+
+/** Richieste di assenza, calendario, anteprime e Da approvare: fuori dall'area admin; il logout le cancella (clearSessionData). */
+export const leaveQueryKey: readonly ['leave'] = ['leave']

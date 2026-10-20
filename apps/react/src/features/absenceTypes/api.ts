@@ -43,6 +43,13 @@ const absenceTypeOptionSchema = z.object({
   name: z.string(),
   requires_enablement: z.boolean(),
   enabled: z.boolean(),
+  // Per il form della richiesta: unità offerte, saldo, conteggio dei giorni e limite
+  allows_days: z.boolean(),
+  allows_half_days: z.boolean(),
+  allows_hours: z.boolean(),
+  balance: balanceTypeSchema.nullable(),
+  day_count: z.enum(['working', 'calendar']),
+  limit: z.object({ amount: z.number(), unit: limitUnitSchema, period: limitPeriodSchema }).nullable(),
 })
 
 export type AbsenceType = z.infer<typeof absenceTypeSchema>

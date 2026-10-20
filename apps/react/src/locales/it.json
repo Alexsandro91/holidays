@@ -742,6 +742,14 @@
     }
   },
   "leave": {
+    "status": {
+      "pending": "In attesa",
+      "approved": "Approvata",
+      "rejected": "Non approvata",
+      "withdrawn": "Ritirata",
+      "cancellation_requested": "Annullamento richiesto",
+      "cancelled": "Annullata"
+    },
     "title": "Ferie e permessi",
     "description": "I tuoi saldi di ferie, ROL ed ex festività e i tipi di assenza che puoi usare.",
     "notApplicable": "Non hai saldi da maturare. Qui potrai segnare le tue assenze.",
@@ -822,7 +830,10 @@
       "opening": "Residuo al 1° gennaio",
       "accrued": "Maturato",
       "used": "Usato",
-      "corrections": "Correzioni"
+      "corrections": "Correzioni",
+      "planned": "Pianificate",
+      "pending": "In attesa",
+      "available": "Disponibili"
     },
     "movement": {
       "accrual": "Maturazione {{period}}",
@@ -832,6 +843,8 @@
       "adjustmentNoNote": "Rettifica",
       "usage": "Utilizzo",
       "usageNote": "Utilizzo: {{note}}",
+      "usageLeave": "{{type}} {{dates}}",
+      "usageRefund": "Annullate: {{type}} {{dates}}",
       "by": "da {{name}}"
     },
     "accrual": {

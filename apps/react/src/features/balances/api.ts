@@ -24,6 +24,10 @@ export const balanceSummarySchema = z.object({
       annual: annualSchema,
       // 0 per chi oggi non matura, anche se il valore annuo è configurato
       monthly_quota_minutes: z.number(),
+      // Usato approvato con data futura, richieste in attesa e quanto resta da chiedere (spec SP2 fase 3 §6)
+      planned_minutes: z.number(),
+      pending_minutes: z.number(),
+      available_minutes: z.number(),
     }),
   ),
   can: z.object({ adjust: z.boolean(), manage_accrual: z.boolean() }),
@@ -40,6 +44,10 @@ export const balanceMovementSchema = z.object({
   note: z.string().nullable(),
   // Sempre null nel profilo e per le azioni di sistema
   actor_name: z.string().nullable(),
+  // Richiesta dei movimenti `usage`; null per gli altri e quando il server non la carica
+  leave_request: z
+    .object({ id: z.number(), absence_type_name: z.string().nullable(), starts_on: z.string(), ends_on: z.string(), source: z.enum(['request', 'closure']) })
+    .nullable(),
   created_at: z.string(),
 })
 

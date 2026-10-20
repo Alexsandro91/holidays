@@ -17,6 +17,7 @@ import {
 import type { AbsenceTypeInput } from '@/features/absenceTypes/api'
 import { createQueryClient } from '@/lib/queryClient'
 import { absenceTypesQueryKey } from '@/lib/queryKeys'
+import { absenceTypeOption } from '@/test/absenceTypesFixtures'
 import { server } from '@/test/server'
 
 const renderWithClient = <T,>(hook: () => T) => {
@@ -190,7 +191,7 @@ describe('absence types api', () => {
   it('reads the types of a person and saves the enablements', async () => {
     const bodies: unknown[] = []
     server.use(
-      http.get('/api/users/2/absence-types', () => HttpResponse.json({ data: [{ id: 9, name: 'Smart working', requires_enablement: true, enabled: false }] })),
+      http.get('/api/users/2/absence-types', () => HttpResponse.json({ data: [absenceTypeOption({ id: 9, name: 'Smart working', requires_enablement: true, enabled: false })] })),
       http.put('/api/users/2/absence-type-enablements', async ({ request }) => {
         bodies.push(await request.json())
         return new HttpResponse(null, { status: 204 })
@@ -210,7 +211,7 @@ describe('absence types api', () => {
   })
 
   it('reads the types the profile can use and fails on a malformed option', async () => {
-    server.use(http.get('/api/profile/absence-types', () => HttpResponse.json({ data: [{ id: 1, name: 'Ferie', requires_enablement: false, enabled: true }] })))
+    server.use(http.get('/api/profile/absence-types', () => HttpResponse.json({ data: [absenceTypeOption()] })))
     const ok = renderWithClient(() => useProfileAbsenceTypes())
     await waitFor(() => expect(ok.result.current.data).toHaveLength(1))
 

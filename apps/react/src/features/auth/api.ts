@@ -43,6 +43,8 @@ export type User = z.infer<typeof userSchema> & {
   session?: SessionLimits
   /** Almeno due sedi attive (spec §5.5): senza, i campi Sede non compaiono */
   multipleLocations?: boolean
+  /** Richieste da approvare: numero per responsabili e admin, null per gli altri (spec SP2 fase 3 §6) */
+  pendingApprovals?: number | null
 }
 
 /** Risposta di `GET /api/auth/user` e `PATCH /api/profile`: l'utente, i limiti della sessione e il numero di sedi. */
@@ -52,6 +54,7 @@ export const currentUserResponseSchema = z
     meta: z.object({
       session: z.object({ idle_timeout_seconds: z.number(), absolute_remaining_seconds: z.number() }),
       multiple_locations: z.boolean(),
+      pending_approvals: z.number().nullable(),
     }),
   })
   .transform(({ data, meta }): User => ({
@@ -61,6 +64,7 @@ export const currentUserResponseSchema = z
       absoluteDeadline: Date.now() + Math.max(0, meta.session.absolute_remaining_seconds) * 1000,
     },
     multipleLocations: meta.multiple_locations,
+    pendingApprovals: meta.pending_approvals,
   }))
 
 const userResponseSchema = z.object({ data: userSchema })

@@ -2,14 +2,15 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import UserAbsenceTypesDialog from '@/features/absenceTypes/components/UserAbsenceTypesDialog'
+import { absenceTypeOption } from '@/test/absenceTypesFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 import { managedUser } from '@/test/usersFixtures'
 
 const options = [
-  { id: 1, name: 'Ferie', requires_enablement: false, enabled: false },
-  { id: 5, name: 'Legge 104', requires_enablement: true, enabled: true },
-  { id: 6, name: 'Donazione sangue', requires_enablement: true, enabled: false },
+  absenceTypeOption({ enabled: false }),
+  absenceTypeOption({ id: 5, name: 'Legge 104', requires_enablement: true }),
+  absenceTypeOption({ id: 6, name: 'Donazione sangue', requires_enablement: true, enabled: false }),
 ]
 
 describe('UserAbsenceTypesDialog', () => {

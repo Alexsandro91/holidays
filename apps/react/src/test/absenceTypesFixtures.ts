@@ -1,4 +1,4 @@
-import type { AbsenceType, AbsenceTypeList } from '@/features/absenceTypes/api'
+import type { AbsenceType, AbsenceTypeList, AbsenceTypeOption } from '@/features/absenceTypes/api'
 
 export const absenceType = (overrides: Partial<AbsenceType> = {}): AbsenceType => ({
   id: 1,
@@ -23,3 +23,18 @@ export const absenceType = (overrides: Partial<AbsenceType> = {}): AbsenceType =
 })
 
 export const absenceTypeListResponse = (data: AbsenceType[], counts = { active: data.length, archived: 0 }): AbsenceTypeList => ({ data, meta: { counts } })
+
+/** Tipo come lo vede una persona (`/api/profile/absence-types`, `/api/users/{id}/absence-types`): con i campi per il form della richiesta. */
+export const absenceTypeOption = (overrides: Partial<AbsenceTypeOption> = {}): AbsenceTypeOption => ({
+  id: 1,
+  name: 'Ferie',
+  requires_enablement: false,
+  enabled: true,
+  allows_days: true,
+  allows_half_days: true,
+  allows_hours: false,
+  balance: 'vacation',
+  day_count: 'working',
+  limit: null,
+  ...overrides,
+})

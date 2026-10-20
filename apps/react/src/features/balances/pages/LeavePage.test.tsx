@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import LeavePage from '@/features/balances/pages/LeavePage'
 import { expectNoA11yViolations } from '@/test/axe'
 import { balanceMovement, balanceSummary, pageResponse } from '@/test/balancesFixtures'
+import { absenceTypeOption } from '@/test/absenceTypesFixtures'
 import { renderRoutes } from '@/test/render'
 import { server } from '@/test/server'
 
@@ -13,8 +14,8 @@ const routes: RouteObject[] = [{ path: '/leave', element: <LeavePage /> }]
 const ownSummary = (applicable = true) => balanceSummary({ applicable, can: { adjust: false, manage_accrual: false } })
 
 const types = [
-  { id: 1, name: 'Ferie', requires_enablement: false, enabled: true },
-  { id: 2, name: 'Permesso studio', requires_enablement: true, enabled: true },
+  absenceTypeOption(),
+  absenceTypeOption({ id: 2, name: 'Permesso studio', requires_enablement: true }),
 ]
 
 const respond = (summary = ownSummary(), movements = [balanceMovement()]) =>

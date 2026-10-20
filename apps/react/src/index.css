@@ -20,6 +20,14 @@
   --color-status-invited-foreground: var(--status-invited-foreground);
   --color-status-disabled: var(--status-disabled);
   --color-status-disabled-foreground: var(--status-disabled-foreground);
+  --color-leave-pending: var(--leave-pending);
+  --color-leave-pending-foreground: var(--leave-pending-foreground);
+  --color-leave-approved: var(--leave-approved);
+  --color-leave-approved-foreground: var(--leave-approved-foreground);
+  --color-leave-rejected: var(--leave-rejected);
+  --color-leave-rejected-foreground: var(--leave-rejected-foreground);
+  --color-leave-cancellation: var(--leave-cancellation);
+  --color-leave-cancellation-foreground: var(--leave-cancellation-foreground);
   --color-danger-soft: var(--danger-soft);
   --color-danger-soft-foreground: var(--danger-soft-foreground);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
@@ -115,6 +123,15 @@
   /* Bordi e rosso degli esiti nei toast (sonner.tsx): riuscito come "Attivo", errore rosso, avviso come "Invitato" */
   --status-active-border: hsl(150 40% 76%);
   --status-invited-border: hsl(38 80% 74%);
+  /* Stati delle richieste di assenza (badge e calendario): in attesa giallo, approvata verde, non approvata rosso, annullamento richiesto grigio azzurro (a righe nel calendario); ritirata e annullata usano status-disabled */
+  --leave-pending: hsl(48 95% 88%);
+  --leave-pending-foreground: hsl(32 92% 26%);
+  --leave-approved: hsl(150 45% 90%);
+  --leave-approved-foreground: hsl(150 62% 24%);
+  --leave-rejected: hsl(0 80% 94%);
+  --leave-rejected-foreground: hsl(0 70% 36%);
+  --leave-cancellation: hsl(210 30% 92%);
+  --leave-cancellation-foreground: hsl(210 40% 28%);
   --danger-soft: hsl(0 80% 95%);
   --danger-soft-foreground: hsl(0 70% 36%);
   --danger-soft-border: hsl(0 70% 84%);
@@ -168,6 +185,14 @@
   --status-disabled-foreground: hsl(190 10% 68%);
   --status-active-border: hsl(150 35% 30%);
   --status-invited-border: hsl(38 50% 32%);
+  --leave-pending: hsl(45 55% 17%);
+  --leave-pending-foreground: hsl(45 90% 68%);
+  --leave-approved: hsl(150 35% 16%);
+  --leave-approved-foreground: hsl(150 50% 65%);
+  --leave-rejected: hsl(0 40% 17%);
+  --leave-rejected-foreground: hsl(0 85% 78%);
+  --leave-cancellation: hsl(210 25% 17%);
+  --leave-cancellation-foreground: hsl(210 45% 76%);
   --danger-soft: hsl(0 40% 16%);
   --danger-soft-foreground: hsl(0 85% 78%);
   --danger-soft-border: hsl(0 40% 32%);

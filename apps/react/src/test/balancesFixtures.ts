@@ -15,6 +15,9 @@ export const balanceSummary = (overrides: Partial<BalanceSummary> = {}): Balance
       summary: { opening: 0, accrued: 5250, used: 0, corrections: 0, closing: 5250 },
       annual: { minutes: 9600, source: 'company' },
       monthly_quota_minutes: 800,
+      planned_minutes: 0,
+      pending_minutes: 480,
+      available_minutes: 4770,
     },
     {
       balance: 'rol',
@@ -23,6 +26,9 @@ export const balanceSummary = (overrides: Partial<BalanceSummary> = {}): Balance
       summary: { opening: 0, accrued: 0, used: 0, corrections: 0, closing: 0 },
       annual: { minutes: 0, source: 'company' },
       monthly_quota_minutes: 0,
+      planned_minutes: 0,
+      pending_minutes: 0,
+      available_minutes: 0,
     },
     {
       balance: 'ex_holidays',
@@ -31,6 +37,9 @@ export const balanceSummary = (overrides: Partial<BalanceSummary> = {}): Balance
       summary: { opening: 0, accrued: 0, used: 0, corrections: 0, closing: 0 },
       annual: { minutes: 0, source: 'company' },
       monthly_quota_minutes: 0,
+      planned_minutes: 0,
+      pending_minutes: 0,
+      available_minutes: 0,
     },
   ],
   can: { adjust: true, manage_accrual: true },
@@ -47,6 +56,7 @@ export const balanceMovement = (overrides: Partial<BalanceMovement> = {}): Balan
   target_minutes: null,
   note: null,
   actor_name: null,
+  leave_request: null,
   created_at: '2026-10-01T02:00:00+02:00',
   ...overrides,
 })

@@ -23,13 +23,15 @@ interface SessionSeconds {
   absolute?: number
   /** Almeno due sedi attive (default no: l'azienda con una sola sede) */
   multipleLocations?: boolean
+  /** Contatore Da approvare (default null: chi non approva) */
+  pendingApprovals?: number | null
 }
 
 /** Risposta di `GET /api/auth/user` e `PATCH /api/profile`: l'utente, i limiti della sessione e il numero di sedi. */
-export const currentUserResponse = (user: User = adminUser, { idle = 7200, absolute = 43_200, multipleLocations = false }: SessionSeconds = {}) => {
+export const currentUserResponse = (user: User = adminUser, { idle = 7200, absolute = 43_200, multipleLocations = false, pendingApprovals = null }: SessionSeconds = {}) => {
   // Sessione e numero di sedi non sono campi della risorsa (nel frontend li ricava la lettura da `meta`): lo schema li toglie
   return {
     data: userSchema.parse(user),
-    meta: { session: { idle_timeout_seconds: idle, absolute_remaining_seconds: absolute }, multiple_locations: multipleLocations },
+    meta: { session: { idle_timeout_seconds: idle, absolute_remaining_seconds: absolute }, multiple_locations: multipleLocations, pending_approvals: pendingApprovals },
   }
 }

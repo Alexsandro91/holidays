@@ -57,6 +57,11 @@ const PAIRS: [string, string, number][] = [
   ['status-invited-foreground', 'background', 4.5],
   ['primary-soft-foreground', 'background', 4.5],
   ['status-active-foreground', 'background', 4.5],
+  // Stati delle richieste di assenza (LeaveStatusBadge e calendario): in attesa, approvata, non approvata, annullamento richiesto
+  ['leave-pending-foreground', 'leave-pending', 4.5],
+  ['leave-approved-foreground', 'leave-approved', 4.5],
+  ['leave-rejected-foreground', 'leave-rejected', 4.5],
+  ['leave-cancellation-foreground', 'leave-cancellation', 4.5],
 ]
 
 const THEMES: (':root' | '.dark')[] = [':root', '.dark']

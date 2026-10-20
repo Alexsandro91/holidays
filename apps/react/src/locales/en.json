@@ -742,6 +742,14 @@
     }
   },
   "leave": {
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "cancellation_requested": "Cancellation requested",
+      "cancelled": "Cancelled"
+    },
     "title": "Leave and time off",
     "description": "Your vacation, ROL and ex-holiday balances and the absence types you can use.",
     "notApplicable": "You have no balances to accrue. Here you will be able to record your absences.",
@@ -822,7 +830,10 @@
       "opening": "Carried over from 1 January",
       "accrued": "Accrued",
       "used": "Used",
-      "corrections": "Corrections"
+      "corrections": "Corrections",
+      "planned": "Planned",
+      "pending": "Pending",
+      "available": "Available"
     },
     "movement": {
       "accrual": "Accrual {{period}}",
@@ -832,6 +843,8 @@
       "adjustmentNoNote": "Adjustment",
       "usage": "Usage",
       "usageNote": "Usage: {{note}}",
+      "usageLeave": "{{type}} {{dates}}",
+      "usageRefund": "Cancelled: {{type}} {{dates}}",
       "by": "by {{name}}"
     },
     "accrual": {

@@ -31,6 +31,17 @@ describe('current user', () => {
     expect(result.current.multiple).toBe(true)
   })
 
+  it('reads the counter of the approvals, null for who does not approve', async () => {
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser, { pendingApprovals: 3 }))))
+    const approver = renderWithClient(() => useCurrentUser())
+    await waitFor(() => expect(approver.result.current.data?.pendingApprovals).toBe(3))
+
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))))
+    const other = renderWithClient(() => useCurrentUser())
+    await waitFor(() => expect(other.result.current.data).toBeTruthy())
+    expect(other.result.current.data?.pendingApprovals).toBeNull()
+  })
+
   it('treats a single location as the default before and after the read', async () => {
     server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(adminUser))))
 

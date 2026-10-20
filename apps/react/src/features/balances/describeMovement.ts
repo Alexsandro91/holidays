@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { BalanceMovement } from '@/features/balances/api'
 import { formatHours } from '@/features/balances/hoursFormat'
-import { formatDay } from '@/features/locations/dateFormat'
+import { formatDay, formatDayRange } from '@/features/locations/dateFormat'
 
 /** Data della busta paga come "30/09/2026" (nella lingua dell'interfaccia). */
 export const formatNumericDate = (date: string, locale: string): string => formatDay(date, locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -25,6 +25,15 @@ export const describeMovement = (movement: BalanceMovement, t: TFunction, locale
   }
 
   if (kind === 'adjustment') return trimmed === '' ? t('balances.movement.adjustmentNoNote') : t('balances.movement.adjustment', { note: trimmed })
+
+  // Il movimento di una richiesta: tipo e date; un importo positivo restituisce ore già scalate
+  const leave = movement.leave_request
+  if (leave !== null && leave.absence_type_name !== null) {
+    return t(minutes > 0 ? 'balances.movement.usageRefund' : 'balances.movement.usageLeave', {
+      type: leave.absence_type_name,
+      dates: formatDayRange(leave.starts_on, leave.ends_on, locale),
+    })
+  }
 
   return trimmed === '' ? t('balances.movement.usage') : t('balances.movement.usageNote', { note: trimmed })
 }
