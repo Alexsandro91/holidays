@@ -257,6 +257,36 @@ class AbsenceTypeApiTest extends TestCase
         $this->assertSame('vacation', $vacation->fresh()->code);
     }
 
+    public function test_resetting_the_name_checks_that_the_translated_name_is_free(): void
+    {
+        $vacation = AbsenceType::query()->where('code', 'vacation')->firstOrFail();
+        $vacation->forceFill(['name' => 'Vacanze'])->save();
+        // Rinominate le Ferie, il loro nome tradotto è libero e un tipo personalizzato lo prende (maiuscole diverse)
+        AbsenceType::factory()->create(['name' => 'FERIE']);
+
+        $this->actingAs($this->admin)
+            ->withHeader('Accept-Language', 'it')
+            ->patchJson("/api/absence-types/{$vacation->id}", ['name' => null])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name' => 'Esiste già un tipo di assenza con questo nome.']);
+
+        $this->assertSame('Vacanze', $vacation->fresh()?->name);
+    }
+
+    public function test_resetting_the_name_uses_the_request_language(): void
+    {
+        $this->admin = $this->englishAdmin();
+        $vacation = AbsenceType::query()->where('code', 'vacation')->firstOrFail();
+        $vacation->forceFill(['name' => 'Holidays'])->save();
+        // "Ferie" è il nome italiano: per chi scrive in inglese il nome ripristinato è "Vacation", che è libero
+        AbsenceType::factory()->create(['name' => 'Ferie']);
+
+        $this->actingAs($this->admin)
+            ->patchJson("/api/absence-types/{$vacation->id}", ['name' => null])
+            ->assertOk()
+            ->assertJsonPath('data.custom_name', null);
+    }
+
     public function test_a_system_type_may_keep_its_own_translated_name(): void
     {
         $vacation = AbsenceType::query()->where('code', 'vacation')->firstOrFail();

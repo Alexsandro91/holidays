@@ -86,6 +86,7 @@ class AbsenceTypeRequest extends FormRequest
             fn (Validator $validator) => $this->checkBalance($validator),
             fn (Validator $validator) => $this->checkLimit($validator),
             fn (Validator $validator) => $this->checkTranslatedName($validator),
+            fn (Validator $validator) => $this->checkRestoredName($validator),
         ];
     }
 
@@ -192,6 +193,34 @@ class AbsenceTypeRequest extends FormRequest
             ->when($this->currentType() !== null, fn ($query) => $query->whereKeyNot($this->currentType()?->id))
             ->get()
             ->contains(fn (AbsenceType $type): bool => mb_strtolower($type->displayName()) === mb_strtolower($name));
+
+        if ($taken) {
+            $validator->errors()->add('name', Translate::text('absence_types.name_taken'));
+        }
+    }
+
+    /**
+     * Un tipo di partenza che torna al nome tradotto (`name: null`) non può prendere un nome già in uso da un altro tipo,
+     * personalizzato o tradotto, nella lingua di chi scrive (spec §3.1).
+     */
+    private function checkRestoredName(Validator $validator): void
+    {
+        $current = $this->currentType();
+
+        if ($current === null || ! $current->isSystem() || $validator->errors()->has('name')) {
+            return;
+        }
+
+        if (! $this->safe()->has('name') || $this->safe()->input('name') !== null) {
+            return;
+        }
+
+        $restored = mb_strtolower(Translate::text("absence_types.names.{$current->code}"));
+
+        $taken = AbsenceType::query()
+            ->whereKeyNot($current->id)
+            ->get()
+            ->contains(fn (AbsenceType $type): bool => mb_strtolower($type->displayName()) === $restored);
 
         if ($taken) {
             $validator->errors()->add('name', Translate::text('absence_types.name_taken'));
