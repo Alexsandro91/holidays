@@ -62,6 +62,20 @@ Gli header della SPA (CSP, HSTS) sono descritti nella spec, §8.4.
   non accettati scaduti da oltre 30 giorni, eventi di sicurezza oltre `AUTH_EVENTS_RETENTION_DAYS`, default 180),
   `auth:clear-resets` (token di reset scaduti) e `queue:prune-failed --hours=720`. I comandi usano `onOneServer`:
   serve uno store cache con lock condiviso tra le istanze (database o redis).
+- Maturazione dei saldi: `balances:accrue` gira ogni giorno alle 00:30 (fuso `Europe/Rome`), con `onOneServer` e
+  `withoutOverlapping` come gli altri comandi (stesso lock condiviso in cache). A ogni giro matura il mese precedente e
+  quello corrente per chi ne ha diritto e non li ha ancora; rilanciarlo non scrive doppioni. Se una persona va in
+  errore il giro continua con le altre, l'errore finisce nel log e il comando esce con codice di errore.
+  - La prima maturazione arriva la notte dopo il deploy. Il diritto segue l'attivazione dell'account (non esiste una
+    data di assunzione) e la regola del 1°/16: matura il mese chi è dipendente attivo il 1° o il 16 di quel mese. Chi
+    viene attivato dopo il 16 del mese del rilascio non matura quel mese, ma solo dal successivo. Lo stesso vale per il
+    mese precedente, che il primo giro riprende per chi allora era già dipendente attivo.
+  - I saldi di partenza si inseriscono con "Allinea alla busta paga" dalla pagina Saldi o dalla scheda della persona. La
+    data proposta è l'ultimo giorno del mese precedente: la busta paga di quel mese comprende già il mese stesso, e la
+    maturazione del mese corrente resta in più.
+  - Un mese passato si recupera a mano con `php artisan balances:accrue --month=YYYY-MM` (stessa regola del 1°/16, mai
+    un mese futuro). Un allineamento datato dal 1° di un mese in poi blocca la maturazione di quel mese per quel saldo:
+    la busta paga lo comprende già.
 - Primo avvio: dopo `php artisan migrate`, eseguire `php artisan app:create-admin Nome Cognome email@azienda.it` (nome e cognome separati, tra virgolette se composti: `Mario "De Rossi"`): arriva
   l'invito (72 ore) e l'admin sceglie la password dal link. L'invio è registrato in `auth_events` senza autore.
   - Invito non arrivato o scaduto: rilanciare lo stesso comando con la stessa email. Se l'admin non ha ancora attivato
