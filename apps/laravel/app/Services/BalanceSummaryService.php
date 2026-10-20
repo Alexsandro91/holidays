@@ -20,10 +20,11 @@ final class BalanceSummaryService
         private readonly AccrualSettingsService $accruals,
         private readonly WeeklyMinutes $weeklyMinutes,
         private readonly WorkScheduleService $schedules,
+        private readonly LeaveAvailability $availability,
     ) {}
 
     /**
-     * @return array{applicable: bool, year: int, weekly_minutes: int, location_weekly_minutes: int, average_day_minutes: int, last_aligned_on: ?string, current: array<string, int>, summaries: array<string, YearSummary>, accrual: EffectiveAccrual, monthly_quotas: array<string, int>}
+     * @return array{applicable: bool, year: int, weekly_minutes: int, location_weekly_minutes: int, average_day_minutes: int, last_aligned_on: ?string, current: array<string, int>, summaries: array<string, YearSummary>, accrual: EffectiveAccrual, monthly_quotas: array<string, int>, planned: array<string, int>, pending: array<string, int>, available: array<string, int>}
      */
     public function summary(User $user, int $year): array
     {
@@ -36,11 +37,19 @@ final class BalanceSummaryService
         // Quota attuale solo per chi oggi matura: dipendente con account attivo
         $accrues = $user->isEmployee() && $user->status === UserStatus::Active;
         $quotas = [];
+        $planned = [];
+        $pending = [];
+        $available = [];
+        $current = $this->ledger->balancesAt($user, $today);
 
         foreach (BalanceType::cases() as $balance) {
             $quotas[$balance->value] = $accrues
                 ? BalanceAccrualService::monthlyQuota($accrual->minutes($balance), $weekly, $locationWeekly)
                 : 0;
+            $planned[$balance->value] = $this->availability->planned($user, $balance, $today);
+            $pending[$balance->value] = $this->availability->pending($user, $balance);
+            // Come `LeaveAvailability::available`, senza rileggere il saldo
+            $available[$balance->value] = $current[$balance->value] - $planned[$balance->value] - $pending[$balance->value];
         }
 
         return [
@@ -50,10 +59,13 @@ final class BalanceSummaryService
             'location_weekly_minutes' => $locationWeekly,
             'average_day_minutes' => $this->weeklyMinutes->averageDayMinutes($user, $today),
             'last_aligned_on' => $this->ledger->lastAlignedOn(collect([$user]))[$user->id],
-            'current' => $this->ledger->balancesAt($user, $today),
+            'current' => $current,
             'summaries' => $this->ledger->yearSummary($user, $year, $today),
             'accrual' => $accrual,
             'monthly_quotas' => $quotas,
+            'planned' => $planned,
+            'pending' => $pending,
+            'available' => $available,
         ];
     }
 

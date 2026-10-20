@@ -12,12 +12,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Saldi di una persona (spec §5.3, §6.2): per ogni saldo il valore attuale, il riepilogo dell'anno, il valore annuo
  * effettivo con la provenienza e la quota mensile attuale. `can` lo decide il controller (nel profilo tutto falso).
  *
- * @property array{summary: array{applicable: bool, year: int, weekly_minutes: int, location_weekly_minutes: int, average_day_minutes: int, last_aligned_on: ?string, current: array<string, int>, summaries: array<string, YearSummary>, accrual: EffectiveAccrual, monthly_quotas: array<string, int>}, can: array{adjust: bool, manage_accrual: bool}} $resource
+ * @property array{summary: array{applicable: bool, year: int, weekly_minutes: int, location_weekly_minutes: int, average_day_minutes: int, last_aligned_on: ?string, current: array<string, int>, summaries: array<string, YearSummary>, accrual: EffectiveAccrual, monthly_quotas: array<string, int>, planned: array<string, int>, pending: array<string, int>, available: array<string, int>}, can: array{adjust: bool, manage_accrual: bool}} $resource
  */
 final class BalanceSummaryResource extends JsonResource
 {
     /**
-     * @param  array{applicable: bool, year: int, weekly_minutes: int, location_weekly_minutes: int, average_day_minutes: int, last_aligned_on: ?string, current: array<string, int>, summaries: array<string, YearSummary>, accrual: EffectiveAccrual, monthly_quotas: array<string, int>}  $summary
+     * @param  array{applicable: bool, year: int, weekly_minutes: int, location_weekly_minutes: int, average_day_minutes: int, last_aligned_on: ?string, current: array<string, int>, summaries: array<string, YearSummary>, accrual: EffectiveAccrual, monthly_quotas: array<string, int>, planned: array<string, int>, pending: array<string, int>, available: array<string, int>}  $summary
      * @param  array{adjust: bool, manage_accrual: bool}  $can
      */
     public static function of(array $summary, array $can): self
@@ -48,6 +48,9 @@ final class BalanceSummaryResource extends JsonResource
                 ],
                 'annual' => ['minutes' => $summary['accrual']->minutes($balance), 'source' => $summary['accrual']->source($balance)],
                 'monthly_quota_minutes' => $summary['monthly_quotas'][$balance->value],
+                'planned_minutes' => $summary['planned'][$balance->value],
+                'pending_minutes' => $summary['pending'][$balance->value],
+                'available_minutes' => $summary['available'][$balance->value],
             ];
         }
 

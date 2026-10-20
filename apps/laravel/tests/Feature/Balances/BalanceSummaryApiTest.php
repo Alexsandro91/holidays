@@ -5,6 +5,7 @@ namespace Tests\Feature\Balances;
 use App\Enums\BalanceType;
 use App\Models\BalanceAlignment;
 use App\Models\BalanceMovement;
+use App\Models\LeaveRequest;
 use App\Models\Location;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -57,6 +58,9 @@ class BalanceSummaryApiTest extends TestCase
                 'summary' => ['opening' => 2400, 'accrued' => 8000, 'used' => 0, 'corrections' => -300, 'closing' => 10100],
                 'annual' => ['minutes' => 9600, 'source' => 'company'],
                 'monthly_quota_minutes' => 800,
+                'planned_minutes' => 0,
+                'pending_minutes' => 0,
+                'available_minutes' => 10100,
             ])
             ->assertJsonPath('data.balances.1.balance', 'rol')
             ->assertJsonPath('data.balances.1.annual', ['minutes' => 0, 'source' => 'company'])
@@ -69,6 +73,22 @@ class BalanceSummaryApiTest extends TestCase
         // I propri saldi dalla scheda dello staff: si vedono, non si correggono
         $this->actingAs($manager)->getJson("/api/users/{$manager->id}/balances")
             ->assertOk()->assertJsonPath('data.can', ['adjust' => false, 'manage_accrual' => false]);
+    }
+
+    public function test_summary_includes_planned_pending_available(): void
+    {
+        $approved = LeaveRequest::factory()->for($this->employee)->approved()->between('2026-11-02', '2026-11-03')->create();
+        BalanceMovement::factory()->for($this->employee)->usage('2026-11-02', -960, $approved)->create();
+        LeaveRequest::factory()->for($this->employee)->between('2026-11-04', '2026-11-04')->create();
+
+        $this->actingAs($this->admin)->getJson("/api/users/{$this->employee->id}/balances")->assertOk()
+            ->assertJsonPath('data.balances.0.current_minutes', 10100)
+            ->assertJsonPath('data.balances.0.planned_minutes', 960)
+            ->assertJsonPath('data.balances.0.pending_minutes', 480)
+            ->assertJsonPath('data.balances.0.available_minutes', 8660)
+            ->assertJsonPath('data.balances.1.available_minutes', 0);
+        $this->actingAs($this->employee)->getJson('/api/profile/balances')->assertOk()
+            ->assertJsonPath('data.balances.0.available_minutes', 8660);
     }
 
     public function test_view_permissions(): void
