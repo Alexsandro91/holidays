@@ -165,6 +165,54 @@ describe('LeaveMonthCalendar', () => {
     expect(screen.getByRole('gridcell', { name: /^giovedì 1 ottobre 2026/ })).toHaveFocus()
   })
 
+  it('keeps the focus on the month arrows after a key that does not move the active day', async () => {
+    const { user } = renderCalendar()
+    await findGrid()
+    cell(/^martedì 20 ottobre 2026/).focus()
+
+    // Lunedì 19, poi Home resta su lunedì: nessuno spostamento da completare
+    await user.keyboard('{ArrowLeft}{Home}')
+    expect(cell(/^lunedì 19 ottobre 2026/)).toHaveFocus()
+
+    const next = screen.getByRole('button', { name: 'Mese successivo' })
+    await user.click(next)
+    expect(await findGrid('novembre 2026')).toBeInTheDocument()
+    expect(next).toHaveFocus()
+  })
+
+  it('opens each request of a day with two requests, with chips at least 24 px tall', async () => {
+    server.use(
+      http.get('/api/profile/calendar', () =>
+        HttpResponse.json({
+          data: {
+            days: calendarDays('2026-10-01', '2026-10-31'),
+            requests: [
+              leaveRequest({ id: 11, status: 'approved', unit: 'half_day', half: 'morning', starts_on: '2026-10-27', ends_on: '2026-10-27' }),
+              leaveRequest({ id: 12, status: 'pending', unit: 'hours', starts_at: '15:00', ends_at: '17:00', starts_on: '2026-10-27', ends_on: '2026-10-27', absence_type: { id: 2, name: 'ROL', balance: 'rol' } }),
+            ],
+          },
+        }),
+      ),
+    )
+    const { user, onOpenRequest } = renderCalendar()
+    await findGrid()
+
+    const day = cell(/^martedì 27 ottobre 2026/)
+    const morning = await within(day).findByRole('button', { name: 'Ferie, Approvata: apri il dettaglio' })
+    const hours = within(day).getByRole('button', { name: 'ROL, In attesa: apri il dettaglio' })
+    // Bersaglio minimo WCAG 2.5.8: 24 px di altezza, anche sul telefono
+    expect(morning).toHaveClass('h-6')
+    expect(hours).toHaveClass('h-6')
+
+    await user.click(morning)
+    await user.click(hours)
+    expect(onOpenRequest.mock.calls).toEqual([
+      [11, 'chip-11-2026-10-27'],
+      [12, 'chip-12-2026-10-27'],
+    ])
+    expect(day).toHaveAttribute('aria-selected', 'false')
+  })
+
   it('does not select past days', async () => {
     const { user, onSelectRange } = renderCalendar()
     await findGrid()

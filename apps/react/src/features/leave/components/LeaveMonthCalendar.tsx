@@ -93,6 +93,9 @@ const LeaveMonthCalendar = ({ onSelectRange, onOpenRequest }: LeaveMonthCalendar
   }
 
   const goTo = (date: string) => {
+    // Un tasto che non sposta il giorno attivo (Home sul lunedì, End sulla domenica) non lascia il focus in sospeso:
+    // altrimenti il prossimo cambio di mese con il mouse lo porterebbe via dalle frecce
+    if (date === active) return
     focusActive.current = true
     setFocused(date)
     if (monthOf(date) !== month) setMonth(monthOf(date))
@@ -188,6 +191,7 @@ const LeaveMonthCalendar = ({ onSelectRange, onOpenRequest }: LeaveMonthCalendar
             {requests.map((request) => {
               const trigger = `chip-${request.id}-${date}`
               return (
+                // Almeno 24 px di altezza (WCAG 2.5.8) anche sul telefono: la cella cresce con le richieste del giorno
                 <button
                   key={request.id}
                   type="button"
@@ -202,7 +206,7 @@ const LeaveMonthCalendar = ({ onSelectRange, onOpenRequest }: LeaveMonthCalendar
                   }}
                   onKeyDown={(event) => event.stopPropagation()}
                   className={cn(
-                    'block h-4 w-full min-w-0 truncate rounded-sm px-1 text-left text-[11px] leading-4 font-medium outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring sm:h-5 sm:leading-5',
+                    'block h-6 w-full min-w-0 truncate rounded-sm px-1 text-left text-[11px] leading-6 font-medium outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
                     LEAVE_STATUS_CLASSES[request.status],
                     request.status === 'cancellation_requested' && CANCELLATION_STRIPES,
                   )}
