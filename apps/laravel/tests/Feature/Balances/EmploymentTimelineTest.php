@@ -83,6 +83,40 @@ class EmploymentTimelineTest extends TestCase
         $this->assertTrue($timeline->isActiveEmployeeAt($this->endOf('2026-10-20')));
     }
 
+    public function test_events_with_the_same_instant_follow_the_writing_order(): void
+    {
+        $user = $this->userCreatedOn('2026-09-01');
+        // Disattivato e riattivato nello stesso secondo: prima vale lo stato precedente a entrambi
+        $this->event($user, UserHistoryEvent::Disabled, '2026-10-10 10:00')->save();
+        $this->event($user, UserHistoryEvent::Enabled, '2026-10-10 10:00')->save();
+        $timeline = EmploymentTimeline::for($user, UserHistory::query()->where('user_id', $user->id)->orderBy('id')->get());
+
+        $this->assertTrue($timeline->isActiveEmployeeAt($this->endOf('2026-10-09')));
+        $this->assertTrue($timeline->isActiveEmployeeAt($this->endOf('2026-10-10')));
+    }
+
+    public function test_an_event_at_the_instant_has_already_happened(): void
+    {
+        $user = $this->userCreatedOn('2026-09-01');
+        $user->forceFill(['status' => UserStatus::Disabled])->save();
+        $instant = CarbonImmutable::parse('2026-10-10 10:00', 'Europe/Rome');
+        $timeline = EmploymentTimeline::for($user, collect([$this->event($user, UserHistoryEvent::Disabled, '2026-10-10 10:00')]));
+
+        $this->assertFalse($timeline->isActiveEmployeeAt($instant));
+        $this->assertTrue($timeline->isActiveEmployeeAt($instant->subSecond()));
+    }
+
+    public function test_an_event_after_midnight_in_rome_belongs_to_the_next_day(): void
+    {
+        $user = $this->userCreatedOn('2026-09-01');
+        $user->forceFill(['status' => UserStatus::Disabled])->save();
+        // Alle 00:30 di Roma del 10 è ancora il 9 in UTC
+        $timeline = EmploymentTimeline::for($user, collect([$this->event($user, UserHistoryEvent::Disabled, '2026-10-10 00:30')]));
+
+        $this->assertTrue($timeline->isActiveEmployeeAt($this->endOf('2026-10-09')));
+        $this->assertFalse($timeline->isActiveEmployeeAt($this->endOf('2026-10-10')));
+    }
+
     private function userCreatedOn(string $day): User
     {
         $user = User::factory()->create(['status' => UserStatus::Active]);

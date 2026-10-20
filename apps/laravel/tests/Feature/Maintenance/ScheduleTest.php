@@ -22,4 +22,16 @@ class ScheduleTest extends TestCase
             $this->assertTrue($event->onOneServer, "{$command} deve girare su un solo server");
         }
     }
+
+    public function test_balances_accrue_daily(): void
+    {
+        $event = collect(app(Schedule::class)->events())
+            ->first(fn (Event $event): bool => str_ends_with((string) $event->command, 'balances:accrue'));
+
+        $this->assertInstanceOf(Event::class, $event, 'Comando non programmato: balances:accrue');
+        $this->assertSame('30 0 * * *', $event->expression);
+        $this->assertSame('Europe/Rome', $event->timezone);
+        $this->assertTrue($event->withoutOverlapping);
+        $this->assertTrue($event->onOneServer);
+    }
 }
