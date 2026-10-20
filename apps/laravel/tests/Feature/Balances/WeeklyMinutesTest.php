@@ -74,4 +74,29 @@ class WeeklyMinutesTest extends TestCase
 
         $this->assertSame(240, app(WeeklyMinutes::class)->averageDayMinutes($user, $day));
     }
+
+    public function test_for_users_matches_the_single_methods(): void
+    {
+        $plain = User::factory()->create();
+        $partTime = User::factory()->create();
+        WorkSchedule::factory()->forUser($partTime)->validFrom('2026-10-10')->minutes([240, 240, 240, 0, 0, 0, 0])->create();
+        $back = User::factory()->create();
+        WorkSchedule::factory()->forUser($back)->validFrom('2026-10-01')->minutes([240, 240, 240, 240, 240, 0, 0])->create();
+        WorkSchedule::factory()->forUser($back)->validFrom('2026-11-01')->followsLocation()->create();
+        $users = collect([$plain, $partTime, $back]);
+        $service = app(WeeklyMinutes::class);
+
+        foreach (['2026-10-09', '2026-10-10', '2026-11-02'] as $date) {
+            $day = CarbonImmutable::parse($date);
+            $batch = $service->forUsers($users, $day);
+
+            foreach ($users as $user) {
+                $this->assertSame([
+                    'weekly' => $service->forUser($user, $day),
+                    'location_weekly' => $service->forLocation($user->location, $day),
+                    'average_day' => $service->averageDayMinutes($user, $day),
+                ], $batch[$user->id], "{$date} user {$user->id}");
+            }
+        }
+    }
 }

@@ -128,6 +128,14 @@ final class UserPolicy
         return $this->mayActOn($actor, $target) && ! $actor->is($target);
     }
 
+    /**
+     * Pagina Saldi: responsabile o admin (spec §6.1). Quali persone vede lo decide `User::visibleTo`.
+     */
+    public function viewBalanceOverview(User $actor): bool
+    {
+        return $this->managesUsers($actor);
+    }
+
     public function grantAdmin(User $actor, User $target): bool
     {
         return $this->manageAdministrators($actor);

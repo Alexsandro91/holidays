@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AbsenceTypeController;
 use App\Http\Controllers\Admin\AccrualSettingController;
 use App\Http\Controllers\Admin\AdministratorController;
+use App\Http\Controllers\Admin\BalanceOverviewController;
 use App\Http\Controllers\Admin\ClosureController;
 use App\Http\Controllers\Admin\LocationAccrualController;
 use App\Http\Controllers\Admin\LocationCalendarController;
@@ -96,6 +97,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::put('/users/{user}/accrual', [UserAccrualController::class, 'update'])->can('manageAccrual', 'user')->name('users.accrual.update');
 
     // Saldi di una persona: li vede chi può agire su di lei, li corregge anche, ma mai i propri (UserPolicy)
+    Route::get('/balances', BalanceOverviewController::class)->can('viewBalanceOverview', User::class)->name('balances.index');
     Route::get('/users/{user}/balances', [UserBalanceController::class, 'summary'])->can('viewBalances', 'user')->name('users.balances.show');
     Route::get('/users/{user}/balances/at', [UserBalanceController::class, 'at'])->can('viewBalances', 'user')->name('users.balances.at');
     Route::get('/users/{user}/balance-movements', [UserBalanceController::class, 'movements'])->can('viewBalances', 'user')->name('users.balance-movements.index');
