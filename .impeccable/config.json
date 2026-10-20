@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".superpowers/brainstorm/35146-1792492102/content/calendario.html"
+        ],
+        "createdAt": "2026-10-20T10:29:00.172Z",
+        "reason": "Claude: wireframe usa e getta del brainstorming, celle del calendario volutamente compatte"
+      }
+    ]
+  }
+}
