@@ -10,7 +10,7 @@ use App\Models\LeaveRequest;
 use App\Models\LeaveRequestDay;
 use App\Models\User;
 use App\Support\LeaveComputation;
-use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -32,25 +32,25 @@ final class LeaveUsageWriter
             return;
         }
 
-        $months = $this->minutesByMonth($request, null);
+        $months = $this->minutesByMonth($request);
         $this->write($request, $type->balance, $months, -1, $actor);
 
-        Log::info('Leave usage charged', [
+        // Dopo il commit: una transizione o una disattivazione annullate non lasciano log fuorvianti
+        DB::afterCommit(fn () => Log::info('Leave usage charged', [
             'leave_request_id' => $request->id,
             'user_id' => $request->user_id,
             'balance' => $type->balance->value,
             'minutes' => -array_sum(array_column($months, 'minutes')),
             'months' => array_keys($months),
             'actor_id' => $actor?->id,
-        ]);
+        ]));
     }
 
     /**
-     * Restituisce il saldo: un movimento positivo per ogni mese con minuti, solo per i giorni da `$fromDay` se dato.
-     * Il saldo è quello dei movimenti già scritti per la richiesta, non quello attuale del tipo (che l'admin può aver
+     * Restituisce il saldo: un movimento positivo per ogni mese con minuti, per tutti i giorni della richiesta. Il saldo è quello dei movimenti già scritti per la richiesta, non quello attuale del tipo (che l'admin può aver
      * cambiato): senza movimenti non c'è niente da restituire.
      */
-    public function refund(LeaveRequest $request, ?User $actor, ?CarbonImmutable $fromDay = null): void
+    public function refund(LeaveRequest $request, ?User $actor): void
     {
         /** @var BalanceType|null $balance */
         $balance = $request->movements()->where('kind', BalanceMovementKind::Usage)->value('balance');
@@ -59,29 +59,27 @@ final class LeaveUsageWriter
             return;
         }
 
-        $months = $this->minutesByMonth($request, $fromDay);
+        $months = $this->minutesByMonth($request);
         $this->write($request, $balance, $months, 1, $actor);
 
-        Log::info('Leave usage refunded', [
+        DB::afterCommit(fn () => Log::info('Leave usage refunded', [
             'leave_request_id' => $request->id,
             'user_id' => $request->user_id,
             'balance' => $balance->value,
             'minutes' => array_sum(array_column($months, 'minutes')),
             'months' => array_keys($months),
-            'from_day' => $fromDay?->toDateString(),
             'actor_id' => $actor?->id,
-        ]);
+        ]));
     }
 
     /**
-     * Minuti per mese dai giorni della richiesta, eventualmente solo da `$fromDay`.
+     * Minuti per mese dai giorni della richiesta.
      *
      * @return array<string, array{first_day: string, minutes: int}>
      */
-    private function minutesByMonth(LeaveRequest $request, ?CarbonImmutable $fromDay): array
+    private function minutesByMonth(LeaveRequest $request): array
     {
         $days = $request->days()
-            ->when($fromDay !== null, fn ($query) => $query->where('date', '>=', $fromDay?->toDateString()))
             ->orderBy('date')
             ->get()
             ->map(fn (LeaveRequestDay $day): array => ['date' => $day->date->toDateString(), 'minutes' => $day->minutes])

@@ -233,21 +233,25 @@ final class LeaveRequestService
     }
 
     /**
-     * Disattivazione dell'account (spec §4): le richieste attive che iniziano da domani (nel fuso della loro sede)
-     * passano a `withdrawn` se in attesa, a `cancelled` con il saldo restituito per i giorni da domani se approvate o
-     * con annullamento chiesto; `cancelled_by` è chi disattiva. Quelle già iniziate restano come sono. Nessuna email.
-     * Gira dentro la transazione della disattivazione, che ha già bloccato la riga della persona.
+     * Disattivazione dell'account (spec §4, ruling R4): nulla di chi se ne va resta in Da approvare. Tutte le richieste
+     * in attesa passano a `withdrawn`, qualunque sia la data (il ritiro non tocca il saldo ed è ammesso sempre). Le
+     * approvate e con annullamento chiesto non ancora iniziate ("prima che inizi", fuso della sede) passano a
+     * `cancelled` con il saldo restituito per intero; `cancelled_by` è chi disattiva. Quelle già iniziate restano come
+     * sono. Nessuna email. Gira dentro la transazione della disattivazione, che ha già bloccato la riga della persona.
      */
     public function cancelFutureFor(User $user, User $actor): void
     {
         $changes = DB::transaction(function () use ($user, $actor): array {
             User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-            // Da ieri in UTC: copre ogni fuso; il filtro esatto per sede si fa sotto
             $candidates = LeaveRequest::query()
                 ->where('user_id', $user->id)
-                ->active()
-                ->where('starts_on', '>=', CarbonImmutable::now()->subDay()->toDateString())
+                ->where(fn ($query) => $query
+                    ->where('status', LeaveRequestStatus::Pending->value)
+                    // Da ieri in UTC: copre ogni fuso; il "prima che inizi" esatto per sede si controlla sotto
+                    ->orWhere(fn ($charged) => $charged
+                        ->whereIn('status', [LeaveRequestStatus::Approved->value, LeaveRequestStatus::CancellationRequested->value])
+                        ->where('starts_on', '>=', CarbonImmutable::now()->subDay()->toDateString())))
                 ->with('location:id,timezone')
                 ->orderBy('id')
                 ->lockForUpdate()
@@ -257,20 +261,18 @@ final class LeaveRequestService
             $cancelled = [];
 
             foreach ($candidates as $request) {
-                $today = $this->now($request)->toDateString();
-
-                if ($request->starts_on->toDateString() <= $today) {
-                    continue;
-                }
-
                 if ($request->status === LeaveRequestStatus::Pending) {
                     $withdrawn[] = $request->id;
 
                     continue;
                 }
 
+                if ($request->hasStarted($this->now($request))) {
+                    continue;
+                }
+
                 $cancelled[] = $request->id;
-                $this->usage->refund($request, $actor, $this->now($request)->startOfDay()->addDay());
+                $this->usage->refund($request, $actor);
             }
 
             if ($withdrawn !== []) {

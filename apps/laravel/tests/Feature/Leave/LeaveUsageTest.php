@@ -15,7 +15,9 @@ use App\Services\LeaveRequestService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
@@ -175,6 +177,42 @@ class LeaveUsageTest extends TestCase
         app(LeaveRequestService::class)->reject($stalePending, $this->manager, null);
     }
 
+    public function test_policy_is_rechecked_under_lock(): void
+    {
+        $service = app(LeaveRequestService::class);
+
+        // Il proprietario diventa admin dopo la lettura: il responsabile non può più decidere
+        $promoted = LeaveRequest::factory()->for($this->owner)->between('2026-10-26', '2026-10-26')->create();
+        $stale = LeaveRequest::query()->with('user')->findOrFail($promoted->id);
+        User::query()->whereKey($this->owner->id)->update(['role' => 'admin']);
+
+        try {
+            $service->approve($stale, $this->manager);
+            $this->fail('Expected ConflictHttpException');
+        } catch (ConflictHttpException $exception) {
+            $this->assertSame(__('leave.state_changed'), $exception->getMessage());
+        }
+
+        // Un'altra persona cambia sede dopo la lettura
+        $mover = User::factory()->at($this->location)->create();
+        $moved = LeaveRequest::factory()->for($mover)->between('2026-10-27', '2026-10-27')->create();
+        $staleMoved = LeaveRequest::query()->with('user')->findOrFail($moved->id);
+        User::query()->whereKey($mover->id)->update(['location_id' => Location::factory()->create()->id]);
+
+        try {
+            $service->reject($staleMoved, $this->manager, null);
+            $this->fail('Expected ConflictHttpException');
+        } catch (ConflictHttpException $exception) {
+            $this->assertSame(__('leave.state_changed'), $exception->getMessage());
+        }
+
+        $this->assertSame(LeaveRequestStatus::Pending, $promoted->fresh()?->status);
+        $this->assertNull($promoted->fresh()?->decided_by);
+        $this->assertSame(LeaveRequestStatus::Pending, $moved->fresh()?->status);
+        $this->assertNull($moved->fresh()?->decided_by);
+        $this->assertSame(0, BalanceMovement::query()->count());
+    }
+
     public function test_transitions_lock_user_then_request(): void
     {
         $request = LeaveRequest::factory()->for($this->owner)->between('2026-10-26', '2026-10-26')->create();
@@ -200,25 +238,34 @@ class LeaveUsageTest extends TestCase
         Mail::fake();
         $service = app(LeaveRequestService::class);
         $pending = LeaveRequest::factory()->for($this->owner)->between('2026-10-26', '2026-10-27')->create();
+        // In attesa e già iniziata ieri: si ritira comunque (ruling R4)
+        $startedPending = LeaveRequest::factory()->for($this->owner)->between('2026-10-20', '2026-10-21')->create();
         $approved = LeaveRequest::factory()->for($this->owner)->between('2026-11-02', '2026-11-03')->create();
         $service->approve($approved->load('user'), $this->manager);
         $requested = LeaveRequest::factory()->for($this->owner)->between('2026-11-09', '2026-11-09')->create();
         $service->approve($requested->load('user'), $this->manager);
         $service->requestCancellation($requested->fresh(['user']) ?? $requested, $this->owner);
-        // Iniziate ieri: restano come sono, anche in attesa
+        // A ore oggi dalle 15: alle 10 non è ancora iniziata
+        $rol = AbsenceType::factory()->withBalance(BalanceType::Rol)->create();
+        $hours = LeaveRequest::factory()->for($this->owner)->ofType($rol)->hours('2026-10-21', '15:00', '17:00')->create();
+        $service->approve($hours->load('user'), $this->manager);
+        // Approvata e iniziata ieri: resta com'è
         $started = LeaveRequest::factory()->for($this->owner)->between('2026-10-20', '2026-10-23')->create();
         $service->approve($started->load('user'), $this->manager);
-        $startedPending = LeaveRequest::factory()->for($this->owner)->between('2026-10-21', '2026-10-21')->create(['note' => 'oggi']);
         $other = User::factory()->at($this->location)->create();
         $otherPending = LeaveRequest::factory()->for($other)->between('2026-10-26', '2026-10-26')->create();
         $admin = User::factory()->admin()->create();
+        $this->travelTo(CarbonImmutable::parse('2026-10-21 10:00', 'Europe/Rome'));
 
         $this->actingAs($admin)->postJson("/api/users/{$this->owner->id}/disable")->assertOk();
 
-        $this->assertSame(LeaveRequestStatus::Withdrawn, $pending->fresh()?->status);
-        $this->assertNull($pending->fresh()?->cancelled_by);
+        foreach ([$pending, $startedPending] as $request) {
+            $fresh = $request->fresh();
+            $this->assertSame(LeaveRequestStatus::Withdrawn, $fresh?->status);
+            $this->assertNull($fresh?->cancelled_by);
+        }
 
-        foreach ([$approved, $requested] as $request) {
+        foreach ([$approved, $requested, $hours] as $request) {
             $fresh = $request->fresh();
             $this->assertSame(LeaveRequestStatus::Cancelled, $fresh?->status);
             $this->assertSame($admin->id, $fresh?->cancelled_by);
@@ -226,19 +273,46 @@ class LeaveUsageTest extends TestCase
             $this->assertSame(0, $this->usageSum($request));
         }
 
-        $this->assertSame([960, 480], [
+        // Restituzione completa, a nome di chi disattiva
+        $this->assertSame([960, 480, 120], [
             (int) BalanceMovement::query()->where('leave_request_id', $approved->id)->where('minutes', '>', 0)->sum('minutes'),
             (int) BalanceMovement::query()->where('leave_request_id', $requested->id)->where('minutes', '>', 0)->sum('minutes'),
+            (int) BalanceMovement::query()->where('leave_request_id', $hours->id)->where('minutes', '>', 0)->sum('minutes'),
         ]);
+        $this->assertSame('rol', BalanceMovement::query()->where('leave_request_id', $hours->id)->where('minutes', '>', 0)->value('balance')?->value);
         $this->assertSame($admin->id, BalanceMovement::query()->where('leave_request_id', $approved->id)->where('minutes', '>', 0)->value('actor_id'));
 
         $this->assertSame(LeaveRequestStatus::Approved, $started->fresh()?->status);
         $this->assertSame(-1920, $this->usageSum($started));
-        $this->assertSame(LeaveRequestStatus::Pending, $startedPending->fresh()?->status);
+        $this->assertSame(1, BalanceMovement::query()->where('leave_request_id', $started->id)->count());
         $this->assertSame(LeaveRequestStatus::Pending, $otherPending->fresh()?->status);
 
         Mail::assertNothingQueued();
         Mail::assertNothingSent();
+    }
+
+    public function test_usage_logs_wait_for_the_commit(): void
+    {
+        $request = LeaveRequest::factory()->for($this->owner)->between('2026-10-26', '2026-10-26')->create();
+        Log::spy();
+
+        try {
+            DB::transaction(function () use ($request): void {
+                app(LeaveRequestService::class)->approve($request->load('user'), $this->manager);
+
+                throw new RuntimeException('rollback');
+            });
+        } catch (RuntimeException) {
+            // Atteso: la transazione esterna si annulla
+        }
+
+        $this->assertSame(LeaveRequestStatus::Pending, $request->fresh()?->status);
+        Log::shouldNotHaveReceived('info', fn (string $message): bool => $message === 'Leave usage charged');
+
+        app(LeaveRequestService::class)->approve($request->load('user'), $this->manager);
+        Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'Leave usage charged'
+            && $context['leave_request_id'] === $request->id
+            && $context['minutes'] === -480)->once();
     }
 
     public function test_movement_resource_exposes_leave_request(): void
