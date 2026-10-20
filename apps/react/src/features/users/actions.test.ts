@@ -56,6 +56,15 @@ describe('availableActions', () => {
     expect(availableActions(managedUser({ status: 'disabled', can }))).toEqual(['absenceTypes'])
     expect(availableActions(managedUser({ status: 'active', can: NO_ACTIONS }))).toEqual([])
   })
+
+  it('offers the balances to active and disabled employees, not to invited ones nor to contractors', () => {
+    const can = { ...NO_ACTIONS, view_balances: true }
+    expect(availableActions(managedUser({ status: 'active', can }))).toEqual(['balances'])
+    expect(availableActions(managedUser({ status: 'disabled', can }))).toEqual(['balances'])
+    expect(availableActions(managedUser({ status: 'invited', can }))).toEqual([])
+    expect(availableActions(managedUser({ employment_type: 'contractor', can }))).toEqual([])
+    expect(availableActions(managedUser({ status: 'active', can: NO_ACTIONS }))).toEqual([])
+  })
 })
 
 describe('needsPassword', () => {

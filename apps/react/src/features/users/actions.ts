@@ -1,12 +1,12 @@
 import type { ManagedUser } from '@/features/users/api'
 
-export type UserAction = 'edit' | 'schedule' | 'history' | 'absenceTypes' | 'resend' | 'cancel' | 'changeRole' | 'passwordReset' | 'disable' | 'enable'
+export type UserAction = 'edit' | 'schedule' | 'history' | 'balances' | 'absenceTypes' | 'resend' | 'cancel' | 'changeRole' | 'passwordReset' | 'disable' | 'enable'
 
 /**
  * Azioni del menu di riga: quelle che il server permette a chi guarda (`can`) e che lo stato consente.
  * Le regole dei ruoli (sé stessi, admin, responsabili) le decide solo il server.
  */
-export const availableActions = ({ status, can }: ManagedUser): UserAction[] => {
+export const availableActions = ({ status, can, employment_type }: ManagedUser): UserAction[] => {
   const byStatus: Record<ManagedUser['status'], [UserAction, boolean][]> = {
     invited: [
       ['resend', can.resend_invitation],
@@ -20,8 +20,16 @@ export const availableActions = ({ status, can }: ManagedUser): UserAction[] => 
     ],
     disabled: [['enable', can.enable]],
   }
-  // Modifica, orario personale (solo admin), storico (admin e responsabili) e tipi di assenza (solo admin) valgono in ogni stato
-  const all: [UserAction, boolean][] = [['edit', can.update], ['schedule', can.manage_schedule], ['history', can.view_history], ['absenceTypes', can.manage_absence_types], ...byStatus[status]]
+  // Modifica, orario personale (solo admin), storico (admin e responsabili) e tipi di assenza (solo admin) valgono in ogni stato;
+  // i saldi solo per un dipendente non invitato (spec SP2 fase 2 §7.3): gli altri non maturano
+  const all: [UserAction, boolean][] = [
+    ['edit', can.update],
+    ['schedule', can.manage_schedule],
+    ['history', can.view_history],
+    ['balances', can.view_balances && employment_type === 'employee' && status !== 'invited'],
+    ['absenceTypes', can.manage_absence_types],
+    ...byStatus[status],
+  ]
   return all.filter(([, allowed]) => allowed).map(([action]) => action)
 }
 

@@ -213,6 +213,7 @@
       "enable": "Enable",
       "schedule": "Working hours",
       "history": "History",
+      "balances": "Balances",
       "absenceTypes": "Absence types"
     },
     "inviteDialog": {
@@ -736,6 +737,95 @@
     "validation": {
       "number": "Enter a number of hours, for example 160 or 13.5.",
       "max": "The maximum is {{max}} hours."
+    }
+  },
+  "balances": {
+    "hours": "{{hours}} h",
+    "dialog": {
+      "title": "Balances of {{name}}",
+      "description": "Vacation, ROL and ex holidays: balances, movements and annual values.",
+      "loadError": "Could not load the balances.",
+      "notVisible": "This person is no longer among those you can see.",
+      "notApplicable": "This person does not accrue balances.",
+      "weekly": "{{hours}} h per week",
+      "lastAligned": "Last alignment: {{date}}",
+      "align": "Align to payslip",
+      "adjust": "Adjust",
+      "year": "Year",
+      "balanceFilter": "Balance",
+      "allBalances": "All balances",
+      "movements": "Movements",
+      "noMovements": "No movements.",
+      "movementsLoadError": "Could not load the movements.",
+      "loadMoreError": "More movements could not be loaded.",
+      "loadMore": "Load more"
+    },
+    "cards": {
+      "days": "≈ {{days}} days",
+      "opening": "Carried over from 1 January",
+      "accrued": "Accrued",
+      "used": "Used",
+      "corrections": "Corrections",
+      "monthly": "Accrues {{hours}} h per month"
+    },
+    "movement": {
+      "accrual": "Accrual {{period}}",
+      "alignment": "Aligned to the payslip of {{date}}: from {{from}} to {{to}} h",
+      "alignmentNoTarget": "Aligned to the payslip of {{date}}",
+      "adjustment": "Adjustment: {{note}}",
+      "adjustmentNoNote": "Adjustment",
+      "usage": "Usage",
+      "usageNote": "Usage: {{note}}",
+      "by": "by {{name}}"
+    },
+    "accrual": {
+      "title": "Annual values",
+      "description": "Hours per year for a full-time schedule; the monthly amount follows the person’s schedule.",
+      "company": "Same as the company: {{hours}} h",
+      "location": "Same as the location: {{hours}} h",
+      "user": "Personal value: {{hours}} h",
+      "perYear": "per year",
+      "monthly": "{{hours}} h per month",
+      "loadError": "Could not load the annual values."
+    },
+    "align": {
+      "title": "Align {{name}} to the payslip",
+      "description": "Enter the payslip values: the app records the difference. Leave a balance empty to keep it as is.",
+      "date": "Payslip date",
+      "payslip": "{{balance}}, on the payslip",
+      "inApp": "In the app on {{date}}: {{hours}} h",
+      "inAppLoading": "In the app: calculating…",
+      "preview": "a movement of {{hours}} h will be recorded",
+      "previewNone": "already aligned, no movement",
+      "note": "Note (optional)",
+      "submit": "Align",
+      "done_one": "Balance aligned on {{date}}",
+      "done_other": "Balances aligned on {{date}}",
+      "doneDescription": "{{balances}}",
+      "validation": {
+        "date": "Enter the payslip date.",
+        "number": "Enter a number of hours, for example 74.2.",
+        "empty": "Fill in at least one balance."
+      }
+    },
+    "adjust": {
+      "title": "Adjust the balances of {{name}}",
+      "description": "Add or remove hours from a balance, stating the reason.",
+      "balance": "Balance",
+      "direction": "Operation",
+      "add": "Add",
+      "remove": "Remove",
+      "hours": "Hours",
+      "hoursHint": "For example 8 or 7.5.",
+      "note": "Reason",
+      "preview": "{{balance}} after the adjustment: {{hours}} h",
+      "submit": "Adjust",
+      "done": "{{balance}} updated: {{hours}} h",
+      "validation": {
+        "hours": "Enter a number of hours greater than zero, for example 8 or 7.5.",
+        "max": "The maximum is {{max}} hours.",
+        "note": "State the reason for the adjustment."
+      }
     }
   }
 }

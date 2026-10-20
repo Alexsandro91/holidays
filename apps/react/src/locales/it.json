@@ -213,6 +213,7 @@
       "enable": "Riattiva",
       "schedule": "Orario di lavoro",
       "history": "Storico",
+      "balances": "Saldi",
       "absenceTypes": "Tipi di assenza"
     },
     "inviteDialog": {
@@ -736,6 +737,95 @@
     "validation": {
       "number": "Inserisci un numero di ore, per esempio 160 o 13,5.",
       "max": "Il massimo è {{max}} ore."
+    }
+  },
+  "balances": {
+    "hours": "{{hours}} h",
+    "dialog": {
+      "title": "Saldi di {{name}}",
+      "description": "Ferie, ROL ed ex festività: saldi, movimenti e valori annui.",
+      "loadError": "Non è stato possibile caricare i saldi.",
+      "notVisible": "Questa persona non è più tra quelle che puoi vedere.",
+      "notApplicable": "Questa persona non matura saldi.",
+      "weekly": "{{hours}} h a settimana",
+      "lastAligned": "Ultimo allineamento: {{date}}",
+      "align": "Allinea alla busta paga",
+      "adjust": "Rettifica",
+      "year": "Anno",
+      "balanceFilter": "Saldo",
+      "allBalances": "Tutti i saldi",
+      "movements": "Movimenti",
+      "noMovements": "Nessun movimento.",
+      "movementsLoadError": "Non è stato possibile caricare i movimenti.",
+      "loadMoreError": "Non è stato possibile caricare altri movimenti.",
+      "loadMore": "Carica altre"
+    },
+    "cards": {
+      "days": "≈ {{days}} gg",
+      "opening": "Residuo al 1° gennaio",
+      "accrued": "Maturato",
+      "used": "Usato",
+      "corrections": "Correzioni",
+      "monthly": "Matura {{hours}} h al mese"
+    },
+    "movement": {
+      "accrual": "Maturazione {{period}}",
+      "alignment": "Allineata alla busta paga del {{date}}: da {{from}} a {{to}} h",
+      "alignmentNoTarget": "Allineata alla busta paga del {{date}}",
+      "adjustment": "Rettifica: {{note}}",
+      "adjustmentNoNote": "Rettifica",
+      "usage": "Utilizzo",
+      "usageNote": "Utilizzo: {{note}}",
+      "by": "da {{name}}"
+    },
+    "accrual": {
+      "title": "Valori annui",
+      "description": "Ore all’anno per un tempo pieno; la quota mensile segue l’orario della persona.",
+      "company": "Come l’azienda: {{hours}} h",
+      "location": "Come la sede: {{hours}} h",
+      "user": "Valore personale: {{hours}} h",
+      "perYear": "all’anno",
+      "monthly": "{{hours}} h al mese",
+      "loadError": "Non è stato possibile caricare i valori annui."
+    },
+    "align": {
+      "title": "Allinea alla busta paga di {{name}}",
+      "description": "Indica i valori della busta paga: l’app registra la differenza. Lascia vuoto un saldo per non toccarlo.",
+      "date": "Data della busta paga",
+      "payslip": "{{balance}}, in busta paga",
+      "inApp": "Nell’app al {{date}}: {{hours}} h",
+      "inAppLoading": "Nell’app: calcolo in corso…",
+      "preview": "verrà registrato un movimento di {{hours}} h",
+      "previewNone": "già allineato, nessun movimento",
+      "note": "Nota (facoltativa)",
+      "submit": "Allinea",
+      "done_one": "Saldo allineato al {{date}}",
+      "done_other": "Saldi allineati al {{date}}",
+      "doneDescription": "{{balances}}",
+      "validation": {
+        "date": "Indica la data della busta paga.",
+        "number": "Inserisci un numero di ore, per esempio 74,2.",
+        "empty": "Compila almeno un saldo."
+      }
+    },
+    "adjust": {
+      "title": "Rettifica i saldi di {{name}}",
+      "description": "Aggiungi o togli ore a un saldo, indicando il motivo.",
+      "balance": "Saldo",
+      "direction": "Operazione",
+      "add": "Aggiungi",
+      "remove": "Togli",
+      "hours": "Ore",
+      "hoursHint": "Per esempio 8 o 7,5.",
+      "note": "Motivo",
+      "preview": "{{balance}} dopo la rettifica: {{hours}} h",
+      "submit": "Rettifica",
+      "done": "{{balance}} aggiornato: {{hours}} h",
+      "validation": {
+        "hours": "Inserisci un numero di ore maggiore di zero, per esempio 8 o 7,5.",
+        "max": "Il massimo è {{max}} ore.",
+        "note": "Indica il motivo della rettifica."
+      }
     }
   }
 }
