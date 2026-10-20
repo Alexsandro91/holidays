@@ -97,6 +97,14 @@ final class UserPolicy
     }
 
     /**
+     * Valori annui di maturazione di una persona: solo l'admin (spec §4.1).
+     */
+    public function manageAccrual(User $actor, User $target): bool
+    {
+        return $actor->isAdmin();
+    }
+
+    /**
      * Storico di una persona: chi può agire su di lei (spec §8.3).
      */
     public function viewHistory(User $actor, User $target): bool

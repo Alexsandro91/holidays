@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\Admin\AbsenceTypeController;
+use App\Http\Controllers\Admin\AccrualSettingController;
 use App\Http\Controllers\Admin\AdministratorController;
 use App\Http\Controllers\Admin\ClosureController;
+use App\Http\Controllers\Admin\LocationAccrualController;
 use App\Http\Controllers\Admin\LocationCalendarController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LocationScheduleController;
 use App\Http\Controllers\Admin\UserAbsenceTypeController;
+use App\Http\Controllers\Admin\UserAccrualController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserHistoryController;
 use App\Http\Controllers\Admin\UserInvitationController;
@@ -19,6 +22,7 @@ use App\Http\Controllers\Auth\ProfileAbsenceTypeController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
 use App\Models\AbsenceType;
+use App\Models\AccrualSetting;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -78,6 +82,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Abilitazioni ai tipi di assenza: solo admin
     Route::get('/users/{user}/absence-types', [UserAbsenceTypeController::class, 'index'])->can('manageAbsenceTypes', 'user')->name('users.absence-types.index');
     Route::put('/users/{user}/absence-type-enablements', [UserAbsenceTypeController::class, 'sync'])->can('manageAbsenceTypes', 'user')->name('users.absence-types.sync');
+
+    // Valori annui di maturazione: solo admin (azienda: AccrualSettingPolicy, sede: LocationPolicy, persona: UserPolicy)
+    Route::get('/settings/accrual', [AccrualSettingController::class, 'show'])->can('manage', AccrualSetting::class)->name('settings.accrual.show');
+    Route::patch('/settings/accrual', [AccrualSettingController::class, 'update'])->can('manage', AccrualSetting::class)->name('settings.accrual.update');
+    Route::get('/locations/{location}/accrual', [LocationAccrualController::class, 'show'])->can('update', 'location')->name('locations.accrual.show');
+    Route::put('/locations/{location}/accrual', [LocationAccrualController::class, 'update'])->can('update', 'location')->name('locations.accrual.update');
+    Route::get('/users/{user}/accrual', [UserAccrualController::class, 'show'])->can('manageAccrual', 'user')->name('users.accrual.show');
+    Route::put('/users/{user}/accrual', [UserAccrualController::class, 'update'])->can('manageAccrual', 'user')->name('users.accrual.update');
 
     // Orario personale: solo admin (UserPolicy::manageSchedule)
     Route::get('/users/{user}/schedules', [UserScheduleController::class, 'index'])->can('manageSchedule', 'user')->name('users.schedules.index');
