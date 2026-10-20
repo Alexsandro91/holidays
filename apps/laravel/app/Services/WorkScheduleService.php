@@ -46,6 +46,21 @@ final class WorkScheduleService
     }
 
     /**
+     * Versione che vale per la persona quel giorno: la sua personale, se c'è e non riporta alla sede, altrimenti quella
+     * della sede (stessa scelta di `WorkCalendar`).
+     */
+    public function currentForUser(User $user, Location $location, CarbonImmutable $day): ?WorkSchedule
+    {
+        $own = $user->schedules()->where('valid_from', '<=', $day->toDateString())->orderByDesc('valid_from')->first();
+
+        if ($own !== null && ! $own->follows_location) {
+            return $own;
+        }
+
+        return $this->currentForLocation($location, $day);
+    }
+
+    /**
      * @param  list<int>  $minutes  sette valori, lunedì primo
      */
     public function addForLocation(Location $location, CarbonImmutable $validFrom, array $minutes, User $actor): WorkSchedule
