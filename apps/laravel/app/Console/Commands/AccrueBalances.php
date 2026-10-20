@@ -10,8 +10,11 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Maturazione mensile dei saldi (spec §4.3): gira ogni giorno e matura il mese corrente per chi ne ha diritto e non
- * l'ha ancora. Con `--month` recupera a mano un mese passato (o il corrente), mai uno futuro.
+ * Maturazione mensile dei saldi (spec §4.3): gira ogni giorno e matura il mese precedente e il corrente per chi ne ha
+ * diritto e non li ha ancora. Il mese precedente si riprende con le regole di `--month` (punti di controllo il 1° e il
+ * 16, fermo davanti a un allineamento datato dal suo 1° in poi): così uno scheduler fermo a cavallo di due mesi non fa
+ * perdere il mese a chi è entrato tra l'ultimo giro e il 16. Con `--month` recupera a mano un solo mese passato (o il
+ * corrente), mai uno futuro.
  */
 class AccrueBalances extends Command
 {
@@ -25,7 +28,7 @@ class AccrueBalances extends Command
         $now = CarbonImmutable::now();
         $currentMonth = $now->setTimezone(Location::DEFAULT_TIMEZONE)->startOfMonth();
         $option = $this->option('month');
-        $month = $currentMonth;
+        $months = [$currentMonth->subMonthNoOverflow(), $currentMonth];
 
         if ($option !== null) {
             $month = $this->parseMonth((string) $option);
@@ -41,8 +44,24 @@ class AccrueBalances extends Command
 
                 return self::FAILURE;
             }
+
+            $months = [$month];
         }
 
+        $failed = 0;
+
+        foreach ($months as $month) {
+            $failed += $this->accrueMonth($accruals, $month, $now);
+        }
+
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Matura un mese, ne logga e stampa il conteggio; restituisce le persone fallite.
+     */
+    private function accrueMonth(BalanceAccrualService $accruals, CarbonImmutable $month, CarbonImmutable $now): int
+    {
         $period = $month->format('Y-m');
         $run = $accruals->accrue($month, $now);
 
@@ -52,11 +71,9 @@ class AccrueBalances extends Command
         if ($run->failed > 0) {
             // Ogni errore è già segnalato e loggato per persona: qui solo il totale, e il comando risulta fallito
             $this->error(Translate::text('balances.command.failed', ['count' => $run->failed, 'period' => $period]));
-
-            return self::FAILURE;
         }
 
-        return self::SUCCESS;
+        return $run->failed;
     }
 
     /**

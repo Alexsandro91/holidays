@@ -140,7 +140,8 @@ class BalanceAccrualTest extends TestCase
     #[DataProvider('excludedPeople')]
     public function test_excluded_people(string $kind): void
     {
-        $this->travelTo(CarbonImmutable::parse('2026-09-01 10:00', 'Europe/Rome'));
+        // Dopo il 16 settembre: il giro di ottobre riprende anche settembre, che qui non spetta a nessuno
+        $this->travelTo(CarbonImmutable::parse('2026-09-17 10:00', 'Europe/Rome'));
         $factory = User::factory();
         $user = match ($kind) {
             'contractor' => $factory->contractor()->create(),
@@ -202,7 +203,8 @@ class BalanceAccrualTest extends TestCase
 
     public function test_leaver_keeps_the_month(): void
     {
-        $user = $this->employeeCreatedAt('2026-09-01 10:00');
+        // Dopo il 16 settembre: settembre non spetta, si contano solo i movimenti di ottobre
+        $user = $this->employeeCreatedAt('2026-09-20 10:00');
         $this->runAt('2026-10-01 00:30')->assertSuccessful();
 
         $this->travelTo(CarbonImmutable::parse('2026-10-05 10:00', 'Europe/Rome'));
@@ -226,18 +228,58 @@ class BalanceAccrualTest extends TestCase
         $this->runAt('2026-10-20 00:30')->assertSuccessful();
 
         $this->assertSame(800, $this->accruedMinutes($sinceSeptember, '2026-10')['vacation']);
+        // Il primo giro riprende anche il mese precedente, per chi allora c'era già
+        $this->assertSame(800, $this->accruedMinutes($sinceSeptember, '2026-09')['vacation']);
         $this->assertSame(400, $this->accruedMinutes($byThe16th, '2026-10')['vacation']);
         $this->assertSame([], $this->accruedMinutes($after16th, '2026-10'));
-        $this->assertSame(6, BalanceMovement::query()->count());
+        $this->assertSame(9, BalanceMovement::query()->count());
 
         $this->runAt('2026-10-21 00:30')->assertSuccessful();
+
+        $this->assertSame(9, BalanceMovement::query()->count());
+    }
+
+    public function test_daily_run_recovers_the_previous_month(): void
+    {
+        // Il job gira fino al 9 ottobre, poi lo scheduler resta fermo fino al 2 novembre
+        $joiner = $this->joiner('2026-10-08 10:00', '2026-10-12 10:00');
+        $this->runAt('2026-10-09 00:30')->assertSuccessful();
+        $this->assertSame(0, BalanceMovement::query()->count());
+
+        $this->runAt('2026-11-02 00:30')
+            ->expectsOutputToContain(Translate::text('balances.command.accrued', ['count' => 3, 'period' => '2026-10']))
+            ->expectsOutputToContain(Translate::text('balances.command.accrued', ['count' => 3, 'period' => '2026-11']))
+            ->assertSuccessful();
+
+        // Attiva il 12: ottobre le spetta per la regola del 16, anche se nessun giro di ottobre l'ha vista attiva
+        $this->assertSame(['ex_holidays' => 160, 'rol' => 360, 'vacation' => 800], $this->accruedMinutes($joiner, '2026-10'));
+        $this->assertSame('2026-10-01', $this->accrual($joiner, BalanceType::Vacation, '2026-10')?->effective_on->toDateString());
+        $this->assertSame(['ex_holidays' => 160, 'rol' => 360, 'vacation' => 800], $this->accruedMinutes($joiner, '2026-11'));
+
+        $this->runAt('2026-11-03 00:30')
+            ->expectsOutputToContain(Translate::text('balances.command.accrued', ['count' => 0, 'period' => '2026-10']))
+            ->expectsOutputToContain(Translate::text('balances.command.accrued', ['count' => 0, 'period' => '2026-11']))
+            ->assertSuccessful();
 
         $this->assertSame(6, BalanceMovement::query()->count());
     }
 
+    public function test_alignment_in_the_previous_month_blocks_its_recovery(): void
+    {
+        $joiner = $this->joiner('2026-10-08 10:00', '2026-10-12 10:00');
+        // Busta paga di ottobre già registrata per le ferie: ottobre non matura più le ferie, novembre sì
+        $this->alignVacation($joiner, '2026-10-31');
+
+        $this->runAt('2026-11-02 00:30')->assertSuccessful();
+
+        $this->assertSame(['ex_holidays' => 160, 'rol' => 360], $this->accruedMinutes($joiner, '2026-10'));
+        $this->assertSame(['ex_holidays' => 160, 'rol' => 360, 'vacation' => 800], $this->accruedMinutes($joiner, '2026-11'));
+    }
+
     public function test_idempotent_runs(): void
     {
-        $user = $this->employeeCreatedAt('2026-09-01 10:00');
+        // Dopo il 16 settembre: settembre non spetta, si contano solo i movimenti di ottobre
+        $user = $this->employeeCreatedAt('2026-09-20 10:00');
 
         $this->runAt('2026-10-01 00:30')->assertSuccessful();
         $this->runAt('2026-10-01 00:31')
@@ -251,7 +293,8 @@ class BalanceAccrualTest extends TestCase
 
     public function test_concurrent_insert_is_skipped_and_logged(): void
     {
-        $user = $this->employeeCreatedAt('2026-09-01 10:00');
+        // Dopo il 16 settembre: il primo insert del giro è quello di ottobre
+        $user = $this->employeeCreatedAt('2026-09-20 10:00');
         // Un'altra scrittura della stessa maturazione arriva appena prima dell'insert: l'indice unico lo ferma e il giro
         // salta la persona (nel test la riga concorrente sta nella stessa transazione e sparisce con il rollback)
         $raced = false;
@@ -270,7 +313,7 @@ class BalanceAccrualTest extends TestCase
         Log::shouldHaveReceived('info')->with('Balance accrual skipped', Mockery::on(
             fn (array $context): bool => $context['user_id'] === $user->id && $context['period'] === '2026-10',
         ))->once();
-        Log::shouldHaveReceived('info')->with('Balances accrued', Mockery::on(fn (array $context): bool => $context['count'] === 0))->once();
+        Log::shouldHaveReceived('info')->with('Balances accrued', Mockery::on(fn (array $context): bool => $context['period'] === '2026-10' && $context['count'] === 0))->once();
         $this->assertSame(0, BalanceMovement::query()->where('user_id', $user->id)->count());
 
         $this->runAt('2026-10-02 00:30')->assertSuccessful();
@@ -367,7 +410,8 @@ class BalanceAccrualTest extends TestCase
 
     public function test_location_timezone_defines_the_month(): void
     {
-        $user = $this->employeeCreatedAt('2026-09-01 10:00');
+        // Dopo il 16 settembre: settembre non spetta; con il mese letto in UTC ottobre non maturerebbe
+        $user = $this->employeeCreatedAt('2026-09-20 10:00');
 
         $this->travelTo(CarbonImmutable::parse('2026-09-30 22:30', 'UTC'));
         $this->artisan('balances:accrue')->assertSuccessful();
