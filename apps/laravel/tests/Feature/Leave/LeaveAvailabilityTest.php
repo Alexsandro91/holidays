@@ -101,6 +101,18 @@ class LeaveAvailabilityTest extends TestCase
         $this->assertSame([], $this->warnings($type, '2026-11-03', '2026-11-03'));
     }
 
+    public function test_limit_ignores_months_touched_only_by_rest_days(): void
+    {
+        $type = $this->limitedType(1, AbsenceLimitUnit::Days, AbsenceLimitPeriod::Month);
+        // Ottobre è già oltre il limite
+        LeaveRequest::factory()->for($this->user)->ofType($type)->approved()->between('2026-10-22', '2026-10-23')->create();
+
+        // Da sabato 31 ottobre a lunedì 2 novembre: ottobre solo con il sabato, a 0 minuti
+        $this->assertSame([], $this->warnings($type, '2026-10-31', '2026-11-02'));
+        // Con un giorno lavorativo di ottobre l'avviso torna
+        $this->assertSame('limit_exceeded', $this->warnings($type, '2026-10-30', '2026-11-02')[0]['code']);
+    }
+
     public function test_limit_ignores_withdrawn_and_other_users_requests(): void
     {
         $type = $this->limitedType(3, AbsenceLimitUnit::Days, AbsenceLimitPeriod::Month);

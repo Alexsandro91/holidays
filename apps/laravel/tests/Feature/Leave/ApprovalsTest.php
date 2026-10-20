@@ -129,6 +129,27 @@ class ApprovalsTest extends TestCase
             ->assertJsonPath('data.0.warnings', fn (array $warnings): bool => array_column($warnings, 'code') !== ['balance_insufficient']);
     }
 
+    public function test_limit_warning_ignores_months_touched_only_by_rest_days(): void
+    {
+        $employee = User::factory()->at($this->location)->create();
+        $limited = AbsenceType::factory()->create([
+            'limit_amount' => 1,
+            'limit_unit' => AbsenceLimitUnit::Days,
+            'limit_period' => AbsenceLimitPeriod::Month,
+            'day_count' => 'working',
+        ]);
+
+        // Ottobre è già oltre il limite; la richiesta in attesa tocca ottobre solo con sabato 31, a 0 minuti
+        LeaveRequest::factory()->for($employee)->ofType($limited)->approved()->between('2026-10-22', '2026-10-23')->create();
+        $restOnly = LeaveRequest::factory()->for($employee)->ofType($limited)->between('2026-10-31', '2026-11-02')->create();
+        $withWorkingDay = LeaveRequest::factory()->for($employee)->ofType($limited)->between('2026-10-30', '2026-10-30')->create();
+
+        $rows = collect($this->actingAs($this->manager)->getJson('/api/approvals')->assertOk()->json('data'))->keyBy('id');
+
+        $this->assertSame([], $rows[$restOnly->id]['warnings']);
+        $this->assertSame('limit_exceeded', $rows[$withWorkingDay->id]['warnings'][0]['code']);
+    }
+
     public function test_query_count_constant(): void
     {
         $limited = AbsenceType::factory()->create([

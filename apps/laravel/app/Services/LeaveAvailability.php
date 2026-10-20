@@ -299,9 +299,14 @@ final class LeaveAvailability
         $inHours = $type->limit_unit === AbsenceLimitUnit::Hours;
         $calendar = $type->day_count === AbsenceDayCount::Calendar;
 
-        // Per richiesta conta solo la richiesta stessa, altrimenti si sommano quelle già presenti nello stesso periodo
+        // Per richiesta conta solo la richiesta stessa, altrimenti si sommano quelle già presenti nello stesso periodo.
+        // Contano solo i periodi in cui la richiesta pesa davvero: un mese toccato solo da giorni di riposo non avvisa
         $totals = [];
         foreach ($this->contributions($days, $workingDays, $minutes, $inHours, $calendar) as $day => $value) {
+            if ($value <= 0) {
+                continue;
+            }
+
             $key = $this->bucket($type->limit_period, $day);
             $totals[$key] = ($totals[$key] ?? 0) + $value;
         }
