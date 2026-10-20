@@ -27,6 +27,7 @@ return [
         'reason' => 'Reason: :reason',
         'note' => 'Note from the requester: :note',
         'submitted' => [
+            'action' => 'Open the requests to approve',
             'subject' => [
                 'submitted' => 'Holidays: new leave request',
                 'cancellation_requested' => 'Holidays: cancellation requested',
@@ -39,6 +40,7 @@ return [
             ],
         ],
         'decided' => [
+            'action' => 'See your requests',
             'subject' => [
                 'approved' => 'Holidays: request approved',
                 'rejected' => 'Holidays: request rejected',

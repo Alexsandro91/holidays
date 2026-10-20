@@ -27,6 +27,7 @@ return [
         'reason' => 'Motivo: :reason',
         'note' => 'Nota della persona: :note',
         'submitted' => [
+            'action' => 'Apri le richieste da approvare',
             'subject' => [
                 'submitted' => 'Holidays: nuova richiesta di assenza',
                 'cancellation_requested' => 'Holidays: annullamento richiesto',
@@ -39,6 +40,7 @@ return [
             ],
         ],
         'decided' => [
+            'action' => 'Vedi le tue richieste',
             'subject' => [
                 'approved' => 'Holidays: richiesta approvata',
                 'rejected' => 'Holidays: richiesta rifiutata',

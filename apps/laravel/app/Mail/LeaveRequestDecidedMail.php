@@ -29,6 +29,14 @@ class LeaveRequestDecidedMail extends Mailable implements ShouldQueue
         public readonly string $actorName,
     ) {}
 
+    /**
+     * Ferie e permessi nel frontend, dove chi ha chiesto ritrova la richiesta.
+     */
+    public function url(): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/').'/leave';
+    }
+
     public function envelope(): Envelope
     {
         return new Envelope(subject: Translate::text('leave.mail.decided.subject.'.$this->event));
@@ -46,6 +54,7 @@ class LeaveRequestDecidedMail extends Mailable implements ShouldQueue
                 'reason' => $this->event === 'rejected' && filled($this->leaveRequest->decision_note)
                     ? Translate::text('leave.mail.reason', ['reason' => (string) $this->leaveRequest->decision_note])
                     : null,
+                'url' => $this->url(),
             ],
         );
     }

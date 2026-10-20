@@ -27,6 +27,17 @@ class LeaveRequestSubmittedMail extends Mailable implements ShouldQueue
         public readonly string $event,
     ) {}
 
+    /**
+     * Da approvare nel frontend, solo per gli eventi che attendono una decisione: un'assenza registrata senza
+     * approvazione non è in coda.
+     */
+    public function url(): ?string
+    {
+        return $this->event === 'auto_approved'
+            ? null
+            : rtrim((string) config('app.frontend_url'), '/').'/leave?tab=approvals';
+    }
+
     public function envelope(): Envelope
     {
         return new Envelope(subject: Translate::text('leave.mail.submitted.subject.'.$this->event));
@@ -42,6 +53,7 @@ class LeaveRequestSubmittedMail extends Mailable implements ShouldQueue
                     'details' => LeaveMailText::describe($this->leaveRequest),
                 ]),
                 'note' => $this->event === 'submitted' ? $this->leaveRequest->note : null,
+                'url' => $this->url(),
             ],
         );
     }

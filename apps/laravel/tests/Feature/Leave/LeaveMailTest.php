@@ -174,6 +174,19 @@ class LeaveMailTest extends TestCase
         Mail::assertQueued(LeaveRequestDecidedMail::class, fn (LeaveRequestDecidedMail $mail): bool => str_contains($mail->render(), 'Periodo di chiusura progetto'));
     }
 
+    public function test_mails_link_back_to_the_app(): void
+    {
+        config(['app.frontend_url' => 'http://localhost:5174/']);
+        $request = LeaveRequest::factory()->for($this->person)->create();
+
+        // Chi deve decidere arriva su Da approvare, chi ha chiesto sulle sue richieste
+        foreach (['submitted', 'cancellation_requested'] as $event) {
+            $this->assertStringContainsString('href="http://localhost:5174/leave?tab=approvals"', (new LeaveRequestSubmittedMail($request, $event))->render());
+        }
+        $this->assertStringNotContainsString('tab=approvals', (new LeaveRequestSubmittedMail($request, 'auto_approved'))->render());
+        $this->assertStringContainsString('href="http://localhost:5174/leave"', (new LeaveRequestDecidedMail($request, 'approved', 'Marco Bianchi'))->render());
+    }
+
     public function test_requester_deciding_alone_gets_no_outcome_mail(): void
     {
         $manager = User::factory()->manager()->at($this->location)->create();
