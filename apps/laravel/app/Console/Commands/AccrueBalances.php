@@ -44,10 +44,17 @@ class AccrueBalances extends Command
         }
 
         $period = $month->format('Y-m');
-        $count = $accruals->accrue($month, $now);
+        $run = $accruals->accrue($month, $now);
 
-        Log::info('Balances accrued', ['period' => $period, 'count' => $count]);
-        $this->info(Translate::text('balances.command.accrued', ['count' => $count, 'period' => $period]));
+        Log::info('Balances accrued', ['period' => $period, 'count' => $run->written, 'failed' => $run->failed]);
+        $this->info(Translate::text('balances.command.accrued', ['count' => $run->written, 'period' => $period]));
+
+        if ($run->failed > 0) {
+            // Ogni errore è già segnalato e loggato per persona: qui solo il totale, e il comando risulta fallito
+            $this->error(Translate::text('balances.command.failed', ['count' => $run->failed, 'period' => $period]));
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }

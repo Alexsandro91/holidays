@@ -9,5 +9,6 @@ return [
         'accrued' => 'Accruals written for :period: :count.',
         'invalid_month' => 'The month must be given as YYYY-MM, for example 2026-09.',
         'future_month' => 'A future month cannot be accrued.',
+        'failed' => 'People not accrued because of an error in :period: :count (details in the log).',
     ],
 ];

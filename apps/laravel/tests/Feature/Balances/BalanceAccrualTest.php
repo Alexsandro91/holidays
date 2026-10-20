@@ -18,10 +18,12 @@ use App\Support\Translate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Testing\PendingCommand;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -274,6 +276,36 @@ class BalanceAccrualTest extends TestCase
         $this->runAt('2026-10-02 00:30')->assertSuccessful();
 
         $this->assertSame(['ex_holidays' => 160, 'rol' => 360, 'vacation' => 800], $this->accruedMinutes($user, '2026-10'));
+    }
+
+    public function test_a_failing_person_does_not_stop_the_others(): void
+    {
+        $broken = $this->employeeCreatedAt('2026-09-20 10:00');
+        $healthy = $this->employeeCreatedAt('2026-09-20 10:00');
+        // La scrittura della prima persona si rompe (es. un errore del database): il giro continua con le altre. Le
+        // colonne dell'insert sono in ordine alfabetico: l'ultimo valore è lo `user_id` dell'ultima riga
+        DB::connection()->beforeExecuting(function (string $query, array $bindings) use ($broken): void {
+            if (str_starts_with($query, 'insert into `balance_movements`') && end($bindings) === $broken->id) {
+                throw new RuntimeException('Simulated accrual failure');
+            }
+        });
+        Exceptions::fake();
+        Log::spy();
+
+        $this->runAt('2026-10-01 00:30')
+            ->expectsOutputToContain(Translate::text('balances.command.accrued', ['count' => 3, 'period' => '2026-10']))
+            ->expectsOutputToContain(Translate::text('balances.command.failed', ['count' => 1, 'period' => '2026-10']))
+            ->assertFailed();
+
+        $this->assertSame([], $this->accruedMinutes($broken, '2026-10'));
+        $this->assertSame(['ex_holidays' => 160, 'rol' => 360, 'vacation' => 800], $this->accruedMinutes($healthy, '2026-10'));
+        Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'Simulated accrual failure');
+        Log::shouldHaveReceived('error')->with('Balance accrual failed', Mockery::on(
+            fn (array $context): bool => $context['user_id'] === $broken->id && $context['period'] === '2026-10' && $context['exception'] instanceof RuntimeException,
+        ))->once();
+        Log::shouldHaveReceived('info')->with('Balances accrued', Mockery::on(
+            fn (array $context): bool => $context['period'] === '2026-10' && $context['count'] === 3 && $context['failed'] === 1,
+        ))->once();
     }
 
     public function test_no_accrual_before_an_alignment(): void

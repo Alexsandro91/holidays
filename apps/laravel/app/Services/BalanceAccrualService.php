@@ -9,6 +9,7 @@ use App\Models\BalanceMovement;
 use App\Models\Location;
 use App\Models\User;
 use App\Models\UserHistory;
+use App\Support\AccrualRun;
 use App\Support\EffectiveAccrual;
 use App\Support\EmploymentTimeline;
 use Carbon\CarbonImmutable;
@@ -17,6 +18,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Maturazione mensile dei saldi (spec §4.2, §4.3). Unico punto che scrive i movimenti `accrual`: idempotente per
@@ -56,26 +58,34 @@ final class BalanceAccrualService
     }
 
     /**
-     * Matura il mese di `$month` per chi ne ha diritto all'istante `$now` e non l'ha ancora; restituisce il numero di
-     * movimenti scritti. Il mese si legge come `YYYY-MM`: i giorni si contano nel fuso della sede di ogni persona.
+     * Matura il mese di `$month` per chi ne ha diritto all'istante `$now` e non l'ha ancora; restituisce i movimenti
+     * scritti e le persone fallite. Il mese si legge come `YYYY-MM`: i giorni si contano nel fuso della sede di ogni
+     * persona. Un errore su una persona non ferma le altre: si segnala, si logga e il prossimo giro la riprova.
      */
-    public function accrue(CarbonImmutable $month, CarbonImmutable $now): int
+    public function accrue(CarbonImmutable $month, CarbonImmutable $now): AccrualRun
     {
         $period = $month->format('Y-m');
         $written = 0;
+        $failed = 0;
 
-        $this->candidates($period, $now)->chunkById(self::CHUNK_SIZE, function (Collection $users) use ($period, $now, &$written): void {
+        $this->candidates($period, $now)->chunkById(self::CHUNK_SIZE, function (Collection $users) use ($period, $now, &$written, &$failed): void {
             /** @var Collection<int, User> $users */
             $timelines = $this->timelines($users);
             $accruals = $this->settings->forUsers($users);
             $blocked = $this->blockedBalances($users->pluck('id')->all(), $period);
 
             foreach ($users as $user) {
-                $written += $this->accrueUser($user, $period, $now, $timelines[$user->id], $accruals[$user->id], $blocked[$user->id] ?? []);
+                try {
+                    $written += $this->accrueUser($user, $period, $now, $timelines[$user->id], $accruals[$user->id], $blocked[$user->id] ?? []);
+                } catch (Throwable $exception) {
+                    $failed++;
+                    report($exception);
+                    Log::error('Balance accrual failed', ['user_id' => $user->id, 'period' => $period, 'exception' => $exception]);
+                }
             }
         });
 
-        return $written;
+        return new AccrualRun($written, $failed);
     }
 
     /**
