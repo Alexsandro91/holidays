@@ -22,6 +22,7 @@ const UsersAdminPage = lazy(() => import('@/features/users/pages/UsersAdminPage'
 const AdministratorsPage = lazy(() => import('@/features/administrators/pages/AdministratorsPage'))
 const AbsenceTypesPage = lazy(() => import('@/features/absenceTypes/pages/AbsenceTypesPage'))
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'))
+const BalancesPage = lazy(() => import('@/features/balances/pages/BalancesPage'))
 const LocationsPage = lazy(() => import('@/features/locations/pages/LocationsPage'))
 const LocationDetailPage = lazy(() => import('@/features/locations/pages/LocationDetailPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
@@ -69,7 +70,11 @@ export const routes: RouteObject[] = [
                   { path: '/profile', element: <ProfilePage />, handle: { titleKey: 'titles.profile' } },
                   {
                     element: <RoleRoute roles={['manager', 'admin']} />,
-                    children: [{ path: '/users', element: <UsersAdminPage />, handle: { titleKey: 'titles.users' } }],
+                    children: [
+                      { path: '/users', element: <UsersAdminPage />, handle: { titleKey: 'titles.users' } },
+                      // Saldi di ferie, ROL ed ex festività: responsabili (della loro sede) e admin (spec SP2 fase 2 §7.2)
+                      { path: '/balances', element: <BalancesPage />, handle: { titleKey: 'titles.balances' } },
+                    ],
                   },
                   {
                     element: <RoleRoute roles={['admin']} />,

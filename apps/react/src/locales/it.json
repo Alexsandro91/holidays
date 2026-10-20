@@ -128,6 +128,7 @@
     "absenceTypes": "Tipi di assenza",
     "settings": "Impostazioni",
     "locations": "Sedi",
+    "balances": "Saldi",
     "soon": "presto"
   },
   "account": { "profile": "Profilo", "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
@@ -402,6 +403,7 @@
     "administrators": "Amministratori",
     "absenceTypes": "Tipi di assenza",
     "settings": "Impostazioni",
+    "balances": "Saldi",
     "locations": "Sedi",
     "location": "Sede",
     "login": "Accedi",
@@ -740,6 +742,49 @@
     }
   },
   "balances": {
+    "title": "Saldi",
+    "titleWithLocation": "Saldi · {{location}}",
+    "page": {
+      "subtitle": "Saldi al {{date}} · in ore",
+      "bar": "{{label}}: {{current}} h su {{annual}} h",
+      "roleWeekly": "{{role}} · {{hours}} h a settimana",
+      "partTime": "part-time",
+      "never": "mai",
+      "empty": "Nessuna persona da mostrare.",
+      "showAll": "Mostra tutte le persone",
+      "loadError": "Non è stato possibile caricare i saldi.",
+      "total_one": "{{count}} persona",
+      "total_other": "{{count}} persone",
+      "types": {
+        "vacation": "Ferie",
+        "rol": "ROL",
+        "ex_holidays": "Ex festività"
+      },
+      "columns": {
+        "person": "Persona",
+        "location": "Sede",
+        "lastAligned": "Ultimo allineamento",
+        "actions": "Azioni"
+      },
+      "filters": {
+        "label": "Cerca e filtra i saldi",
+        "search": "Cerca per nome o email",
+        "searchPlaceholder": "Es. Rossi Mario",
+        "negative": "Solo saldi negativi"
+      },
+      "actions": {
+        "menu": "Azioni per {{name}}",
+        "open": "Apri saldi",
+        "align": "Allinea alla busta paga",
+        "adjust": "Rettifica"
+      },
+      "pagination": {
+        "label": "Paginazione dei saldi",
+        "status": "Pagina {{page}} di {{pages}}",
+        "previous": "Pagina precedente",
+        "next": "Pagina successiva"
+      }
+    },
     "hours": "{{hours}} h",
     "dialog": {
       "title": "Saldi di {{name}}",

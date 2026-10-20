@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronsUpDown, House, LogOut, ListChecks, MapPin, Settings, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { CalendarDays, ChevronsUpDown, House, LogOut, ListChecks, MapPin, Scale, Settings, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Outlet } from 'react-router'
@@ -92,6 +92,9 @@ const AppShell = () => {
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarNavLink to="/users" label={t('nav.users')} icon={<Users aria-hidden="true" />} />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarNavLink to="/balances" label={t('nav.balances')} icon={<Scale aria-hidden="true" />} />
                     </SidebarMenuItem>
                     {user.role === 'admin' && (
                       <>

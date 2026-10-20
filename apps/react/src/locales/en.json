@@ -128,6 +128,7 @@
     "absenceTypes": "Absence types",
     "settings": "Settings",
     "locations": "Locations",
+    "balances": "Balances",
     "soon": "soon"
   },
   "account": { "profile": "Profile", "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
@@ -402,6 +403,7 @@
     "administrators": "Administrators",
     "absenceTypes": "Absence types",
     "settings": "Settings",
+    "balances": "Balances",
     "locations": "Locations",
     "location": "Location",
     "login": "Sign in",
@@ -740,6 +742,49 @@
     }
   },
   "balances": {
+    "title": "Balances",
+    "titleWithLocation": "Balances · {{location}}",
+    "page": {
+      "subtitle": "Balances as of {{date}} · in hours",
+      "bar": "{{label}}: {{current}} h of {{annual}} h",
+      "roleWeekly": "{{role}} · {{hours}} h a week",
+      "partTime": "part-time",
+      "never": "never",
+      "empty": "No one to show.",
+      "showAll": "Show everyone",
+      "loadError": "Balances could not be loaded.",
+      "total_one": "{{count}} person",
+      "total_other": "{{count}} people",
+      "types": {
+        "vacation": "Vacation",
+        "rol": "ROL",
+        "ex_holidays": "Ex holidays"
+      },
+      "columns": {
+        "person": "Person",
+        "location": "Location",
+        "lastAligned": "Last alignment",
+        "actions": "Actions"
+      },
+      "filters": {
+        "label": "Search and filter balances",
+        "search": "Search by name or email",
+        "searchPlaceholder": "E.g. Rossi Mario",
+        "negative": "Negative balances only"
+      },
+      "actions": {
+        "menu": "Actions for {{name}}",
+        "open": "Open balances",
+        "align": "Align to payslip",
+        "adjust": "Adjust"
+      },
+      "pagination": {
+        "label": "Balances pagination",
+        "status": "Page {{page}} of {{pages}}",
+        "previous": "Previous page",
+        "next": "Next page"
+      }
+    },
     "hours": "{{hours}} h",
     "dialog": {
       "title": "Balances of {{name}}",

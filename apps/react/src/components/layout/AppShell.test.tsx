@@ -30,6 +30,7 @@ describe('AppShell', () => {
     const nav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
     expect(within(nav).getByRole('link', { name: 'Sedi' })).toHaveAttribute('href', '/admin/locations')
     expect(within(nav).getByRole('link', { name: 'Impostazioni' })).toHaveAttribute('href', '/admin/settings')
+    expect(within(nav).getByRole('link', { name: 'Saldi' })).toHaveAttribute('href', '/balances')
     unmount()
 
     const manager: User = { ...adminUser, role: 'manager', role_label: 'Responsabile' }
@@ -37,6 +38,7 @@ describe('AppShell', () => {
     renderRoutes(routes, ['/'], { toaster: false })
     const managerNav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
     expect(within(managerNav).getByRole('link', { name: 'Utenti' })).toBeInTheDocument()
+    expect(within(managerNav).getByRole('link', { name: 'Saldi' })).toHaveAttribute('href', '/balances')
     expect(within(managerNav).queryByRole('link', { name: 'Sedi' })).not.toBeInTheDocument()
     expect(within(managerNav).queryByRole('link', { name: 'Impostazioni' })).not.toBeInTheDocument()
   })
