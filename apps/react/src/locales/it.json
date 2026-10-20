@@ -765,8 +765,7 @@
       "opening": "Residuo al 1° gennaio",
       "accrued": "Maturato",
       "used": "Usato",
-      "corrections": "Correzioni",
-      "monthly": "Matura {{hours}} h al mese"
+      "corrections": "Correzioni"
     },
     "movement": {
       "accrual": "Maturazione {{period}}",
@@ -784,7 +783,6 @@
       "company": "Come l’azienda: {{hours}} h",
       "location": "Come la sede: {{hours}} h",
       "user": "Valore personale: {{hours}} h",
-      "perYear": "all’anno",
       "monthly": "{{hours}} h al mese",
       "loadError": "Non è stato possibile caricare i valori annui."
     },
@@ -795,13 +793,16 @@
       "payslip": "{{balance}}, in busta paga",
       "inApp": "Nell’app al {{date}}: {{hours}} h",
       "inAppLoading": "Nell’app: calcolo in corso…",
+      "inAppError": "Non è stato possibile calcolare il valore nell’app.",
       "preview": "verrà registrato un movimento di {{hours}} h",
       "previewNone": "già allineato, nessun movimento",
       "note": "Nota (facoltativa)",
       "submit": "Allinea",
       "done_one": "Saldo allineato al {{date}}",
       "done_other": "Saldi allineati al {{date}}",
-      "doneDescription": "{{balances}}",
+      "doneItem": "{{balance}}: {{hours}} h",
+      "doneItemNone": "{{balance}}: già allineato",
+      "doneDescription": "Movimenti registrati: {{balances}}",
       "validation": {
         "date": "Indica la data della busta paga.",
         "number": "Inserisci un numero di ore, per esempio 74,2.",

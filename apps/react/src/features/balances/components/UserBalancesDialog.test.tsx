@@ -8,7 +8,7 @@ import { expectNoA11yViolations } from '@/test/axe'
 import { server } from '@/test/server'
 
 const renderDialog = (locationId: number | undefined = 1) =>
-  renderRoutes([{ path: '/', element: <UserBalancesDialog userId={7} userName="Marco Bianchi" locationId={locationId} onClose={() => undefined} /> }])
+  renderRoutes([{ path: '/', element: <UserBalancesDialog userId={7} userName="Marco Bianchi" locationId={locationId} locationName="Sede principale" onClose={() => undefined} /> }])
 
 const respond = (summary = balanceSummary(), movements = [balanceMovement()]) =>
   server.use(
@@ -43,15 +43,30 @@ describe('UserBalancesDialog', () => {
     expect(within(dialog).getByRole('region', { name: 'Ex festività' })).toBeInTheDocument()
   })
 
+  it('shows the balance of the chosen year (closing), not today\'s, with the weekly hours and the location', async () => {
+    const summary = balanceSummary()
+    // Anno passato: saldo al 31/12 diverso da quello di oggi
+    summary.balances[0] = { ...summary.balances[0], current_minutes: 5250, summary: { opening: 0, accrued: 2400, used: 0, corrections: -2880, closing: -480 } }
+    respond(summary)
+    renderDialog()
+    const dialog = await findDialog()
+
+    const vacation = await within(dialog).findByRole('region', { name: 'Ferie' })
+    expect(within(vacation).getByText('−8 h')).toHaveClass('text-destructive')
+    expect(within(vacation).getByText('≈ −1 gg')).toBeInTheDocument()
+    expect(within(vacation).queryByText('87,5 h')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('40 h a settimana · Sede principale')).toBeInTheDocument()
+  })
+
   it('shows a negative balance with the error color', async () => {
     const summary = balanceSummary()
-    summary.balances[1] = { ...summary.balances[1], current_minutes: -120 }
+    summary.balances[1] = { ...summary.balances[1], current_minutes: -120, summary: { opening: 0, accrued: 0, used: -120, corrections: 0, closing: -120 } }
     respond(summary)
     renderDialog()
     const dialog = await findDialog()
 
     const rol = await within(dialog).findByRole('region', { name: 'ROL' })
-    expect(within(rol).getByText('−2 h')).toHaveClass('text-destructive')
+    expect(within(rol).getAllByText('−2 h')[0]).toHaveClass('text-destructive')
   })
 
   it('reloads the summary and the movements for another year', async () => {
@@ -121,6 +136,11 @@ describe('UserBalancesDialog', () => {
     const { user } = renderDialog()
     const dialog = await findDialog()
 
+    await user.click(await within(dialog).findByRole('button', { name: 'Allinea alla busta paga' }))
+    expect(await screen.findByRole('dialog', { name: 'Allinea alla busta paga di Marco Bianchi' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Allinea alla busta paga di Marco Bianchi' })).not.toBeInTheDocument())
+
     await user.click(await within(dialog).findByRole('button', { name: 'Rettifica' }))
     expect(await screen.findByRole('dialog', { name: 'Rettifica i saldi di Marco Bianchi' })).toBeInTheDocument()
   })
@@ -164,7 +184,7 @@ describe('UserBalancesDialog', () => {
     respond()
     renderDialog()
     const dialog = await findDialog()
-    await within(dialog).findByText('Rettifica: bonus').catch(() => undefined)
+    await within(dialog).findByRole('region', { name: 'Ferie' })
     await within(dialog).findByRole('region', { name: 'Valori annui' })
     await within(dialog).findByRole('radio', { name: 'Come la sede (160 h)' })
     await expectNoA11yViolations(document.body)

@@ -8,7 +8,8 @@ interface BalanceCardsProps {
   summary: BalanceSummary
 }
 
-/** Un riquadro per saldo (ferie, ROL, ex festività): saldo, giorni per le ferie e riepilogo dell'anno (spec SP2 fase 2 §5.3). */
+/** Un riquadro per saldo; la cifra grande è il saldo dell'anno scelto (`closing`: oggi per l'anno in corso, il 31/12 per uno passato).
+ Un riquadro per saldo (ferie, ROL, ex festività): saldo, giorni per le ferie e riepilogo dell'anno (spec SP2 fase 2 §5.3). */
 const BalanceCards = ({ summary }: BalanceCardsProps) => {
   const { t, i18n } = useTranslation()
   const locale = i18n.language
@@ -18,7 +19,7 @@ const BalanceCards = ({ summary }: BalanceCardsProps) => {
     <div className="grid gap-3 md:grid-cols-3">
       {summary.balances.map((balance) => {
         // I giorni equivalenti valgono solo per le ferie
-        const days = balance.balance === 'vacation' ? formatDays(balance.current_minutes, summary.average_day_minutes, locale) : null
+        const days = balance.balance === 'vacation' ? formatDays(balance.summary.closing, summary.average_day_minutes, locale) : null
         const rows: [string, number][] = [
           [t('balances.cards.opening'), balance.summary.opening],
           [t('balances.cards.accrued'), balance.summary.accrued],
@@ -32,7 +33,7 @@ const BalanceCards = ({ summary }: BalanceCardsProps) => {
             </CardHeader>
             <CardContent className="grid gap-3">
               <div>
-                <p className={cn('text-2xl font-semibold tabular-nums', balance.current_minutes < 0 && 'text-destructive')}>{hours(balance.current_minutes)}</p>
+                <p className={cn('text-2xl font-semibold tabular-nums', balance.summary.closing < 0 && 'text-destructive')}>{hours(balance.summary.closing)}</p>
                 {days !== null && <p className="text-sm text-muted-foreground">{t('balances.cards.days', { days })}</p>}
               </div>
               <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-sm">

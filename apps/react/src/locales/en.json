@@ -765,8 +765,7 @@
       "opening": "Carried over from 1 January",
       "accrued": "Accrued",
       "used": "Used",
-      "corrections": "Corrections",
-      "monthly": "Accrues {{hours}} h per month"
+      "corrections": "Corrections"
     },
     "movement": {
       "accrual": "Accrual {{period}}",
@@ -784,7 +783,6 @@
       "company": "Same as the company: {{hours}} h",
       "location": "Same as the location: {{hours}} h",
       "user": "Personal value: {{hours}} h",
-      "perYear": "per year",
       "monthly": "{{hours}} h per month",
       "loadError": "Could not load the annual values."
     },
@@ -795,13 +793,16 @@
       "payslip": "{{balance}}, on the payslip",
       "inApp": "In the app on {{date}}: {{hours}} h",
       "inAppLoading": "In the app: calculating…",
+      "inAppError": "Could not calculate the value in the app.",
       "preview": "a movement of {{hours}} h will be recorded",
       "previewNone": "already aligned, no movement",
       "note": "Note (optional)",
       "submit": "Align",
       "done_one": "Balance aligned on {{date}}",
       "done_other": "Balances aligned on {{date}}",
-      "doneDescription": "{{balances}}",
+      "doneItem": "{{balance}}: {{hours}} h",
+      "doneItemNone": "{{balance}}: already aligned",
+      "doneDescription": "Movements recorded: {{balances}}",
       "validation": {
         "date": "Enter the payslip date.",
         "number": "Enter a number of hours, for example 74.2.",

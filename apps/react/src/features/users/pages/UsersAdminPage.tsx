@@ -59,6 +59,7 @@ const UsersAdminPage = () => {
         userId={balancesTarget?.id ?? null}
         userName={balancesTarget?.name ?? ''}
         locationId={balancesTarget?.location.id}
+        locationName={balancesTarget?.location.name}
         onClose={() => setBalancesTarget(null)}
       />
       <UserAbsenceTypesDialog user={absenceTypesTarget} onClose={() => setAbsenceTypesTarget(null)} />

@@ -23,6 +23,8 @@ interface UserBalancesDialogProps {
   userName: string
   /** Sede della persona: permette all'admin di modificare i valori annui (senza, sono in sola lettura) */
   locationId?: number
+  /** Nome della sede, mostrato accanto alle ore settimanali */
+  locationName?: string
   onClose: () => void
 }
 
@@ -32,9 +34,10 @@ interface BodyProps {
   userId: number
   userName: string
   locationId?: number
+  locationName?: string
 }
 
-const BalancesBody = ({ userId, userName, locationId }: BodyProps) => {
+const BalancesBody = ({ userId, userName, locationId, locationName }: BodyProps) => {
   const { t, i18n } = useTranslation()
   const locale = i18n.language
   const currentYear = new Date().getFullYear()
@@ -47,7 +50,8 @@ const BalancesBody = ({ userId, userName, locationId }: BodyProps) => {
   const movements = useUserBalanceMovements(userId, balanceFilter === 'all' ? { year } : { year, balance: balanceFilter })
   const items = movements.data?.pages.flatMap((page) => page.data) ?? []
 
-  if (summary.isPending) {
+  // Un refresh in background fallito non smonta la scheda (e con lei Allinea e Rettifica aperti): l'errore vale solo senza dati
+  if (summary.data === undefined && summary.isPending) {
     return (
       <div className="grid gap-2" role="status" aria-busy="true" aria-label={t('common.loading')}>
         {[0, 1, 2].map((row) => (
@@ -57,7 +61,7 @@ const BalancesBody = ({ userId, userName, locationId }: BodyProps) => {
     )
   }
 
-  if (summary.isError) {
+  if (summary.data === undefined) {
     // 404: la persona non è più visibile (es. spostata in un'altra sede), riprovare non serve
     if (isApiError(summary.error) && summary.error.status === 404) return <p role="alert">{t('balances.dialog.notVisible')}</p>
     return (
@@ -93,7 +97,10 @@ const BalancesBody = ({ userId, userName, locationId }: BodyProps) => {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="grid gap-0.5 text-sm text-muted-foreground">
-          <span>{t('balances.dialog.weekly', { hours: formatHours(data.weekly_minutes, locale) })}</span>
+          <span>
+            {t('balances.dialog.weekly', { hours: formatHours(data.weekly_minutes, locale) })}
+            {locationName !== undefined && ` · ${locationName}`}
+          </span>
           {data.last_aligned_on !== null && <span>{t('balances.dialog.lastAligned', { date: formatNumericDate(data.last_aligned_on, locale) })}</span>}
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -175,7 +182,7 @@ const BalancesBody = ({ userId, userName, locationId }: BodyProps) => {
 }
 
 /** Scheda saldi di una persona: riquadri, movimenti, valori annui, Allinea e Rettifica (spec SP2 fase 2 §7.3). */
-const UserBalancesDialog = ({ userId, userName, locationId, onClose }: UserBalancesDialogProps) => {
+const UserBalancesDialog = ({ userId, userName, locationId, locationName, onClose }: UserBalancesDialogProps) => {
   const { t } = useTranslation()
   // Nome e id conservati durante l'animazione di chiusura
   const [last, setLast] = useState<{ id: number; name: string; locationId?: number } | null>(null)
@@ -195,7 +202,7 @@ const UserBalancesDialog = ({ userId, userName, locationId, onClose }: UserBalan
           <DialogTitle>{t('balances.dialog.title', { name: shown?.name ?? '' })}</DialogTitle>
           <DialogDescription>{t('balances.dialog.description')}</DialogDescription>
         </DialogHeader>
-        {userId !== null && <BalancesBody key={userId} userId={userId} userName={userName} locationId={locationId} />}
+        {userId !== null && <BalancesBody key={userId} userId={userId} userName={userName} locationId={locationId} locationName={locationName} />}
       </DialogContent>
     </Dialog>
   )

@@ -91,11 +91,16 @@ const AlignForm = ({ userId, onClose }: FormProps) => {
       return
     }
     try {
-      await align.mutateAsync({ alignedOn: values.date, values: entered, note: values.note })
-      const summary = BALANCE_TYPES.filter((balance) => entered[balance] !== undefined)
-        .map((balance) => `${t(`accrual.balances.${balance}`)} ${t('balances.hours', { hours: formatHours(entered[balance] ?? 0, locale) })}`)
-        .join(', ')
-      toast.success(t('balances.align.done', { count: Object.keys(entered).length, date: formatNumericDate(values.date, locale) }), { description: summary })
+      const result = await align.mutateAsync({ alignedOn: values.date, values: entered, note: values.note })
+      // Il movimento registrato per ogni saldo indicato (0 = già allineato), non il totale di oggi
+      const items = BALANCE_TYPES.filter((balance) => entered[balance] !== undefined).map((balance) => {
+        const name = t(`accrual.balances.${balance}`)
+        const delta = result.deltas[balance] ?? 0
+        return delta === 0 ? t('balances.align.doneItemNone', { balance: name }) : t('balances.align.doneItem', { balance: name, hours: signedHours(delta, locale) })
+      })
+      toast.success(t('balances.align.done', { count: items.length, date: formatNumericDate(values.date, locale) }), {
+        description: t('balances.align.doneDescription', { balances: new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(items) }),
+      })
       onClose()
     } catch (error) {
       const fields = isApiError(error) ? error.fieldErrors : {}
@@ -126,15 +131,19 @@ const AlignForm = ({ userId, onClose }: FormProps) => {
           const base = inApp?.[balance]
           const delta = typed !== null && base !== undefined ? typed - base : null
           const preview = delta === null ? null : delta === 0 ? t('balances.align.previewNone') : t('balances.align.preview', { hours: signedHours(delta, locale) })
-          const describedBy = [`${id}-app`, preview === null ? null : `${id}-preview`, error ? `${id}-error` : null].filter((item) => item !== null).join(' ')
+          const describedBy = [validDate === null ? null : `${id}-app`, preview === null ? null : `${id}-preview`, error ? `${id}-error` : null].filter((item) => item !== null).join(' ')
           return (
             <Field key={balance} data-invalid={error ? true : undefined}>
               <FieldLabel htmlFor={id}>{t('balances.align.payslip', { balance: name })}</FieldLabel>
               <Input id={id} inputMode="decimal" autoComplete="off" aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...form.register(balance)} />
               <FieldDescription id={`${id}-app`}>
-                {validDate !== null && base !== undefined
-                  ? t('balances.align.inApp', { date: formatNumericDate(validDate, locale), hours: formatHours(base, locale) })
-                  : t('balances.align.inAppLoading')}
+                {validDate === null
+                  ? null
+                  : at.isError
+                    ? t('balances.align.inAppError')
+                    : base !== undefined
+                      ? t('balances.align.inApp', { date: formatNumericDate(validDate, locale), hours: formatHours(base, locale) })
+                      : t('balances.align.inAppLoading')}
               </FieldDescription>
               {preview !== null && (
                 <p id={`${id}-preview`} className="text-sm font-medium" aria-live="polite">

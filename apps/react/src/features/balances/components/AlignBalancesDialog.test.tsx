@@ -58,7 +58,7 @@ describe('AlignBalancesDialog', () => {
 
     await waitFor(() => expect(body).toEqual({ aligned_on: '2026-09-30', values: { vacation: 4452 }, note: null }))
     expect(await screen.findByText('Saldo allineato al 30/09/2026')).toBeInTheDocument()
-    expect(screen.getByText('Ferie 74,2 h')).toBeInTheDocument()
+    expect(screen.getByText('Movimenti registrati: Ferie: −7,8 h')).toBeInTheDocument()
   })
 
   it('sends nothing when no balance is filled in', async () => {
@@ -86,5 +86,15 @@ describe('AlignBalancesDialog', () => {
 
     expect(await within(dialog).findByText('C’è già un allineamento al 15/10/2026.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Data della busta paga')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('shows an error instead of a perpetual loading when the value in the app fails', async () => {
+    server.use(http.get('/api/users/7/balances/at', () => HttpResponse.json({ message: 'Errore' }, { status: 500 })))
+    const { user } = renderDialog()
+    const dialog = await findDialog()
+
+    expect((await within(dialog).findAllByText('Non è stato possibile calcolare il valore nell’app.')).length).toBeGreaterThan(0)
+    await user.clear(within(dialog).getByLabelText('Data della busta paga'))
+    expect(within(dialog).queryByText(/Nell’app/)).not.toBeInTheDocument()
   })
 })
