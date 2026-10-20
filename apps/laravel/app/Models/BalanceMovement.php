@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $target_minutes
  * @property string|null $note
  * @property int|null $actor_id
+ * @property int|null $leave_request_id
  * @property CarbonImmutable|null $created_at
  */
 class BalanceMovement extends Model
@@ -68,5 +69,13 @@ class BalanceMovement extends Model
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * @return BelongsTo<LeaveRequest, $this>
+     */
+    public function leaveRequest(): BelongsTo
+    {
+        return $this->belongsTo(LeaveRequest::class);
     }
 }

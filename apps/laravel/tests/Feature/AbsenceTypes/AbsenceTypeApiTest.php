@@ -26,6 +26,8 @@ class AbsenceTypeApiTest extends TestCase
     {
         parent::setUp();
         $this->travelTo('2026-10-20 10:00');
+        // La migration della fase 3 archivia malattia e infortunio: qui servono tutti e 16 i tipi di partenza
+        AbsenceType::query()->whereIn('code', ['sickness', 'injury'])->update(['archived_at' => null]);
         $this->admin = User::factory()->admin()->create();
     }
 

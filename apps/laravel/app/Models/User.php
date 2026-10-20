@@ -132,6 +132,16 @@ class User extends Authenticatable implements HasLocalePreference
     }
 
     /**
+     * Richieste di assenza della persona (fase 3).
+     *
+     * @return HasMany<LeaveRequest, $this>
+     */
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class);
+    }
+
+    /**
      * Valori annui di maturazione personali (spec §4.1), se l'admin ne ha impostati.
      *
      * @return HasOne<AccrualSetting, $this>

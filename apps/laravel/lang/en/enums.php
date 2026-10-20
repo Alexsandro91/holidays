@@ -27,4 +27,25 @@ return [
         'alignment' => 'Alignment',
         'usage' => 'Usage',
     ],
+    'leave_request_status' => [
+        'pending' => 'Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
+        'withdrawn' => 'Withdrawn',
+        'cancellation_requested' => 'Cancellation requested',
+        'cancelled' => 'Cancelled',
+    ],
+    'leave_unit' => [
+        'days' => 'Days',
+        'half_day' => 'Half day',
+        'hours' => 'Hours',
+    ],
+    'day_half' => [
+        'morning' => 'Morning',
+        'afternoon' => 'Afternoon',
+    ],
+    'leave_source' => [
+        'request' => 'Request',
+        'closure' => 'Company closure',
+    ],
 ];

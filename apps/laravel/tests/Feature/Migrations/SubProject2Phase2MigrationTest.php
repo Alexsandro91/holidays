@@ -82,7 +82,10 @@ class SubProject2Phase2MigrationTest extends TestCase
         $this->assertSame($certificate, $type->requires_certificate);
         $this->assertSame($limit, [$type->limit_amount, $type->limit_unit, $type->limit_period]);
         $this->assertNull($type->name);
-        $this->assertNull($type->archived_at);
+        // Malattia e infortunio li archivia la migration della fase 3 (vedi SubProject2Phase3MigrationTest)
+        if (! in_array($code, ['sickness', 'injury'], true)) {
+            $this->assertNull($type->archived_at);
+        }
     }
 
     /**

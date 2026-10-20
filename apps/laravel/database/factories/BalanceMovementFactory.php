@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\BalanceMovementKind;
 use App\Enums\BalanceType;
 use App\Models\BalanceMovement;
+use App\Models\LeaveRequest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -68,6 +69,22 @@ class BalanceMovementFactory extends Factory
             'period' => null,
             'target_minutes' => $target,
             'note' => null,
+        ]);
+    }
+
+    /**
+     * Utilizzo (di norma negativo) con effetto il giorno `$date`, collegato a una richiesta se data.
+     */
+    public function usage(string $date, int $minutes, ?LeaveRequest $request = null): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'kind' => BalanceMovementKind::Usage,
+            'minutes' => $minutes,
+            'effective_on' => $date,
+            'period' => null,
+            'target_minutes' => null,
+            'note' => null,
+            'leave_request_id' => $request?->id,
         ]);
     }
 }
