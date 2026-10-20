@@ -89,6 +89,14 @@ final class UserPolicy
     }
 
     /**
+     * Abilitazioni ai tipi di assenza: solo l'admin (spec §3.4).
+     */
+    public function manageAbsenceTypes(User $actor, User $target): bool
+    {
+        return $actor->isAdmin();
+    }
+
+    /**
      * Storico di una persona: chi può agire su di lei (spec §8.3).
      */
     public function viewHistory(User $actor, User $target): bool

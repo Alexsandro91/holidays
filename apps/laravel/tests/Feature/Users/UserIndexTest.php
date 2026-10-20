@@ -47,7 +47,7 @@ class UserIndexTest extends TestCase
     {
         $manager = User::factory()->manager()->create(['last_name' => 'A']);
         User::factory()->create(['last_name' => 'C']);
-        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true, 'change_location' => false, 'manage_schedule' => false, 'view_history' => true];
+        $all = ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => true, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true, 'change_location' => false, 'manage_schedule' => false, 'view_history' => true, 'manage_absence_types' => false];
 
         $this->actingAs($manager)->getJson('/api/users')
             ->assertOk()
@@ -63,8 +63,8 @@ class UserIndexTest extends TestCase
         // Gli admin non sono più nella lista utenti: i loro permessi si leggono dalla pagina Amministratori
         $this->actingAs($admin)->getJson('/api/administrators')
             ->assertOk()
-            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true, 'update' => true, 'send_password_reset' => false, 'change_location' => true, 'manage_schedule' => true, 'view_history' => true])
-            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true, 'change_location' => true, 'manage_schedule' => true, 'view_history' => true]);
+            ->assertJsonPath('data.0.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => false, 'enable' => true, 'update' => true, 'send_password_reset' => false, 'change_location' => true, 'manage_schedule' => true, 'view_history' => true, 'manage_absence_types' => true])
+            ->assertJsonPath('data.1.can', ['resend_invitation' => true, 'cancel_invitation' => true, 'change_role' => false, 'disable' => true, 'enable' => true, 'update' => true, 'send_password_reset' => true, 'change_location' => true, 'manage_schedule' => true, 'view_history' => true, 'manage_absence_types' => true]);
     }
 
     public function test_admins_never_appear_in_the_list_nor_in_the_counts(): void

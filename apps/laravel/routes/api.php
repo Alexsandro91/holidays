@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ClosureController;
 use App\Http\Controllers\Admin\LocationCalendarController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\LocationScheduleController;
+use App\Http\Controllers\Admin\UserAbsenceTypeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserHistoryController;
 use App\Http\Controllers\Admin\UserInvitationController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\UserRoleController;
 use App\Http\Controllers\Admin\UserScheduleController;
 use App\Http\Controllers\Admin\UserStatusController;
 use App\Http\Controllers\Auth\CurrentUserController;
+use App\Http\Controllers\Auth\ProfileAbsenceTypeController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\ProfileHistoryController;
 use App\Models\AbsenceType;
@@ -28,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'password'])->name('profile.password');
     Route::get('/profile/history', ProfileHistoryController::class)->name('profile.history');
+    Route::get('/profile/absence-types', ProfileAbsenceTypeController::class)->name('profile.absence-types');
 
     // Gestione utenti: responsabili e admin, mai sugli admin per il responsabile (UserPolicy)
     Route::get('/users', [UserController::class, 'index'])->can('viewAny', User::class)->name('users.index');
@@ -71,6 +74,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('/absence-types/{absenceType}', [AbsenceTypeController::class, 'update'])->can('update', 'absenceType')->name('absence-types.update');
     Route::post('/absence-types/{absenceType}/archive', [AbsenceTypeController::class, 'archive'])->can('update', 'absenceType')->name('absence-types.archive');
     Route::post('/absence-types/{absenceType}/restore', [AbsenceTypeController::class, 'restore'])->can('update', 'absenceType')->name('absence-types.restore');
+
+    // Abilitazioni ai tipi di assenza: solo admin
+    Route::get('/users/{user}/absence-types', [UserAbsenceTypeController::class, 'index'])->can('manageAbsenceTypes', 'user')->name('users.absence-types.index');
+    Route::put('/users/{user}/absence-type-enablements', [UserAbsenceTypeController::class, 'sync'])->can('manageAbsenceTypes', 'user')->name('users.absence-types.sync');
 
     // Orario personale: solo admin (UserPolicy::manageSchedule)
     Route::get('/users/{user}/schedules', [UserScheduleController::class, 'index'])->can('manageSchedule', 'user')->name('users.schedules.index');
