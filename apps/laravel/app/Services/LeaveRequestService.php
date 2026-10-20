@@ -135,7 +135,8 @@ final class LeaveRequestService
             'warnings' => array_column($warnings, 'code'),
         ]);
 
-        DB::afterCommit(fn () => $this->notifyApprovers($request, $request->status === LeaveRequestStatus::Approved ? 'auto_approved' : 'submitted'));
+        // Anche la ricerca dei destinatari è protetta: dopo il commit un errore non diventa un 500
+        DB::afterCommit(fn () => rescue(fn () => $this->notifyApprovers($request, $request->status === LeaveRequestStatus::Approved ? 'auto_approved' : 'submitted'), report: true));
 
         // Attributo solo per la risposta: si imposta dopo l'ultimo salvataggio
         $request->setAttribute('warnings', $warnings);
@@ -359,7 +360,7 @@ final class LeaveRequestService
             'actor_id' => $actor->id,
         ]);
 
-        DB::afterCommit(fn () => $this->notifyAfterTransition($fresh, $action, $actor));
+        DB::afterCommit(fn () => rescue(fn () => $this->notifyAfterTransition($fresh, $action, $actor), report: true));
 
         return $fresh;
     }

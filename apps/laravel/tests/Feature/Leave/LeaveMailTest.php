@@ -54,6 +54,16 @@ class LeaveMailTest extends TestCase
         }
     }
 
+    public function test_invited_manager_is_not_a_recipient(): void
+    {
+        User::factory()->manager()->invited()->at($this->location)->create();
+        $admin = User::factory()->admin()->create();
+
+        $this->store($this->person)->assertCreated();
+
+        $this->assertSubmittedTo([$admin], 'submitted');
+    }
+
     public function test_location_without_managers_goes_to_admins(): void
     {
         $adminA = User::factory()->admin()->create();
@@ -173,7 +183,9 @@ class LeaveMailTest extends TestCase
         $this->actingAs($manager)->postJson("/api/leave-requests/{$request->id}/approve")->assertOk();
 
         Mail::assertNotQueued(LeaveRequestDecidedMail::class);
-        $this->assertNotNull($other);
+        // Chi ha deciso da sola non riceve l'esito, gli altri responsabili non sono coinvolti
+        Mail::assertNotQueued(LeaveRequestDecidedMail::class, fn (LeaveRequestDecidedMail $mail): bool => $mail->hasTo($other->email));
+        $this->assertSame(LeaveRequestStatus::Approved, $request->fresh()?->status);
     }
 
     public function test_withdraw_sends_nothing(): void
