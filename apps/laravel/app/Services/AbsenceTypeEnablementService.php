@@ -22,16 +22,37 @@ final class AbsenceTypeEnablementService
      */
     public function forUser(User $user): Collection
     {
-        $enabledIds = $user->enabledAbsenceTypes()->pluck('absence_types.id')->map(intval(...))->all();
+        $enabledIds = $this->enabledIds($user);
 
-        return AbsenceType::query()->active()->ordered()->get()
-            ->filter(fn (AbsenceType $type): bool => $type->appliesTo($user->employment_type))
+        return $this->listed($user)
             ->each(fn (AbsenceType $type) => $type->setAttribute('enabled', $type->requires_enablement && in_array($type->id, $enabledIds, true)))
             ->values();
     }
 
     /**
-     * Il nuovo elenco sostituisce il precedente: chi manca viene disabilitato, i nuovi registrano chi li ha abilitati.
+     * Tipi attivi che valgono per il rapporto attuale: gli unici che l'admin vede e può cambiare.
+     *
+     * @return Collection<int, AbsenceType>
+     */
+    private function listed(User $user): Collection
+    {
+        return AbsenceType::query()->active()->ordered()->get()
+            ->filter(fn (AbsenceType $type): bool => $type->appliesTo($user->employment_type))
+            ->values();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function enabledIds(User $user): array
+    {
+        return $user->enabledAbsenceTypes()->pluck('absence_types.id')->map(intval(...))->values()->all();
+    }
+
+    /**
+     * Il nuovo elenco sostituisce il precedente limitatamente ai tipi che `forUser` mostra: chi manca viene disabilitato,
+     * i nuovi registrano chi li ha abilitati. Le abilitazioni su tipi archiviati o non validi per il rapporto attuale
+     * restano com'erano (tornano utili se il tipo si ripristina o il rapporto cambia di nuovo).
      * Che gli id siano tipi attivi con abilitazione lo verifica la richiesta.
      *
      * @param  list<int>  $typeIds
@@ -42,8 +63,11 @@ final class AbsenceTypeEnablementService
             // Blocca la riga della persona: due salvataggi insieme si accodano
             User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
 
-            $before = $target->enabledAbsenceTypes()->pluck('absence_types.id')->map(intval(...))->sort()->values()->all();
-            $after = collect($typeIds)->unique()->sort()->values()->all();
+            $visible = $this->listed($target)->pluck('id')->map(intval(...))->all();
+            $before = array_values(array_intersect($this->enabledIds($target), $visible));
+            sort($before);
+            $after = array_values(array_intersect(array_unique($typeIds), $visible));
+            sort($after);
 
             $removed = array_values(array_diff($before, $after));
             if ($removed !== []) {

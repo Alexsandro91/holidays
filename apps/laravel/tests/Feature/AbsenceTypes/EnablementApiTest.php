@@ -137,4 +137,35 @@ class EnablementApiTest extends TestCase
 
         $this->assertDatabaseHas('absence_type_user', ['user_id' => $this->intern->id, 'absence_type_id' => $this->law104->id]);
     }
+
+    public function test_saving_keeps_enablements_the_admin_cannot_see(): void
+    {
+        $url = "/api/users/{$this->intern->id}/absence-type-enablements";
+        $archived = AbsenceType::factory()->requiringEnablement()->create();
+        $visible = AbsenceType::factory()->requiringEnablement()->create();
+        $this->intern->enabledAbsenceTypes()->attach([
+            $archived->id => ['actor_id' => $this->admin->id, 'created_at' => now()],
+            $this->law104->id => ['actor_id' => $this->admin->id, 'created_at' => now()],
+        ]);
+        $archived->forceFill(['archived_at' => now()])->save();
+        // Tipo che non vale per il rapporto attuale (stagista)
+        $employeesOnly = AbsenceType::factory()->requiringEnablement()->create(['employment_types' => ['employee']]);
+        $this->intern->enabledAbsenceTypes()->attach($employeesOnly->id, ['actor_id' => $this->admin->id, 'created_at' => now()]);
+
+        $this->actingAs($this->admin)->putJson($url, ['absence_type_ids' => [$visible->id]])->assertNoContent();
+
+        $kept = DB::table('absence_type_user')->where('user_id', $this->intern->id)->pluck('absence_type_id')->all();
+        $this->assertEqualsCanonicalizing([$archived->id, $employeesOnly->id, $visible->id], $kept);
+    }
+
+    public function test_a_no_op_save_does_not_log(): void
+    {
+        $this->intern->enabledAbsenceTypes()->attach($this->law104->id, ['actor_id' => $this->admin->id, 'created_at' => now()]);
+        Log::spy();
+
+        $this->actingAs($this->admin)->putJson("/api/users/{$this->intern->id}/absence-type-enablements", ['absence_type_ids' => [$this->law104->id]])
+            ->assertNoContent();
+
+        Log::shouldNotHaveReceived('info', ['Absence type enablements changed', \Mockery::any()]);
+    }
 }
