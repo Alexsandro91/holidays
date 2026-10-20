@@ -72,9 +72,11 @@ final class LeaveRequestService
 
     /**
      * Crea la richiesta per chi la chiede. I tipi senza approvazione nascono approvati, senza chi ha deciso, e
-     * scalano subito il saldo. Gli avvisi restano in `warnings` (non persistiti).
+     * scalano subito il saldo. Gli avvisi restano in `warnings` (non persistiti). Una persona non più attiva sulla riga
+     * bloccata è 409 `leave.state_changed`.
      *
      * @throws ValidationException
+     * @throws ConflictHttpException
      */
     public function create(LeaveDraft $draft, ?string $note): LeaveRequest
     {
@@ -82,6 +84,11 @@ final class LeaveRequestService
             // Blocca la riga della persona prima dei controlli: due richieste insieme non si sovrappongono
             /** @var User $user */
             $user = User::query()->whereKey($draft->user->id)->lockForUpdate()->firstOrFail();
+
+            // Disattivata nel frattempo: la disattivazione ha già ritirato le sue richieste, non se ne aggiungono altre
+            if (! $user->isActive()) {
+                throw new ConflictHttpException(Translate::text('leave.state_changed'));
+            }
 
             $computation = $this->validate($draft);
             // Prima di inserire: la nuova richiesta non conta tra quelle in attesa

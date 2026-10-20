@@ -5,18 +5,23 @@ namespace Tests\Feature\Leave;
 use App\Enums\BalanceMovementKind;
 use App\Enums\BalanceType;
 use App\Enums\LeaveRequestStatus;
+use App\Enums\LeaveUnit;
+use App\Enums\UserStatus;
 use App\Models\AbsenceType;
 use App\Models\BalanceMovement;
 use App\Models\LeaveRequest;
 use App\Models\LeaveRequestDay;
 use App\Models\Location;
 use App\Models\User;
+use App\Services\LeaveRequestService;
+use App\Support\LeaveDraft;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\TestCase;
 
 /**
@@ -95,6 +100,22 @@ class CreateLeaveRequestTest extends TestCase
         $this->assertNotNull($insert);
         $this->assertLessThan($overlap, $lock);
         $this->assertLessThan($insert, $overlap);
+    }
+
+    public function test_create_rechecks_the_owner_is_still_active_under_lock(): void
+    {
+        $draft = new LeaveDraft($this->user, $this->type('vacation'), LeaveUnit::Days, CarbonImmutable::parse('2026-10-26'), CarbonImmutable::parse('2026-10-26'), null, null, null);
+        // Disattivato dopo l'autenticazione: il model in memoria è ancora attivo, la riga no
+        User::query()->whereKey($this->user->id)->update(['status' => UserStatus::Disabled]);
+
+        try {
+            app(LeaveRequestService::class)->create($draft, null);
+            $this->fail('Attesa una ConflictHttpException');
+        } catch (ConflictHttpException $exception) {
+            $this->assertSame(__('leave.state_changed'), $exception->getMessage());
+        }
+
+        $this->assertSame(0, LeaveRequest::query()->count());
     }
 
     public function test_preview_has_balance_and_warnings_and_writes_nothing(): void
