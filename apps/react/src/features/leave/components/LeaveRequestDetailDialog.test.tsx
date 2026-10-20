@@ -176,6 +176,16 @@ describe('LeaveRequestDetailDialog', () => {
       expect(within(dialog).queryByRole('button', { name: 'Annulla la richiesta' })).not.toBeInTheDocument()
     })
 
+    it('does not show the direct cancel before the viewer is known', async () => {
+      server.use(http.get('/api/auth/user', () => new Promise(() => {})))
+      respondWith(leaveRequest({ id: 5, status: 'approved', user: someoneElse, days, can: { ...NO_ACTIONS, cancel: true, request_cancellation: true } }))
+      renderDialog()
+      const dialog = await findDialog()
+
+      expect(await within(dialog).findByRole('button', { name: 'Chiedi annullamento' })).toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: 'Annulla la richiesta' })).not.toBeInTheDocument()
+    })
+
     it('approves a pending request after confirmation', async () => {
       signIn()
       respondWith(leaveRequest({ id: 5, status: 'pending', user: someoneElse, days, can: { ...NO_ACTIONS, approve: true, reject: true } }))

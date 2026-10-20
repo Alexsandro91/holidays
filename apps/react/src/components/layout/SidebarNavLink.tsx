@@ -23,7 +23,7 @@ const SidebarNavLink = ({ to, label, icon, end = false, badge = 0, badgeLabel }:
   const active = useMatch({ path: resolved.pathname, end }) !== null
 
   return (
-    <SidebarMenuButton asChild isActive={active} tooltip={label}>
+    <SidebarMenuButton asChild isActive={active} tooltip={badge > 0 && badgeLabel !== undefined ? badgeLabel : label}>
       <NavLink to={to} end={end} aria-label={badge > 0 ? badgeLabel : undefined}>
         {icon}
         <span>{label}</span>

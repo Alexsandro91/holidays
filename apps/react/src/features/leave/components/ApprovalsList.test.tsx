@@ -111,6 +111,7 @@ describe('ApprovalsList', () => {
     await waitFor(() => expect(approved).toBe(1))
     expect(await screen.findByText('Richiesta di Sara Colombo approvata')).toBeInTheDocument()
     await waitFor(() => expect(state.reads).toBeGreaterThan(1))
+    expect(screen.getByRole('heading', { name: 'Da approvare' })).toHaveFocus()
   })
 
   it('approves and rejects a cancellation from the row', async () => {
@@ -142,6 +143,7 @@ describe('ApprovalsList', () => {
     await waitFor(() => expect(bodies).toEqual([{ decision_note: 'Settimana di chiusura' }]))
     expect(await screen.findByText('Richiesta di Sara Colombo rifiutata')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Da approvare' })).toHaveFocus())
   })
 
   it('shows a message and refetches on a 409 state change', async () => {
@@ -151,8 +153,26 @@ describe('ApprovalsList', () => {
 
     await user.click(await screen.findByRole('button', { name: /^Approva, Sara Colombo/ }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('La richiesta è già cambiata: l’elenco è stato aggiornato.')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('La richiesta è già cambiata: l’elenco è stato aggiornato.')
+    await waitFor(() => expect(alert).toHaveFocus())
     await waitFor(() => expect(state.reads).toBeGreaterThan(1))
+  })
+
+  it('moves the focus to the message when a rejection fails, and clears it on the next successful read', async () => {
+    const state = respond()
+    server.use(http.post('/api/leave-requests/11/reject', () => HttpResponse.json({ message: 'Già decisa', code: 'leave.state_changed' }, { status: 409 })))
+    const { user, queryClient } = renderList()
+
+    await user.click(await screen.findByRole('button', { name: /^Rifiuta, Sara Colombo/ }))
+    await user.click(within(await screen.findByRole('dialog', { name: 'Rifiuta la richiesta' })).getByRole('button', { name: 'Rifiuta' }))
+
+    const alert = await screen.findByRole('alert')
+    await waitFor(() => expect(alert).toHaveFocus())
+    const reads = state.reads
+    await queryClient.invalidateQueries({ queryKey: ['leave'] })
+    await waitFor(() => expect(state.reads).toBeGreaterThan(reads))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
   it('opens the detail from the row with an approval trigger', async () => {

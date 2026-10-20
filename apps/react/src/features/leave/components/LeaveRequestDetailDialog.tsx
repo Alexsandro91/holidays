@@ -141,8 +141,9 @@ const DetailBody = ({ requestId, onClose, onBusyChange }: DetailBodyProps) => {
   }
 
   // Chi chiede un annullamento per sé lo approva poi da approvatore: l'annullamento diretto (con l'email alla persona) è solo per le richieste altrui
-  const isOwner = viewer?.id === request.user.id
-  const available = ACTIONS.filter(({ action, permission }) => request.can[permission] && !(action === 'cancel' && isOwner))
+  // Finché il visitatore non è letto non si sa se è il proprietario: l'azione non compare
+  const canCancelDirectly = viewer !== undefined && viewer !== null && viewer.id !== request.user.id
+  const available = ACTIONS.filter(({ action, permission }) => request.can[permission] && !(action === 'cancel' && !canCancelDirectly))
   const decisionLabel = request.status === 'rejected' ? t('leave.detail.rejectionReason') : t('leave.detail.decisionNote')
   const autoApproved = request.decided_by_name === null && request.decided_at !== null
 

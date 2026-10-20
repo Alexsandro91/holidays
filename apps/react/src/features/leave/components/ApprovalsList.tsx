@@ -1,5 +1,5 @@
 import { TriangleAlert } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,10 @@ const ACTIONS: readonly { action: ApprovalAction; permission: keyof LeaveRequest
 
 const ALL_LOCATIONS = 'all'
 
+/** Valori di LEAVE_TRIGGER_ATTRIBUTE del titolo dell'elenco e del messaggio d'errore: dove va il focus dopo una decisione. */
+const TITLE_TRIGGER = 'approvals-title'
+const MESSAGE_TRIGGER = 'approvals-message'
+
 interface ApprovalsListProps {
   /** Apre il dettaglio; `trigger` (`approval-<id>`) è il valore di LEAVE_TRIGGER_ATTRIBUTE del pulsante */
   onOpen: (requestId: number, trigger: string) => void
@@ -48,8 +52,17 @@ const ApprovalsList = ({ onOpen }: ApprovalsListProps) => {
   const titleId = useId()
   const locationId = useId()
   const headingRef = useRef<HTMLHeadingElement>(null)
-  const [conflict, setConflict] = useState(false)
+  const messageRef = useRef<HTMLParagraphElement>(null)
+  // `at`: ultima lettura al momento dell'errore; una lettura più recente riuscita toglie il messaggio
+  const [failure, setFailure] = useState<{ text: string; at: number } | null>(null)
+  // Dove riprende il focus il dialog del rifiuto chiudendosi: il suo pulsante, o titolo/messaggio dopo una decisione
+  const [focusTarget, setFocusTarget] = useState<string | null>(null)
   const [rejecting, setRejecting] = useState<{ open: boolean; request: LeaveRequest | null }>({ open: false, request: null })
+  const message = failure !== null && approvals.dataUpdatedAt <= failure.at ? failure.text : null
+
+  useEffect(() => {
+    if (message !== null) messageRef.current?.focus()
+  }, [message])
   // Evita il doppio invio: letto solo nei gestori di evento
   const submitting = useRef(false)
 
@@ -59,18 +72,22 @@ const ApprovalsList = ({ onOpen }: ApprovalsListProps) => {
   const decide = async (request: LeaveRequest, action: ApprovalAction, note?: string) => {
     if (submitting.current) return
     submitting.current = true
-    setConflict(false)
+    setFailure(null)
     try {
       await leaveAction.mutateAsync({ id: request.id, action, note })
       toast.success(t(`leave.approvals.done.${action}`, { name: request.user.name }))
-      setRejecting({ open: false, request: null })
-      // La riga decisa sparisce: il focus passa al titolo dell'elenco
-      headingRef.current?.focus()
+      // La riga decisa sparisce: il focus passa al titolo dell'elenco (con il dialog aperto lo riporta la sua chiusura)
+      setFocusTarget(TITLE_TRIGGER)
+      if (action === 'reject') setRejecting((current) => ({ ...current, open: false }))
+      else headingRef.current?.focus()
     } catch (error) {
       setRejecting((current) => ({ ...current, open: false }))
-      // Stato cambiato nel frattempo: l'elenco si rilegge da solo (invalidazione) e il messaggio lo spiega
-      if (isApiError(error) && error.status === 409) setConflict(true)
-      else toast.error(isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic'))
+      setFocusTarget(MESSAGE_TRIGGER)
+      // Prima la rilettura: il messaggio vale per quella lettura, una successiva lo toglie
+      const { dataUpdatedAt } = await approvals.refetch()
+      // Stato cambiato nel frattempo: l'elenco è già riletto (invalidazione) e il messaggio lo spiega
+      const text = isApiError(error) && error.status === 409 ? t('leave.approvals.conflict') : isApiError(error, 'network') ? t('errors.network') : isApiError(error) ? error.message : t('errors.generic')
+      setFailure({ text, at: dataUpdatedAt })
     } finally {
       submitting.current = false
     }
@@ -145,7 +162,11 @@ const ApprovalsList = ({ onOpen }: ApprovalsListProps) => {
                       disabled={leaveAction.isPending}
                       {...(action === 'reject' ? { [LEAVE_TRIGGER_ATTRIBUTE]: `approval-reject-${request.id}` } : {})}
                       aria-label={`${t(`leave.approvals.actions.${action}`)}, ${name}, ${period}`}
-                      onClick={() => (action === 'reject' ? setRejecting({ open: true, request }) : void decide(request, action))}
+                      onClick={() => {
+                        if (action !== 'reject') return void decide(request, action)
+                        setFocusTarget(`approval-reject-${request.id}`)
+                        setRejecting({ open: true, request })
+                      }}
                     >
                       {t(`leave.approvals.actions.${action}`)}
                     </Button>
@@ -163,7 +184,7 @@ const ApprovalsList = ({ onOpen }: ApprovalsListProps) => {
   return (
     <section aria-labelledby={titleId} className="grid gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 id={titleId} ref={headingRef} tabIndex={-1} className="font-heading text-lg font-semibold outline-none">
+        <h2 id={titleId} ref={headingRef} tabIndex={-1} {...{ [LEAVE_TRIGGER_ATTRIBUTE]: TITLE_TRIGGER }} className="font-heading text-lg font-semibold outline-none">
           {t('leave.approvals.title')}
         </h2>
         {canFilter && (
@@ -185,9 +206,9 @@ const ApprovalsList = ({ onOpen }: ApprovalsListProps) => {
           </div>
         )}
       </div>
-      {conflict && (
-        <p role="alert" className="rounded-md border border-destructive/40 p-3 text-destructive">
-          {t('leave.approvals.conflict')}
+      {message !== null && (
+        <p ref={messageRef} role="alert" tabIndex={-1} {...{ [LEAVE_TRIGGER_ATTRIBUTE]: MESSAGE_TRIGGER }} className="rounded-md border border-destructive/40 p-3 text-destructive outline-none">
+          {message}
         </p>
       )}
       {body()}
@@ -195,7 +216,7 @@ const ApprovalsList = ({ onOpen }: ApprovalsListProps) => {
         open={rejecting.open}
         request={rejecting.request}
         pending={leaveAction.isPending}
-        returnFocusTo={rejecting.request === null ? null : `approval-reject-${rejecting.request.id}`}
+        returnFocusTo={focusTarget}
         onConfirm={(note) => rejecting.request !== null && void decide(rejecting.request, 'reject', note)}
         onClose={() => setRejecting((current) => ({ ...current, open: false }))}
       />
