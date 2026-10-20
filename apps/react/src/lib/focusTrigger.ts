@@ -9,6 +9,8 @@ export const REVOKE_TRIGGER_ATTRIBUTE = 'data-admin-revoke-trigger'
 export const INVITATION_TRIGGER_ATTRIBUTE = 'data-admin-invitation-trigger'
 /** Menu di riga delle sedi */
 export const LOCATION_TRIGGER_ATTRIBUTE = 'data-location-actions-trigger'
+/** Menu di riga dei tipi di assenza */
+export const ABSENCE_TYPE_TRIGGER_ATTRIBUTE = 'data-absence-type-actions-trigger'
 /** Pulsanti del dettaglio di una sede (Modifica, Cambia orario, chiusure): il valore dice quale */
 export const LOCATION_DETAIL_TRIGGER_ATTRIBUTE = 'data-location-detail-trigger'
 

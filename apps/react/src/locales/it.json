@@ -125,6 +125,7 @@
     "management": "Gestione",
     "users": "Utenti",
     "administrators": "Amministratori",
+    "absenceTypes": "Tipi di assenza",
     "locations": "Sedi",
     "soon": "presto"
   },
@@ -396,6 +397,7 @@
     "profile": "Profilo",
     "users": "Utenti",
     "administrators": "Amministratori",
+    "absenceTypes": "Tipi di assenza",
     "locations": "Sedi",
     "location": "Sede",
     "login": "Accedi",
@@ -474,6 +476,128 @@
         "action": "Ripristina",
         "done": "{{name}} ripristinata."
       }
+    }
+  },
+  "absenceTypes": {
+    "title": "Tipi di assenza",
+    "subtitle": "Le assenze che le persone possono chiedere: come si chiedono, se scalano da un saldo e a chi valgono.",
+    "add": "Nuovo tipo",
+    "tabs": {
+      "label": "Filtra per stato",
+      "active": "Attivi",
+      "archived": "Archiviati"
+    },
+    "columns": {
+      "name": "Nome",
+      "request": "Come si chiede",
+      "balance": "Saldo",
+      "approval": "Approvazione",
+      "employment": "Vale per",
+      "limit": "Limite",
+      "actions": "Azioni"
+    },
+    "empty": {
+      "active": "Nessun tipo attivo.",
+      "archived": "Nessun tipo archiviato."
+    },
+    "loadError": "Non è stato possibile caricare i tipi di assenza.",
+    "badges": {
+      "default": "Predefinito"
+    },
+    "units": {
+      "days": "Giorni",
+      "halfDays": "Mezze giornate",
+      "hours": "Ore"
+    },
+    "balances": {
+      "none": "Nessun saldo",
+      "vacation": "Ferie",
+      "rol": "ROL",
+      "ex_holidays": "Ex festività"
+    },
+    "approval": {
+      "required": "Richiesta",
+      "notRequired": "Non richiesta"
+    },
+    "employment": {
+      "all": "Tutti",
+      "employee": "Dipendenti",
+      "contractor": "Collaboratori",
+      "intern": "Stagisti"
+    },
+    "limit": {
+      "none": "Nessun limite",
+      "days_one": "{{count}} giorno",
+      "days_other": "{{count}} giorni",
+      "hours_one": "{{count}} ora",
+      "hours_other": "{{count}} ore",
+      "periods": {
+        "month": "al mese",
+        "year": "all’anno",
+        "request": "per richiesta"
+      }
+    },
+    "enabledUsers_one": "{{count}} persona abilitata",
+    "enabledUsers_other": "{{count}} persone abilitate",
+    "dragHandle": "Trascina per riordinare",
+    "actions": {
+      "menu": "Azioni per {{name}}",
+      "edit": "Modifica",
+      "moveUp": "Sposta su",
+      "moveDown": "Sposta giù",
+      "resetName": "Ripristina nome predefinito",
+      "archive": "Archivia",
+      "restore": "Ripristina"
+    },
+    "resetNameDone": "Nome predefinito ripristinato.",
+    "form": {
+      "createTitle": "Nuovo tipo di assenza",
+      "editTitle": "Modifica {{name}}",
+      "createDescription": "Il nuovo tipo va in fondo all’elenco: lo sposti quando vuoi.",
+      "editDescription": "Le modifiche valgono per le richieste future.",
+      "name": "Nome",
+      "request": "Come si chiede",
+      "approval": "Richiede approvazione",
+      "balance": "Saldo",
+      "balanceHint": "Se sceglie un saldo, le ore o i giorni scalano da lì.",
+      "employment": "Vale per",
+      "employeesOnly": "Con un saldo il tipo vale solo per i dipendenti: collaboratori e stagisti non hanno saldi.",
+      "requiresEnablement": "Vale solo per le persone abilitate (es. legge 104)",
+      "dayCount": "Come si contano i giorni",
+      "working": "Giorni lavorativi",
+      "calendar": "Giorni di calendario",
+      "requiresCertificate": "Chiede il numero di protocollo del certificato",
+      "limit": "Limite (facoltativo)",
+      "limitAmount": "Quantità",
+      "limitUnit": "Unità",
+      "limitPeriod": "Periodo",
+      "limitHint": "Lascia vuota la quantità se non c’è un limite.",
+      "submitCreate": "Crea tipo",
+      "submitEdit": "Salva",
+      "created": "Tipo {{name}} creato.",
+      "updated": "Tipo {{name}} aggiornato."
+    },
+    "confirm": {
+      "back": "Annulla",
+      "archive": {
+        "title": "Archiviare {{name}}?",
+        "description": "Non si potrà più richiedere, ma resta leggibile. Potrai ripristinarlo quando vuoi.",
+        "action": "Archivia",
+        "done": "{{name}} archiviato."
+      },
+      "restore": {
+        "title": "Ripristinare {{name}}?",
+        "description": "Tornerà tra i tipi che si possono richiedere, in fondo all’elenco.",
+        "action": "Ripristina",
+        "done": "{{name}} ripristinato."
+      }
+    },
+    "validation": {
+      "nameRequired": "Inserisci il nome del tipo.",
+      "unitRequired": "Scegli almeno un modo di chiedere l’assenza.",
+      "halfDaysNeedDays": "Le mezze giornate richiedono i giorni.",
+      "employmentRequired": "Scegli almeno un tipo di rapporto.",
+      "limitInvalid": "Scrivi un numero intero da 1 a 65535."
     }
   },
   "schedule": {

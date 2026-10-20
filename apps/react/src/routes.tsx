@@ -20,6 +20,7 @@ const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPassword
 const AcceptInvitationPage = lazy(() => import('@/features/invitations/pages/AcceptInvitationPage'))
 const UsersAdminPage = lazy(() => import('@/features/users/pages/UsersAdminPage'))
 const AdministratorsPage = lazy(() => import('@/features/administrators/pages/AdministratorsPage'))
+const AbsenceTypesPage = lazy(() => import('@/features/absenceTypes/pages/AbsenceTypesPage'))
 const LocationsPage = lazy(() => import('@/features/locations/pages/LocationsPage'))
 const LocationDetailPage = lazy(() => import('@/features/locations/pages/LocationDetailPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
@@ -73,6 +74,8 @@ export const routes: RouteObject[] = [
                     element: <RoleRoute roles={['admin']} />,
                     children: [
                       { path: '/admin/administrators', element: <AdministratorsPage />, handle: { titleKey: 'titles.administrators' } },
+                      // Tipi di assenza: solo l'admin li configura (spec SP2 fase 2 §7.7)
+                      { path: '/admin/absence-types', element: <AbsenceTypesPage />, handle: { titleKey: 'titles.absenceTypes' } },
                       // Sezione Sedi: solo l'admin le gestisce (spec SP2 fase 1 §5.1)
                       { path: '/admin/locations', element: <LocationsPage />, handle: { titleKey: 'titles.locations' } },
                       { path: '/admin/locations/:id', element: <LocationDetailPage />, handle: { titleKey: 'titles.location' } },

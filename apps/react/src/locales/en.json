@@ -125,6 +125,7 @@
     "management": "Management",
     "users": "Users",
     "administrators": "Administrators",
+    "absenceTypes": "Absence types",
     "locations": "Locations",
     "soon": "soon"
   },
@@ -396,6 +397,7 @@
     "profile": "Profile",
     "users": "Users",
     "administrators": "Administrators",
+    "absenceTypes": "Absence types",
     "locations": "Locations",
     "location": "Location",
     "login": "Sign in",
@@ -474,6 +476,128 @@
         "action": "Restore",
         "done": "{{name}} restored."
       }
+    }
+  },
+  "absenceTypes": {
+    "title": "Absence types",
+    "subtitle": "The absences people can request: how they are requested, whether they use a balance and who they apply to.",
+    "add": "New type",
+    "tabs": {
+      "label": "Filter by status",
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "columns": {
+      "name": "Name",
+      "request": "Requested as",
+      "balance": "Balance",
+      "approval": "Approval",
+      "employment": "Applies to",
+      "limit": "Limit",
+      "actions": "Actions"
+    },
+    "empty": {
+      "active": "No active types.",
+      "archived": "No archived types."
+    },
+    "loadError": "Absence types could not be loaded.",
+    "badges": {
+      "default": "Default"
+    },
+    "units": {
+      "days": "Days",
+      "halfDays": "Half days",
+      "hours": "Hours"
+    },
+    "balances": {
+      "none": "No balance",
+      "vacation": "Vacation",
+      "rol": "ROL",
+      "ex_holidays": "Ex holidays"
+    },
+    "approval": {
+      "required": "Required",
+      "notRequired": "Not required"
+    },
+    "employment": {
+      "all": "Everyone",
+      "employee": "Employees",
+      "contractor": "Contractors",
+      "intern": "Interns"
+    },
+    "limit": {
+      "none": "No limit",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours",
+      "periods": {
+        "month": "per month",
+        "year": "per year",
+        "request": "per request"
+      }
+    },
+    "enabledUsers_one": "{{count}} person enabled",
+    "enabledUsers_other": "{{count}} people enabled",
+    "dragHandle": "Drag to reorder",
+    "actions": {
+      "menu": "Actions for {{name}}",
+      "edit": "Edit",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "resetName": "Restore default name",
+      "archive": "Archive",
+      "restore": "Restore"
+    },
+    "resetNameDone": "Default name restored.",
+    "form": {
+      "createTitle": "New absence type",
+      "editTitle": "Edit {{name}}",
+      "createDescription": "The new type goes to the end of the list: move it whenever you like.",
+      "editDescription": "Changes apply to future requests.",
+      "name": "Name",
+      "request": "Requested as",
+      "approval": "Requires approval",
+      "balance": "Balance",
+      "balanceHint": "With a balance, the hours or days are taken from it.",
+      "employment": "Applies to",
+      "employeesOnly": "With a balance the type applies to employees only: contractors and interns have no balances.",
+      "requiresEnablement": "Only for enabled people (e.g. law 104)",
+      "dayCount": "How days are counted",
+      "working": "Working days",
+      "calendar": "Calendar days",
+      "requiresCertificate": "Asks for the certificate protocol number",
+      "limit": "Limit (optional)",
+      "limitAmount": "Amount",
+      "limitUnit": "Unit",
+      "limitPeriod": "Period",
+      "limitHint": "Leave the amount empty if there is no limit.",
+      "submitCreate": "Create type",
+      "submitEdit": "Save",
+      "created": "Type {{name}} created.",
+      "updated": "Type {{name}} updated."
+    },
+    "confirm": {
+      "back": "Cancel",
+      "archive": {
+        "title": "Archive {{name}}?",
+        "description": "It can no longer be requested, but it stays readable. You can restore it whenever you like.",
+        "action": "Archive",
+        "done": "{{name}} archived."
+      },
+      "restore": {
+        "title": "Restore {{name}}?",
+        "description": "It will be back among the types that can be requested, at the end of the list.",
+        "action": "Restore",
+        "done": "{{name}} restored."
+      }
+    },
+    "validation": {
+      "nameRequired": "Enter the name of the type.",
+      "unitRequired": "Choose at least one way to request the absence.",
+      "halfDaysNeedDays": "Half days require days.",
+      "employmentRequired": "Choose at least one employment type.",
+      "limitInvalid": "Write a whole number from 1 to 65535."
     }
   },
   "schedule": {
