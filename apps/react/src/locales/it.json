@@ -128,8 +128,7 @@
     "absenceTypes": "Tipi di assenza",
     "settings": "Impostazioni",
     "locations": "Sedi",
-    "balances": "Saldi",
-    "soon": "presto"
+    "balances": "Saldi"
   },
   "account": { "profile": "Profilo", "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
   "home": {
@@ -398,6 +397,7 @@
     "placeholder": "Testo segnaposto: l’informativa definitiva sarà validata dal DPO prima del rilascio. Holidays tratta nome, email, ruolo e i dati di ferie e permessi per gestire le assenze (art. 6.1.b GDPR); i log di accesso servono solo alla sicurezza e si conservano 180 giorni."
   },
   "titles": {
+    "leave": "Ferie e permessi",
     "profile": "Profilo",
     "users": "Utenti",
     "administrators": "Amministratori",
@@ -739,6 +739,18 @@
     "validation": {
       "number": "Inserisci un numero di ore, per esempio 160 o 13,5.",
       "max": "Il massimo è {{max}} ore."
+    }
+  },
+  "leave": {
+    "title": "Ferie e permessi",
+    "description": "I tuoi saldi di ferie, ROL ed ex festività e i tipi di assenza che puoi usare.",
+    "notApplicable": "Non hai saldi da maturare. Qui potrai segnare le tue assenze.",
+    "loadError": "Non è stato possibile caricare i tuoi saldi.",
+    "types": {
+      "title": "Tipi di assenza che puoi usare",
+      "empty": "Nessun tipo di assenza disponibile per ora.",
+      "enablement": "su abilitazione",
+      "loadError": "Non è stato possibile caricare i tipi di assenza."
     }
   },
   "balances": {

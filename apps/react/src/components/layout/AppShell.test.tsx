@@ -43,6 +43,17 @@ describe('AppShell', () => {
     expect(within(managerNav).queryByRole('link', { name: 'Impostazioni' })).not.toBeInTheDocument()
   })
 
+  it('links Leave to its page for every role, without the soon badge', async () => {
+    signedIn()
+    const employee: User = { ...adminUser, role: 'employee', role_label: 'Utente' }
+    server.use(http.get('/api/auth/user', () => HttpResponse.json(currentUserResponse(employee))))
+    renderRoutes(routes, ['/'], { toaster: false })
+
+    const nav = await screen.findByRole('navigation', { name: 'Navigazione principale' })
+    expect(within(nav).getByRole('link', { name: 'Ferie e permessi' })).toHaveAttribute('href', '/leave')
+    expect(within(nav).queryByText('presto')).not.toBeInTheDocument()
+  })
+
   it('signs out from the account menu', async () => {
     signedIn()
     server.use(http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))

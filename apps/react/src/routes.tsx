@@ -26,6 +26,7 @@ const BalancesPage = lazy(() => import('@/features/balances/pages/BalancesPage')
 const LocationsPage = lazy(() => import('@/features/locations/pages/LocationsPage'))
 const LocationDetailPage = lazy(() => import('@/features/locations/pages/LocationDetailPage'))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'))
+const LeavePage = lazy(() => import('@/features/balances/pages/LeavePage'))
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'))
 
 // Errore di una pagina (es. chunk non scaricato dopo un deploy) mostrato dentro il layout, con la ricarica
@@ -68,6 +69,8 @@ export const routes: RouteObject[] = [
                   { path: '/', element: <HomePage />, handle: { titleKey: 'titles.home' } },
                   // Per tutti i ruoli: ognuno vede e modifica solo il proprio profilo
                   { path: '/profile', element: <ProfilePage />, handle: { titleKey: 'titles.profile' } },
+                  // Per tutti i ruoli: i propri saldi e i tipi di assenza che valgono per sé (spec SP2 fase 2 §7.6)
+                  { path: '/leave', element: <LeavePage />, handle: { titleKey: 'titles.leave' } },
                   {
                     element: <RoleRoute roles={['manager', 'admin']} />,
                     children: [

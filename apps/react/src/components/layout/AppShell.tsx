@@ -29,7 +29,6 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -75,11 +74,7 @@ const AppShell = () => {
                     <SidebarNavLink to="/" end label={t('nav.home')} icon={<House aria-hidden="true" />} />
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton disabled aria-disabled="true" tooltip={t('nav.leave')}>
-                      <CalendarDays aria-hidden="true" />
-                      <span>{t('nav.leave')}</span>
-                    </SidebarMenuButton>
-                    <SidebarMenuBadge>{t('nav.soon')}</SidebarMenuBadge>
+                    <SidebarNavLink to="/leave" label={t('nav.leave')} icon={<CalendarDays aria-hidden="true" />} />
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
