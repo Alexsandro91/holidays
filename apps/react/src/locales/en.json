@@ -135,7 +135,7 @@
   "account": { "profile": "Profile", "menu": "Account menu", "logout": "Sign out", "logoutError": "Sign-out failed. Please try again." },
   "home": {
     "greeting": "Hi, {{name}}",
-    "subtitle": "Here you’ll find leave, time off and the team calendar.",
+    "subtitle": "Your leave and time-off balances and your upcoming absences, at a glance.",
     "upcoming": {
       "title": "Upcoming absences",
       "empty": "No absences scheduled.",

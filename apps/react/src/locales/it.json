@@ -135,7 +135,7 @@
   "account": { "profile": "Profilo", "menu": "Menu account", "logout": "Esci", "logoutError": "Uscita non riuscita. Riprova." },
   "home": {
     "greeting": "Ciao, {{name}}",
-    "subtitle": "Qui troverai ferie, permessi e il calendario del team.",
+    "subtitle": "I tuoi saldi di ferie e permessi e le prossime assenze, a colpo d’occhio.",
     "upcoming": {
       "title": "Prossime assenze",
       "empty": "Nessuna assenza in programma.",
