@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronsUpDown, House, LogOut, ListChecks, MapPin, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { CalendarDays, ChevronsUpDown, House, LogOut, ListChecks, MapPin, Settings, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Outlet } from 'react-router'
@@ -103,6 +103,9 @@ const AppShell = () => {
                         </SidebarMenuItem>
                         <SidebarMenuItem>
                           <SidebarNavLink to="/admin/absence-types" label={t('nav.absenceTypes')} icon={<ListChecks aria-hidden="true" />} />
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <SidebarNavLink to="/admin/settings" label={t('nav.settings')} icon={<Settings aria-hidden="true" />} />
                         </SidebarMenuItem>
                       </>
                     )}

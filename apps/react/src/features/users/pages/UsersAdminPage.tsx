@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import UserAbsenceTypesDialog from '@/features/absenceTypes/components/UserAbsenceTypesDialog'
 import UserHistoryDialog from '@/features/history/components/UserHistoryDialog'
 import type { ManagedUser } from '@/features/users/api'
 import { availableActions, type UserAction } from '@/features/users/actions'
@@ -10,7 +11,7 @@ import UserActionsMenu from '@/features/users/components/UserActionsMenu'
 import UserScheduleDialog from '@/features/users/components/UserScheduleDialog'
 import UsersPage from '@/features/users/pages/UsersPage'
 
-type ConfirmAction = Exclude<UserAction, 'changeRole' | 'edit' | 'schedule' | 'history'>
+type ConfirmAction = Exclude<UserAction, 'changeRole' | 'edit' | 'schedule' | 'history' | 'absenceTypes'>
 
 /** Pagina Utenti (responsabili e admin) con invito e azioni di riga. */
 const UsersAdminPage = () => {
@@ -19,6 +20,7 @@ const UsersAdminPage = () => {
   const [editTarget, setEditTarget] = useState<ManagedUser | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<ManagedUser | null>(null)
   const [historyTarget, setHistoryTarget] = useState<ManagedUser | null>(null)
+  const [absenceTypesTarget, setAbsenceTypesTarget] = useState<ManagedUser | null>(null)
 
   // Stabile: la Data Table ricrea le colonne solo quando cambia davvero
   const renderActions = useCallback(
@@ -31,6 +33,7 @@ const UsersAdminPage = () => {
             else if (action === 'edit') setEditTarget(user)
             else if (action === 'schedule') setScheduleTarget(user)
             else if (action === 'history') setHistoryTarget(user)
+            else if (action === 'absenceTypes') setAbsenceTypesTarget(user)
             else setConfirm({ user, action })
           }}
         />
@@ -49,6 +52,7 @@ const UsersAdminPage = () => {
       <EditUserDialog user={editTarget} onClose={() => setEditTarget(null)} />
       <UserScheduleDialog user={scheduleTarget} onClose={() => setScheduleTarget(null)} />
       <UserHistoryDialog user={historyTarget} onClose={() => setHistoryTarget(null)} />
+      <UserAbsenceTypesDialog user={absenceTypesTarget} onClose={() => setAbsenceTypesTarget(null)} />
     </>
   )
 }

@@ -1,4 +1,4 @@
-import type { BalanceMovement, BalanceOverviewRow, BalanceSummary } from '@/features/balances/api'
+import type { Accrual, BalanceMovement, BalanceOverviewRow, BalanceSummary } from '@/features/balances/api'
 
 export const balanceSummary = (overrides: Partial<BalanceSummary> = {}): BalanceSummary => ({
   applicable: true,
@@ -72,3 +72,17 @@ export const pageResponse = <T,>(data: T[], currentPage = 1, lastPage = 1) => ({
   links: {},
   meta: { current_page: currentPage, last_page: lastPage, per_page: 20, total: data.length },
 })
+
+/** Valori annui di un livello: di partenza quelli dell'azienda (160 h, 72 h, 32 h) ereditati da sede e persona. */
+export const accrual = (overrides: Partial<Accrual> = {}): Accrual => ({
+  values: { vacation_minutes: 9600, rol_minutes: 4320, ex_holidays_minutes: 1920 },
+  effective: {
+    vacation: { minutes: 9600, source: 'company' },
+    rol: { minutes: 4320, source: 'company' },
+    ex_holidays: { minutes: 1920, source: 'company' },
+  },
+  ...overrides,
+})
+
+/** Livello che eredita tutto dall'azienda. */
+export const inheritingAccrual = (): Accrual => accrual({ values: { vacation_minutes: null, rol_minutes: null, ex_holidays_minutes: null } })

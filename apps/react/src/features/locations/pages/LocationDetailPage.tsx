@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocation } from '@/features/locations/api'
 import ClosuresCard from '@/features/locations/components/ClosuresCard'
+import LocationAccrualCard from '@/features/locations/components/LocationAccrualCard'
 import LocationBadge from '@/features/locations/components/LocationBadge'
 import LocationCalendarCard from '@/features/locations/components/LocationCalendarCard'
 import LocationDetailsCard from '@/features/locations/components/LocationDetailsCard'
@@ -75,6 +76,7 @@ const LocationDetailPage = () => {
         <div className="grid min-w-0 gap-6">
           <LocationDetailsCard location={data} />
           <LocationScheduleCard location={data} />
+          <LocationAccrualCard location={data} />
           <ClosuresCard location={data} />
         </div>
         <div className="min-w-0">

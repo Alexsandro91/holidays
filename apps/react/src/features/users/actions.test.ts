@@ -48,6 +48,14 @@ describe('availableActions', () => {
     expect(availableActions(managedUser({ status: 'disabled', can: NO_ACTIONS }))).toEqual([])
     expect(availableActions(managedUser({ is_current_user: true, can: { ...NO_ACTIONS, update: true } }))).toEqual(['edit'])
   })
+
+  it('offers the absence types to every status when the server allows managing them', () => {
+    const can = { ...NO_ACTIONS, manage_absence_types: true }
+    expect(availableActions(managedUser({ status: 'active', can }))).toEqual(['absenceTypes'])
+    expect(availableActions(managedUser({ status: 'invited', can }))).toEqual(['absenceTypes'])
+    expect(availableActions(managedUser({ status: 'disabled', can }))).toEqual(['absenceTypes'])
+    expect(availableActions(managedUser({ status: 'active', can: NO_ACTIONS }))).toEqual([])
+  })
 })
 
 describe('needsPassword', () => {

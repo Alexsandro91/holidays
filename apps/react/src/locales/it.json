@@ -126,6 +126,7 @@
     "users": "Utenti",
     "administrators": "Amministratori",
     "absenceTypes": "Tipi di assenza",
+    "settings": "Impostazioni",
     "locations": "Sedi",
     "soon": "presto"
   },
@@ -211,7 +212,8 @@
       "disable": "Disattiva",
       "enable": "Riattiva",
       "schedule": "Orario di lavoro",
-      "history": "Storico"
+      "history": "Storico",
+      "absenceTypes": "Tipi di assenza"
     },
     "inviteDialog": {
       "title": "Invita utente",
@@ -398,6 +400,7 @@
     "users": "Utenti",
     "administrators": "Amministratori",
     "absenceTypes": "Tipi di assenza",
+    "settings": "Impostazioni",
     "locations": "Sedi",
     "location": "Sede",
     "login": "Accedi",
@@ -434,7 +437,8 @@
       "patron": "Patrono",
       "noCity": "Non indicata",
       "noPatron": "Nessuno",
-      "edit": "Modifica"
+      "edit": "Modifica",
+      "accrualDescription": "Per ogni saldo la sede usa il valore dell’azienda oppure uno suo. Un cambio vale dalla prossima maturazione."
     },
     "form": {
       "createTitle": "Nuova sede",
@@ -508,6 +512,16 @@
       "days": "Giorni",
       "halfDays": "Mezze giornate",
       "hours": "Ore"
+    },
+    "enablements": {
+      "title": "Tipi di assenza di {{name}}",
+      "description": "I tipi che valgono per il suo rapporto di lavoro. Chi non ha l’abilitazione non può chiedere i tipi che la richiedono.",
+      "always": "Sempre disponibili",
+      "enabled": "Con abilitazione",
+      "none": "Nessun tipo di questa persona richiede un’abilitazione.",
+      "save": "Salva",
+      "saved": "Abilitazioni di {{name}} salvate.",
+      "loadError": "Non è stato possibile caricare i tipi di assenza."
     },
     "balances": {
       "none": "Nessun saldo",
@@ -700,5 +714,28 @@
     "by": "da {{name}}",
     "dialogTitle": "Storico di {{name}}",
     "dialogDescription": "Le tappe dell’account dalla più recente, con chi le ha fatte."
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "description": "Valori che valgono per tutta l’azienda.",
+    "accrualDescription": "Ore all’anno per un tempo pieno. Sedi e persone ereditano questi valori finché non ne hanno di propri. Un cambio vale dalla prossima maturazione: i mesi già maturati non cambiano."
+  },
+  "accrual": {
+    "title": "Maturazione annua",
+    "balances": { "vacation": "Ferie", "rol": "ROL", "ex_holidays": "Ex festività" },
+    "annualHours": "{{balance}}, ore all’anno",
+    "hoursHint": "Ore all’anno per un tempo pieno, per esempio 160.",
+    "monthly": "{{hours}} h al mese",
+    "inheritCompany": "Come l’azienda ({{hours}} h)",
+    "inheritLocation": "Come la sede ({{hours}} h)",
+    "ownLocation": "Valore della sede",
+    "ownPerson": "Valore proprio",
+    "save": "Salva",
+    "saved": "Valori salvati.",
+    "loadError": "Non è stato possibile caricare i valori di maturazione.",
+    "validation": {
+      "number": "Inserisci un numero di ore, per esempio 160 o 13,5.",
+      "max": "Il massimo è {{max}} ore."
+    }
   }
 }

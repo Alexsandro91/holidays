@@ -1,6 +1,6 @@
 import type { ManagedUser } from '@/features/users/api'
 
-export type UserAction = 'edit' | 'schedule' | 'history' | 'resend' | 'cancel' | 'changeRole' | 'passwordReset' | 'disable' | 'enable'
+export type UserAction = 'edit' | 'schedule' | 'history' | 'absenceTypes' | 'resend' | 'cancel' | 'changeRole' | 'passwordReset' | 'disable' | 'enable'
 
 /**
  * Azioni del menu di riga: quelle che il server permette a chi guarda (`can`) e che lo stato consente.
@@ -20,8 +20,8 @@ export const availableActions = ({ status, can }: ManagedUser): UserAction[] => 
     ],
     disabled: [['enable', can.enable]],
   }
-  // Modifica, orario personale (solo admin) e storico (admin e responsabili) valgono in ogni stato
-  const all: [UserAction, boolean][] = [['edit', can.update], ['schedule', can.manage_schedule], ['history', can.view_history], ...byStatus[status]]
+  // Modifica, orario personale (solo admin), storico (admin e responsabili) e tipi di assenza (solo admin) valgono in ogni stato
+  const all: [UserAction, boolean][] = [['edit', can.update], ['schedule', can.manage_schedule], ['history', can.view_history], ['absenceTypes', can.manage_absence_types], ...byStatus[status]]
   return all.filter(([, allowed]) => allowed).map(([action]) => action)
 }
 

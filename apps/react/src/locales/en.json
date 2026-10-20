@@ -126,6 +126,7 @@
     "users": "Users",
     "administrators": "Administrators",
     "absenceTypes": "Absence types",
+    "settings": "Settings",
     "locations": "Locations",
     "soon": "soon"
   },
@@ -211,7 +212,8 @@
       "disable": "Disable",
       "enable": "Enable",
       "schedule": "Working hours",
-      "history": "History"
+      "history": "History",
+      "absenceTypes": "Absence types"
     },
     "inviteDialog": {
       "title": "Invite user",
@@ -398,6 +400,7 @@
     "users": "Users",
     "administrators": "Administrators",
     "absenceTypes": "Absence types",
+    "settings": "Settings",
     "locations": "Locations",
     "location": "Location",
     "login": "Sign in",
@@ -434,7 +437,8 @@
       "patron": "Patron saint",
       "noCity": "Not set",
       "noPatron": "None",
-      "edit": "Edit"
+      "edit": "Edit",
+      "accrualDescription": "For each balance the location uses the company value or its own. A change applies from the next accrual."
     },
     "form": {
       "createTitle": "New location",
@@ -508,6 +512,16 @@
       "days": "Days",
       "halfDays": "Half days",
       "hours": "Hours"
+    },
+    "enablements": {
+      "title": "Absence types of {{name}}",
+      "description": "The types that apply to their employment type. Without the enablement a person cannot request the types that need it.",
+      "always": "Always available",
+      "enabled": "With enablement",
+      "none": "No type for this person needs an enablement.",
+      "save": "Save",
+      "saved": "Enablements of {{name}} saved.",
+      "loadError": "Could not load the absence types."
     },
     "balances": {
       "none": "No balance",
@@ -700,5 +714,28 @@
     "by": "by {{name}}",
     "dialogTitle": "History of {{name}}",
     "dialogDescription": "The steps of the account, most recent first, with who made them."
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Values that apply to the whole company.",
+    "accrualDescription": "Hours per year for a full-time schedule. Locations and people inherit these values until they have their own. A change applies from the next accrual: months already accrued do not change."
+  },
+  "accrual": {
+    "title": "Annual accrual",
+    "balances": { "vacation": "Vacation", "rol": "ROL", "ex_holidays": "Ex holidays" },
+    "annualHours": "{{balance}}, hours per year",
+    "hoursHint": "Hours per year for a full-time schedule, for example 160.",
+    "monthly": "{{hours}} h per month",
+    "inheritCompany": "Same as the company ({{hours}} h)",
+    "inheritLocation": "Same as the location ({{hours}} h)",
+    "ownLocation": "Location value",
+    "ownPerson": "Own value",
+    "save": "Save",
+    "saved": "Values saved.",
+    "loadError": "Could not load the accrual values.",
+    "validation": {
+      "number": "Enter a number of hours, for example 160 or 13.5.",
+      "max": "The maximum is {{max}} hours."
+    }
   }
 }
