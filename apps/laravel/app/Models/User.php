@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -82,6 +83,11 @@ class User extends Authenticatable implements HasLocalePreference
         return $this->employment_type === EmploymentType::Intern;
     }
 
+    public function isEmployee(): bool
+    {
+        return $this->employment_type === EmploymentType::Employee;
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === Role::Admin;
@@ -113,6 +119,36 @@ class User extends Authenticatable implements HasLocalePreference
     public function schedules(): HasMany
     {
         return $this->hasMany(WorkSchedule::class);
+    }
+
+    /**
+     * Movimenti di saldo (spec §5): il saldo è la loro somma.
+     *
+     * @return HasMany<BalanceMovement, $this>
+     */
+    public function balanceMovements(): HasMany
+    {
+        return $this->hasMany(BalanceMovement::class);
+    }
+
+    /**
+     * Valori annui di maturazione personali (spec §4.1), se l'admin ne ha impostati.
+     *
+     * @return HasOne<AccrualSetting, $this>
+     */
+    public function accrualSetting(): HasOne
+    {
+        return $this->hasOne(AccrualSetting::class);
+    }
+
+    /**
+     * Tipi di assenza con abilitazione per cui la persona è abilitata (spec §3.4).
+     *
+     * @return BelongsToMany<AbsenceType, $this>
+     */
+    public function enabledAbsenceTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(AbsenceType::class, 'absence_type_user')->withPivot(['actor_id', 'created_at']);
     }
 
     /**

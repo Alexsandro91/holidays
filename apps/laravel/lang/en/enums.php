@@ -16,4 +16,15 @@ return [
         'active' => 'Active',
         'disabled' => 'Disabled',
     ],
+    'balance_type' => [
+        'vacation' => 'Vacation',
+        'rol' => 'ROL',
+        'ex_holidays' => 'Former public holidays',
+    ],
+    'balance_movement_kind' => [
+        'accrual' => 'Accrual',
+        'adjustment' => 'Adjustment',
+        'alignment' => 'Alignment',
+        'usage' => 'Usage',
+    ],
 ];
