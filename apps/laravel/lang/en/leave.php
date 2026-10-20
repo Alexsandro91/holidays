@@ -8,6 +8,7 @@ return [
     'single_day' => 'This request covers a single day.',
     'hours_step' => 'Times must be in multiples of 30 minutes.',
     'hours_too_long' => 'The requested hours exceed the working day.',
+    'hours_order' => 'The end time must be after the start time.',
     'hours_past' => 'The start time has already passed.',
     'overlap' => 'You already have a request on these days.',
     'unit_not_allowed' => 'This absence type cannot be requested in this unit.',

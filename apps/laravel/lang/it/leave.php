@@ -8,6 +8,7 @@ return [
     'single_day' => 'Questa richiesta riguarda un solo giorno.',
     'hours_step' => 'Gli orari vanno a multipli di 30 minuti.',
     'hours_too_long' => 'Le ore richieste superano la giornata di lavoro.',
+    'hours_order' => 'L\'orario di fine deve essere dopo quello di inizio.',
     'hours_past' => 'L\'orario di inizio è già passato.',
     'overlap' => 'Hai già una richiesta in questi giorni.',
     'unit_not_allowed' => 'Questo tipo di assenza non si può chiedere in questa unità.',
