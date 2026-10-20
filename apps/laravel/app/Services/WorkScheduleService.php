@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Location;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Support\ScheduleVersions;
 use App\Support\Translate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -51,13 +52,9 @@ final class WorkScheduleService
      */
     public function currentForUser(User $user, Location $location, CarbonImmutable $day): ?WorkSchedule
     {
-        $own = $user->schedules()->where('valid_from', '<=', $day->toDateString())->orderByDesc('valid_from')->first();
+        $personal = $user->schedules()->where('valid_from', '<=', $day->toDateString())->orderBy('valid_from')->get();
 
-        if ($own !== null && ! $own->follows_location) {
-            return $own;
-        }
-
-        return $this->currentForLocation($location, $day);
+        return ScheduleVersions::on($day, $personal, $location->schedules()->orderBy('valid_from')->get());
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\Holidays\HolidayCalendars;
+use App\Support\ScheduleVersions;
 use App\Support\Translate;
 use App\Support\WorkDay;
 use Carbon\CarbonImmutable;
@@ -106,25 +107,7 @@ final class WorkCalendar
      */
     private function scheduledMinutes(CarbonImmutable $date, Collection $standard, Collection $personal): int
     {
-        $own = $this->versionOn($date, $personal);
-
-        if ($own !== null && ! $own->follows_location) {
-            return $own->minutesOn($date);
-        }
-
-        return ($this->versionOn($date, $standard) ?? $standard->first())?->minutesOn($date) ?? 0;
-    }
-
-    /**
-     * Ultima versione iniziata entro quel giorno.
-     *
-     * @param  Collection<int, WorkSchedule>  $versions  ordinate per `valid_from`
-     */
-    private function versionOn(CarbonImmutable $date, Collection $versions): ?WorkSchedule
-    {
-        $day = $date->toDateString();
-
-        return $versions->last(fn (WorkSchedule $version): bool => $version->valid_from->toDateString() <= $day);
+        return ScheduleVersions::on($date, $personal, $standard)?->minutesOn($date) ?? 0;
     }
 
     /**
