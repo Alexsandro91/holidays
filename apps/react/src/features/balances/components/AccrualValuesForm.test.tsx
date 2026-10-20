@@ -54,6 +54,27 @@ describe('AccrualValuesForm', () => {
     expect(onSubmit).toHaveBeenCalledWith({ vacation_minutes: 10800, rol_minutes: null, ex_holidays_minutes: null })
   })
 
+  it('shows the monthly quota for a full time when there is no schedule (company and location)', () => {
+    renderForm()
+
+    expect(screen.getByText('13,33 h al mese')).toBeInTheDocument()
+  })
+
+  it('proportions the monthly quota to the schedule of a part-time person', async () => {
+    // 20 ore in una sede da 40: metà quota, come la maturazione (round(annuo × 1200 ÷ 2400 ÷ 12))
+    const { user } = renderForm({ inheritFrom: 'location', schedule: { weeklyMinutes: 1200, locationWeeklyMinutes: 2400 } })
+
+    expect(screen.getByText('6,67 h al mese')).toBeInTheDocument()
+    expect(screen.getByText('3 h al mese')).toBeInTheDocument()
+    expect(screen.getByText('1,33 h al mese')).toBeInTheDocument()
+    expect(screen.queryByText('13,33 h al mese')).not.toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('radio', { name: 'Valore proprio' })[0])
+    await user.type(screen.getByLabelText('Ferie, ore all’anno'), '180')
+
+    expect(await screen.findByText('7,5 h al mese')).toBeInTheDocument()
+  })
+
   it('names the own value after the person when the parent is the location', () => {
     renderForm({ inheritFrom: 'location' })
 

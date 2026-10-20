@@ -11,11 +11,18 @@ import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { BALANCE_TYPES, type Accrual, type AccrualValuesInput, type BalanceType } from '@/features/balances/api'
 import { formatHours, parseHours } from '@/features/balances/hoursFormat'
+import { monthlyQuota } from '@/features/balances/monthlyQuota'
 
 /** Valori annui in minuti: null = come il livello sopra (solo sede e persona). */
 export type AccrualValues = AccrualValuesInput
 /** Valori che valgono per chi eredita: quelli del livello sopra. */
 export type EffectiveAccrual = Accrual['effective']
+
+/** Orario di una persona (minuti a settimana) e della sua sede: proporziona la quota mensile mostrata. */
+export interface AccrualSchedule {
+  weeklyMinutes: number
+  locationWeeklyMinutes: number
+}
 
 const MAX_MINUTES = 60000
 const FIELD_KEYS: Record<BalanceType, keyof AccrualValues> = { vacation: 'vacation_minutes', rol: 'rol_minutes', ex_holidays: 'ex_holidays_minutes' }
@@ -52,6 +59,8 @@ interface AccrualValuesFormProps {
   inheritable: boolean
   /** Da cui eredita chi può ereditare: l'azienda (sede) o la sede (persona) */
   inheritFrom?: 'company' | 'location'
+  /** Solo per una persona: la quota mensile segue il suo orario; senza, è quella di un tempo pieno */
+  schedule?: AccrualSchedule
   onSubmit: (values: AccrualValues) => void
   pending: boolean
 }
@@ -64,7 +73,7 @@ const choose =
   }
 
 /** Tre valori annui in ore per un tempo pieno, con la quota mensile; sede e persona possono ereditare dal livello sopra. */
-const AccrualValuesForm = ({ values, effective, inheritable, inheritFrom = 'company', onSubmit, pending }: AccrualValuesFormProps) => {
+const AccrualValuesForm = ({ values, effective, inheritable, inheritFrom = 'company', schedule, onSubmit, pending }: AccrualValuesFormProps) => {
   const { t, i18n } = useTranslation()
   const locale = i18n.language
   const schema = useMemo(() => createSchema(t), [t])
@@ -100,7 +109,9 @@ const AccrualValuesForm = ({ values, effective, inheritable, inheritFrom = 'comp
           const error = errors[balance]?.hours?.message
           const inputId = `accrual-${balance}`
           const describedBy = [annual === null ? null : `${inputId}-monthly`, error ? `${inputId}-error` : null].filter((id) => id !== null).join(' ')
-          const monthly = annual === null ? null : t('accrual.monthly', { hours: formatHours(Math.round(annual / 12), locale) })
+          // Stessa formula della maturazione: per una persona part-time la quota è proporzionata al suo orario
+          const quota = annual === null ? null : monthlyQuota(annual, schedule?.weeklyMinutes ?? 1, schedule?.locationWeeklyMinutes ?? 1)
+          const monthly = quota === null ? null : t('accrual.monthly', { hours: formatHours(quota, locale) })
 
           const input = (
             <Field data-invalid={error ? true : undefined}>

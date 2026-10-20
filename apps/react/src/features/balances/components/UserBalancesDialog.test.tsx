@@ -155,6 +155,17 @@ describe('UserBalancesDialog', () => {
     expect(within(section).getByRole('button', { name: 'Salva' })).toBeInTheDocument()
   })
 
+  it('shows the admin the monthly quota of a part-time person, as the manager sees it', async () => {
+    respond(balanceSummary({ weekly_minutes: 1200 }))
+    renderDialog()
+    const dialog = await findDialog()
+
+    const section = await within(dialog).findByRole('region', { name: 'Valori annui' })
+    await within(section).findByRole('radio', { name: 'Come la sede (160 h)' })
+    expect(within(section).getByText('6,67 h al mese')).toBeInTheDocument()
+    expect(within(section).queryByText('13,33 h al mese')).not.toBeInTheDocument()
+  })
+
   it('shows the annual values read-only with where they come from', async () => {
     const summary = balanceSummary({ can: { adjust: true, manage_accrual: false } })
     summary.balances[0] = { ...summary.balances[0], annual: { minutes: 9600, source: 'location' }, monthly_quota_minutes: 800 }

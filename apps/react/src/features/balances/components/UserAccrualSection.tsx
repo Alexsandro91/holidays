@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocationAccrual, useUpdateUserAccrual, useUserAccrual, type BalanceSummary } from '@/features/balances/api'
-import AccrualValuesForm, { type AccrualValues } from '@/features/balances/components/AccrualValuesForm'
+import AccrualValuesForm, { type AccrualSchedule, type AccrualValues } from '@/features/balances/components/AccrualValuesForm'
 import { formatHours } from '@/features/balances/hoursFormat'
 import { isApiError } from '@/lib/api'
 
@@ -16,10 +16,11 @@ interface UserAccrualSectionProps {
 interface EditorProps {
   userId: number
   locationId: number
+  schedule: AccrualSchedule
 }
 
 /** Modifica dei valori annui della persona (solo admin): eredita dalla sede oppure un valore proprio. */
-const AccrualEditor = ({ userId, locationId }: EditorProps) => {
+const AccrualEditor = ({ userId, locationId, schedule }: EditorProps) => {
   const { t } = useTranslation()
   const own = useUserAccrual(userId)
   const location = useLocationAccrual(locationId)
@@ -52,6 +53,7 @@ const AccrualEditor = ({ userId, locationId }: EditorProps) => {
       effective={location.data.effective}
       inheritable
       inheritFrom="location"
+      schedule={schedule}
       onSubmit={(values) => void save(values)}
       pending={update.isPending}
     />
@@ -73,7 +75,11 @@ const UserAccrualSection = ({ userId, locationId, summary }: UserAccrualSectionP
         <p className="text-sm text-muted-foreground">{t('balances.accrual.description')}</p>
       </div>
       {editable ? (
-        <AccrualEditor userId={userId} locationId={locationId} />
+        <AccrualEditor
+          userId={userId}
+          locationId={locationId}
+          schedule={{ weeklyMinutes: summary.weekly_minutes, locationWeeklyMinutes: summary.location_weekly_minutes }}
+        />
       ) : (
         <ul className="grid gap-2">
           {summary.balances.map(({ balance, label, annual, monthly_quota_minutes: monthly }) => (
