@@ -141,6 +141,20 @@ const waitForAdminApiBudget = async (): Promise<void> => {
   if (remaining < ADMIN_API_BUDGET) await new Promise((resolve) => setTimeout(resolve, 61_000))
 }
 
+/** Le esecuzioni di leave.spec.ts aggiungono movimenti di utilizzo: l'allineamento può non stare nella prima pagina dei movimenti, quindi si carica altro finché compare. */
+const loadMovementsUntilVisible = async (scope: Locator | Page, movement: Locator): Promise<void> => {
+  const more = scope.getByRole('button', { name: 'Carica altre' })
+  const items = scope.getByRole('list', { name: 'Movimenti' }).getByRole('listitem')
+  // Prima pagina arrivata
+  await expect(items.first()).toBeVisible()
+  for (let step = 0; step < 10 && (await movement.count()) === 0 && (await more.count()) > 0; step += 1) {
+    const before = await items.count()
+    await more.click()
+    // La pagina nuova è arrivata quando le righe aumentano
+    await expect.poll(() => items.count()).toBeGreaterThan(before)
+  }
+}
+
 const mainNavigation = (page: Page): Locator => page.getByRole('navigation', { name: 'Navigazione principale' })
 
 test.beforeAll(async ({ browser }) => {
@@ -270,6 +284,7 @@ test('the manager aligns Sara to the payslip and sees the movement with his name
   await manager.getByRole('table').getByRole('button', { name: EMPLOYEE_NAME, exact: true }).click()
   const card = manager.getByRole('dialog', { name: `Saldi di ${EMPLOYEE_NAME}` })
   const movement = card.getByRole('list', { name: 'Movimenti' }).getByRole('listitem').filter({ hasText: new RegExp(`Allineata alla busta paga del \\d{2}/\\d{2}/\\d{4}: da .+ a ${PAYSLIP_VACATION_HOURS} h`) })
+  await loadMovementsUntilVisible(card, movement)
   await expect(movement.first()).toContainText(`da ${MANAGER_NAME}`)
   const big = card.getByRole('region', { name: 'Ferie', exact: true }).getByText(/^[−-]?[\d.,]+ h$/).first()
   await expect(big).toBeVisible()
@@ -312,6 +327,7 @@ test('the employee sees the same vacation balance and the alignment without an a
   await expect(vacation.getByText(/^[−-]?[\d.,]+ h$/).first()).toHaveText(saraVacationText)
 
   const movement = sara.getByRole('list', { name: 'Movimenti' }).getByRole('listitem').filter({ hasText: new RegExp(`Allineata alla busta paga del \\d{2}/\\d{2}/\\d{4}: da .+ a ${PAYSLIP_VACATION_HOURS} h`) })
+  await loadMovementsUntilVisible(sara, movement)
   await expect(movement.first()).toBeVisible()
   // L'autore non si vede nella vista del dipendente
   await expect(movement.first()).not.toContainText(MANAGER_NAME)

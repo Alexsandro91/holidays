@@ -3,6 +3,7 @@ import { expect, test, type APIResponse, type Browser, type BrowserContext, type
 import { z } from 'zod'
 import { signIn } from './auth.ts'
 import { clearInbox, waitForText } from './mailpit.ts'
+import { BUDGET_HEAVY, BUDGET_LIGHT, ensureBudget, trackRateLimit } from './rateLimit.ts'
 
 const MANAGER = 'manager@holidays.test'
 const MANAGER_NAME = 'Marco Bianchi'
@@ -19,7 +20,8 @@ const ROL_HOURS = 2
 const API_RETRY_TIMEOUT = 150_000
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES: Array<'light' | 'dark'> = ['light', 'dark']
-// Mesi senza festività nazionali: luglio, settembre, ottobre e novembre (i giorni scelti vanno dal 9 al 19)
+// Mesi senza festività nazionali: luglio, settembre, ottobre e novembre (i giorni scelti vanno dal 9 al 19).
+// Si escludono solo i festivi nazionali: patrono e chiusure della sede di prova si assumono assenti (l'anteprima a 16 h lo verifica)
 const QUIET_MONTHS = [7, 9, 10, 11]
 
 test.describe.configure({ mode: 'serial', timeout: API_RETRY_TIMEOUT })
@@ -98,7 +100,7 @@ let sara: Page
 let manager: Page
 const contexts: BrowserContext[] = []
 // Richieste create dal test (id), da portare in uno stato finale anche dopo un errore
-const created: number[] = []
+const created: Array<{ id: number; byManager: boolean }> = []
 // Pianificate delle ferie di Sara prima di chiedere (in ore)
 let plannedBefore = 0
 
@@ -123,24 +125,6 @@ const api = async (page: Page, method: 'GET' | 'POST', path: string, data?: unkn
   const seconds = Number(response.headers()['retry-after'] ?? '60') || 60
   await new Promise((resolve) => setTimeout(resolve, (seconds + 1) * 1000))
   return send()
-}
-
-// Richieste API ancora disponibili nella finestra di 60 al minuto, per persona (letto dall'intestazione delle risposte)
-const remaining = new Map<Page, number>()
-
-const trackRateLimit = (page: Page): void => {
-  page.on('response', (response) => {
-    const value = Number(response.headers()['x-ratelimit-remaining'])
-    if (response.url().includes('/api/') && Number.isFinite(value)) remaining.set(page, value)
-  })
-}
-
-/** Ogni passo fa molte letture: se la finestra è quasi esaurita si aspetta che si rinnovi, invece di rischiare un 429. */
-const ensureBudget = async (page: Page, needed = 30): Promise<void> => {
-  const left = remaining.get(page)
-  if (left === undefined || left >= needed) return
-  await page.waitForTimeout(61_000)
-  remaining.set(page, 60)
 }
 
 /** Ore da un testo come "16 h", "1.234,5 h" o "−8 h". */
@@ -186,13 +170,13 @@ const showTestMonth = async (page: Page): Promise<void> => {
 }
 
 /** Compila e invia la richiesta dal dialog "Nuova richiesta"; restituisce l'id letto dalla risposta. */
-const submitRequest = async (page: Page): Promise<number> => {
+const submitRequest = async (page: Page, byManager: boolean): Promise<number> => {
   const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/leave-requests') && response.request().method() === 'POST')
   await page.getByRole('dialog', { name: 'Nuova richiesta' }).getByRole('button', { name: 'Invia richiesta' }).click()
   const response = await responsePromise
   expect(response.status()).toBe(201)
   const { data } = idSchema.parse(await response.json())
-  created.push(data.id)
+  created.push({ id: data.id, byManager })
   await expect(page.getByRole('dialog', { name: 'Nuova richiesta' })).toHaveCount(0)
   return data.id
 }
@@ -219,8 +203,7 @@ const confirmInDetail = async (page: Page, action: string): Promise<void> => {
 
 const chip = (page: Page, type: string, status: string): Locator => page.getByRole('button', { name: `${type}, ${status}: apri il dettaglio` }).first()
 
-const stateSchema = z.object({ data: z.object({ status: z.string(), user: z.object({ id: z.number() }) }) })
-const meSchema = z.object({ data: z.object({ id: z.number() }) })
+const stateSchema = z.object({ data: z.object({ status: z.string() }) })
 
 /** Porta una richiesta di prova in uno stato finale (rifiutata, ritirata o annullata), qualunque sia lo stato in cui l'ha lasciata il test. */
 const settle = async (page: Page, id: number, ownerIsManager: boolean): Promise<void> => {
@@ -264,20 +247,10 @@ test.beforeAll(async ({ browser }, workerInfo) => {
 test.afterAll(async () => {
   test.setTimeout(API_RETRY_TIMEOUT)
   const errors: string[] = []
-  for (const id of created) {
+  for (const { id, byManager } of created) {
     // Le richieste di Sara si sistemano come responsabile; quelle del responsabile le sistema lui come proprietario
-    const owner = await api(manager, 'GET', `/api/leave-requests/${id}`)
-      .then(async (response) => stateSchema.parse(await response.json()).data.user.id)
-      .catch((error: unknown) => {
-        errors.push(String(error))
-        return null
-      })
-    if (owner === null) continue
-    const me = await api(manager, 'GET', '/api/user')
-      .then(async (response) => meSchema.parse(await response.json()).data.id)
-      .catch(() => null)
     try {
-      await settle(manager, id, owner === me)
+      await settle(manager, id, byManager)
     } catch (error) {
       errors.push(String(error))
     }
@@ -300,7 +273,7 @@ test('Sara asks two days of vacation and sees the preview with hours and balance
   const preview = dialog.getByRole('region', { name: 'Anteprima' })
   await expect(preview).toContainText(new RegExp(`(^|\\D)${VACATION_HOURS} h`))
   await expect(preview).toContainText(`${VACATION_DAYS}`)
-  await submitRequest(sara)
+  await submitRequest(sara, false)
 
   await expect(chip(sara, VACATION, 'In attesa')).toBeVisible()
 })
@@ -317,7 +290,7 @@ test('the manager approves it from Da approvare', async () => {
 })
 
 test('Sara sees the green request with the manager name and the planned hours go up', async () => {
-  await ensureBudget(sara, 40)
+  await ensureBudget(sara, BUDGET_HEAVY)
   await goLeave(sara, true)
   await showTestMonth(sara)
   const approved = chip(sara, VACATION, 'Approvata')
@@ -336,7 +309,7 @@ test('Sara sees the green request with the manager name and the planned hours go
 })
 
 test('Sara asks the cancellation, the manager approves it and the planned hours come back', async () => {
-  await ensureBudget(sara, 40)
+  await ensureBudget(sara, BUDGET_HEAVY)
   await ensureBudget(manager)
   await goLeave(sara)
   await showTestMonth(sara)
@@ -356,7 +329,7 @@ test('Sara asks the cancellation, the manager approves it and the planned hours 
 })
 
 test('the manager asks 2 hours of ROL and approves them himself, then takes them back', async () => {
-  await ensureBudget(manager, 45)
+  await ensureBudget(manager, BUDGET_HEAVY)
   await goLeave(manager)
   await showTestMonth(manager)
   const dialog = await openNewRequest(manager, ROL)
@@ -366,7 +339,7 @@ test('the manager asks 2 hours of ROL and approves them himself, then takes them
   await dialog.getByRole('combobox', { name: 'Alle', exact: true }).click()
   await manager.getByRole('option', { name: '11:00', exact: true }).click()
   await expect(dialog.getByRole('region', { name: 'Anteprima' })).toContainText(new RegExp(`(^|\\D)${ROL_HOURS} h`))
-  await submitRequest(manager)
+  await submitRequest(manager, true)
 
   const panel = await goApprovals(manager, true)
   const period = `${periodText(dates.friday, dates.friday)}, dalle 09:00 alle 11:00`
@@ -388,7 +361,7 @@ test('the manager asks 2 hours of ROL and approves them himself, then takes them
 })
 
 test('a rejected request reaches Sara with the reason on Mailpit', async () => {
-  await ensureBudget(sara, 40)
+  await ensureBudget(sara, BUDGET_HEAVY)
   await ensureBudget(manager)
   const reason = `Periodo coperto ${Date.now()}`
   await goLeave(sara)
@@ -397,7 +370,7 @@ test('a rejected request reaches Sara with the reason on Mailpit', async () => {
   await dialog.getByLabel('Dal', { exact: true }).fill(dates.rejectedStart)
   await dialog.getByLabel('Al', { exact: true }).fill(dates.rejectedEnd)
   await expect(dialog.getByRole('region', { name: 'Anteprima' })).toContainText(new RegExp(`(^|\\D)${VACATION_HOURS} h`))
-  await submitRequest(sara)
+  await submitRequest(sara, false)
 
   const panel = await goApprovals(manager, true)
   const period = periodText(dates.rejectedStart, dates.rejectedEnd)
@@ -409,10 +382,11 @@ test('a rejected request reaches Sara with the reason on Mailpit', async () => {
   await expect(manager.getByRole('dialog')).toHaveCount(0)
   await expect(approvalButton(panel, 'Rifiuta', EMPLOYEE_NAME, period)).toHaveCount(0)
 
-  await expect(await waitForText(EMPLOYEE, new RegExp(`Motivo: (${reason})`))).toBe(reason)
+  // waitForText lancia se l'email non arriva entro il timeout
+  await waitForText(EMPLOYEE, new RegExp(`Motivo: (${reason})`))
 
   // Sara la vede tra le sue richieste come non approvata
-  await ensureBudget(sara, 25)
+  await ensureBudget(sara, BUDGET_LIGHT)
   await goLeave(sara, true)
   await showTestMonth(sara)
   await expect(chip(sara, VACATION, 'Non approvata')).toBeVisible()

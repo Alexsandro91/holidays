@@ -3,6 +3,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 import { z } from 'zod'
 import { signIn } from './auth.ts'
 import { clearInbox, waitForInvitationLink, waitForLoginCode, waitForResetLink, waitForSubject, waitForText } from './mailpit.ts'
+import { BUDGET_STANDARD, ensureBudget, trackRateLimit } from './rateLimit.ts'
 
 const ADMIN = 'admin@holidays.test'
 const MANAGER = 'manager@holidays.test'
@@ -70,6 +71,7 @@ test.beforeAll(async ({ browser }) => {
   const context = await newContext()
   adminContext = context
   admin = await context.newPage()
+  trackRateLimit(admin)
   await signIn(admin, ADMIN, PASSWORD)
 })
 
@@ -439,9 +441,9 @@ test('admin pages fit a phone screen and work with the keyboard', async () => {
     expect(await horizontalOverflow(admin), title).toBeLessThanOrEqual(0)
   }
 
-  // La Home carica anche saldi e prossime assenze: le richieste dell'admin in questo file arrivano al limite di 60 al minuto, quindi si aspetta che la finestra si rinnovi
+  // La Home carica anche saldi e prossime assenze: le richieste dell'admin in questo file arrivano al limite di 60 al minuto; si aspetta solo se il residuo è basso
   test.setTimeout(120_000)
-  await admin.waitForTimeout(61_000)
+  await ensureBudget(admin, BUDGET_STANDARD)
   await admin.setViewportSize({ width: 1280, height: 800 })
   await admin.goto('/users?search=marco')
   const triggerLabel = 'Azioni per Marco Bianchi'
