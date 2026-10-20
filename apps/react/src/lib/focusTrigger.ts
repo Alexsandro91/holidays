@@ -16,7 +16,15 @@ export const NEW_ABSENCE_TYPE_TRIGGER = 'new'
 /** Pulsanti del dettaglio di una sede (Modifica, Cambia orario, chiusure): il valore dice quale */
 export const LOCATION_DETAIL_TRIGGER_ATTRIBUTE = 'data-location-detail-trigger'
 
-export const focusTrigger = (attribute: string, id: number | string | null, fallbackSelector = '#page-title'): void => {
+/**
+ * Ferie e permessi: il valore dice chi ha aperto il dialog — `new` (Nuova richiesta), `day-YYYY-MM-DD` (giorno del
+ * calendario), `chip-<id>-YYYY-MM-DD` (richiesta nel calendario), `list-<id>` (Le mie richieste)
+ */
+export const LEAVE_TRIGGER_ATTRIBUTE = 'data-leave-trigger'
+/** Valore dell'attributo sul pulsante "Nuova richiesta" */
+export const NEW_LEAVE_TRIGGER = 'new'
+
+export const focusTrigger =(attribute: string, id: number | string | null, fallbackSelector = '#page-title'): void => {
   const triggers = id === null ? [] : Array.from(document.querySelectorAll<HTMLElement>(`[${attribute}="${id}"]`))
   const target = triggers.find((trigger) => trigger.offsetParent !== null) ?? triggers[0] ?? document.querySelector<HTMLElement>(fallbackSelector)
   target?.focus()

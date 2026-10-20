@@ -761,15 +761,146 @@
       "cancelled": "Annullata"
     },
     "title": "Ferie e permessi",
-    "description": "I tuoi saldi di ferie, ROL ed ex festività e i tipi di assenza che puoi usare.",
+    "description": "Scegli i giorni sul calendario per chiedere ferie e permessi, e segui le tue richieste.",
     "notApplicable": "Non hai saldi da maturare. Qui potrai segnare le tue assenze.",
     "loadError": "Non è stato possibile caricare i tuoi saldi.",
-    "placeholder": "Il calendario e le richieste arriveranno a breve.",
     "types": {
       "title": "Tipi di assenza che puoi usare",
       "empty": "Nessun tipo di assenza disponibile per ora.",
       "enablement": "su abilitazione",
       "loadError": "Non è stato possibile caricare i tipi di assenza."
+    },
+    "new": "Nuova richiesta",
+    "tabs": {
+      "label": "Sezioni di Ferie e permessi",
+      "calendar": "Il mio calendario",
+      "approvals": "Da approvare"
+    },
+    "halves": {
+      "morning": "mattina",
+      "afternoon": "pomeriggio"
+    },
+    "hoursRange": "dalle {{from}} alle {{to}}",
+    "duration_one": "{{hours}} h · {{days}} giorno",
+    "duration_other": "{{hours}} h · {{days}} giorni",
+    "calendar": {
+      "previous": "Mese precedente",
+      "next": "Mese successivo",
+      "hint": "Scegli il primo e l’ultimo giorno per chiedere un’assenza. Da tastiera: frecce per spostarti, Invio per scegliere, Esc per annullare.",
+      "anchor": "Primo giorno: {{date}}. Ora scegli l’ultimo giorno.",
+      "cancelSelection": "Annulla selezione",
+      "selectionCancelled": "Selezione annullata.",
+      "today": "oggi",
+      "pastDay": "Non si può chiedere un giorno già passato.",
+      "openRequest": "{{type}}, {{status}}: apri il dettaglio",
+      "requestInDay": "{{type}}: {{status}}",
+      "loadError": "Non è stato possibile caricare il calendario.",
+      "legend": "Legenda",
+      "nonWorking": "Non lavorativo"
+    },
+    "form": {
+      "title": "Nuova richiesta",
+      "description": "Scegli tipo, giorni e unità: l’anteprima mostra le ore e il saldo prima dell’invio.",
+      "type": "Tipo di assenza",
+      "typePlaceholder": "Scegli un tipo",
+      "typesLoading": "Caricamento dei tipi…",
+      "typesEmpty": "Non hai tipi di assenza da chiedere.",
+      "typesError": "Non è stato possibile caricare i tipi di assenza.",
+      "unit": "Unità",
+      "units": {
+        "days": "Giornate intere",
+        "half_day": "Mezza giornata",
+        "hours": "Ore"
+      },
+      "startsOn": "Dal",
+      "endsOn": "Al",
+      "day": "Giorno",
+      "singleDay": "Mezze giornate e ore valgono per un solo giorno.",
+      "half": "Quale metà",
+      "halves": {
+        "morning": "Mattina",
+        "afternoon": "Pomeriggio"
+      },
+      "startsAt": "Dalle",
+      "endsAt": "Alle",
+      "timePlaceholder": "Scegli l’ora",
+      "note": "Nota (facoltativa)",
+      "noteHint": "La vede chi approva. Al massimo {{max}} caratteri.",
+      "submit": "Invia richiesta",
+      "created": "Richiesta inviata: {{type}}, {{dates}}",
+      "createdApproved": "Assenza registrata: {{type}}, {{dates}}",
+      "validation": {
+        "type": "Scegli il tipo di assenza.",
+        "date": "Inserisci una data valida.",
+        "past": "Non si può chiedere un giorno già passato.",
+        "endBeforeStart": "L’ultimo giorno non può essere prima del primo.",
+        "time": "Scegli l’orario.",
+        "timeOrder": "L’orario di fine deve essere dopo quello di inizio."
+      }
+    },
+    "preview": {
+      "title": "Anteprima",
+      "incomplete": "Completa la richiesta per vedere ore, giorni e saldo.",
+      "loading": "Calcolo in corso…",
+      "invalid": "Correggi i campi segnalati per vedere l’anteprima.",
+      "error": "Non è stato possibile calcolare l’anteprima.",
+      "hours": "Ore",
+      "days": "Giorni",
+      "available": "{{balance}} disponibili",
+      "after": "{{balance}} dopo la richiesta",
+      "hoursValue": "{{hours}} h"
+    },
+    "warnings": {
+      "title": "Avvisi",
+      "hint": "Puoi inviare lo stesso: chi approva vede gli stessi avvisi.",
+      "balance_insufficient": "Saldo insufficiente: dopo la richiesta resterebbero {{hours}} h.",
+      "limit_exceeded": "Limite del tipo superato ({{limit}} {{period}}): con questa richiesta si arriva a {{total}}.",
+      "totalDays_one": "{{value}} giorno",
+      "totalDays_other": "{{value}} giorni",
+      "totalHours_one": "{{value}} ora",
+      "totalHours_other": "{{value}} ore",
+      "unknown": "Avviso: {{code}}"
+    },
+    "detail": {
+      "title": "Dettaglio della richiesta",
+      "loadError": "Non è stato possibile caricare la richiesta.",
+      "status": "Stato",
+      "when": "Quando",
+      "duration": "Durata",
+      "decidedBy": "Decisa da",
+      "decidedValue": "{{name}}, {{date}}",
+      "autoApproved": "Registrata senza approvazione",
+      "note": "Nota",
+      "rejectionReason": "Motivo del rifiuto",
+      "decisionNote": "Nota della decisione",
+      "cancellationRequestedAt": "Annullamento chiesto",
+      "cancelledBy": "Annullata da",
+      "days": "Giorni",
+      "dayHours": "{{hours}} h",
+      "dayOff": "non lavorativo",
+      "actions": {
+        "withdraw": "Ritira",
+        "cancellation": "Chiedi annullamento",
+        "cancel": "Annulla la richiesta"
+      },
+      "confirm": {
+        "withdraw": "Ritirare la richiesta? Non si può tornare indietro: per riaverla serve una nuova richiesta.",
+        "cancellation": "Chiedere l’annullamento? Il saldo torna solo quando un responsabile lo approva.",
+        "cancel": "Annullare la richiesta? Il saldo viene restituito e la persona riceve un’email."
+      },
+      "back": "Indietro",
+      "done": {
+        "withdraw": "Richiesta ritirata",
+        "cancellation": "Annullamento chiesto",
+        "cancel": "Richiesta annullata"
+      }
+    },
+    "list": {
+      "title": "Le mie richieste",
+      "year": "Anno",
+      "empty": "Nessuna richiesta in questo anno.",
+      "loadError": "Non è stato possibile caricare le richieste.",
+      "loadMore": "Carica altre"
     }
   },
   "balances": {

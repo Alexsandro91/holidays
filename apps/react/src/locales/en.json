@@ -761,15 +761,146 @@
       "cancelled": "Cancelled"
     },
     "title": "Leave and time off",
-    "description": "Your vacation, ROL and ex-holiday balances and the absence types you can use.",
+    "description": "Pick days on the calendar to request leave and time off, and follow your requests.",
     "notApplicable": "You have no balances to accrue. Here you will be able to record your absences.",
     "loadError": "Your balances could not be loaded.",
-    "placeholder": "The calendar and requests are coming soon.",
     "types": {
       "title": "Absence types you can use",
       "empty": "No absence types available for now.",
       "enablement": "on enablement",
       "loadError": "The absence types could not be loaded."
+    },
+    "new": "New request",
+    "tabs": {
+      "label": "Leave and time off sections",
+      "calendar": "My calendar",
+      "approvals": "To approve"
+    },
+    "halves": {
+      "morning": "morning",
+      "afternoon": "afternoon"
+    },
+    "hoursRange": "from {{from}} to {{to}}",
+    "duration_one": "{{hours}} h · {{days}} day",
+    "duration_other": "{{hours}} h · {{days}} days",
+    "calendar": {
+      "previous": "Previous month",
+      "next": "Next month",
+      "hint": "Pick the first and the last day to request an absence. With the keyboard: arrows to move, Enter to pick, Esc to cancel.",
+      "anchor": "First day: {{date}}. Now pick the last day.",
+      "cancelSelection": "Cancel selection",
+      "selectionCancelled": "Selection cancelled.",
+      "today": "today",
+      "pastDay": "Past days cannot be requested.",
+      "openRequest": "{{type}}, {{status}}: open details",
+      "requestInDay": "{{type}}: {{status}}",
+      "loadError": "The calendar could not be loaded.",
+      "legend": "Legend",
+      "nonWorking": "Non-working"
+    },
+    "form": {
+      "title": "New request",
+      "description": "Choose type, days and unit: the preview shows hours and balance before you send.",
+      "type": "Absence type",
+      "typePlaceholder": "Choose a type",
+      "typesLoading": "Loading types…",
+      "typesEmpty": "You have no absence types to request.",
+      "typesError": "The absence types could not be loaded.",
+      "unit": "Unit",
+      "units": {
+        "days": "Full days",
+        "half_day": "Half day",
+        "hours": "Hours"
+      },
+      "startsOn": "From",
+      "endsOn": "To",
+      "day": "Day",
+      "singleDay": "Half days and hours apply to a single day.",
+      "half": "Which half",
+      "halves": {
+        "morning": "Morning",
+        "afternoon": "Afternoon"
+      },
+      "startsAt": "From",
+      "endsAt": "To",
+      "timePlaceholder": "Choose the time",
+      "note": "Note (optional)",
+      "noteHint": "Approvers can read it. At most {{max}} characters.",
+      "submit": "Send request",
+      "created": "Request sent: {{type}}, {{dates}}",
+      "createdApproved": "Absence recorded: {{type}}, {{dates}}",
+      "validation": {
+        "type": "Choose the absence type.",
+        "date": "Enter a valid date.",
+        "past": "Past days cannot be requested.",
+        "endBeforeStart": "The last day cannot be before the first.",
+        "time": "Choose the time.",
+        "timeOrder": "The end time must be after the start time."
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "incomplete": "Complete the request to see hours, days and balance.",
+      "loading": "Calculating…",
+      "invalid": "Fix the highlighted fields to see the preview.",
+      "error": "The preview could not be calculated.",
+      "hours": "Hours",
+      "days": "Days",
+      "available": "{{balance}} available",
+      "after": "{{balance}} after the request",
+      "hoursValue": "{{hours}} h"
+    },
+    "warnings": {
+      "title": "Warnings",
+      "hint": "You can send it anyway: approvers see the same warnings.",
+      "balance_insufficient": "Insufficient balance: {{hours}} h would be left after the request.",
+      "limit_exceeded": "Type limit exceeded ({{limit}} {{period}}): with this request the total is {{total}}.",
+      "totalDays_one": "{{value}} day",
+      "totalDays_other": "{{value}} days",
+      "totalHours_one": "{{value}} hour",
+      "totalHours_other": "{{value}} hours",
+      "unknown": "Warning: {{code}}"
+    },
+    "detail": {
+      "title": "Request details",
+      "loadError": "The request could not be loaded.",
+      "status": "Status",
+      "when": "When",
+      "duration": "Duration",
+      "decidedBy": "Decided by",
+      "decidedValue": "{{name}}, {{date}}",
+      "autoApproved": "Recorded without approval",
+      "note": "Note",
+      "rejectionReason": "Rejection reason",
+      "decisionNote": "Decision note",
+      "cancellationRequestedAt": "Cancellation requested",
+      "cancelledBy": "Cancelled by",
+      "days": "Days",
+      "dayHours": "{{hours}} h",
+      "dayOff": "non-working",
+      "actions": {
+        "withdraw": "Withdraw",
+        "cancellation": "Request cancellation",
+        "cancel": "Cancel the request"
+      },
+      "confirm": {
+        "withdraw": "Withdraw the request? This cannot be undone: you will need a new request.",
+        "cancellation": "Request the cancellation? The balance comes back only when a manager approves it.",
+        "cancel": "Cancel the request? The balance is returned and the person receives an email."
+      },
+      "back": "Back",
+      "done": {
+        "withdraw": "Request withdrawn",
+        "cancellation": "Cancellation requested",
+        "cancel": "Request cancelled"
+      }
+    },
+    "list": {
+      "title": "My requests",
+      "year": "Year",
+      "empty": "No requests in this year.",
+      "loadMore": "Load more",
+      "loadError": "The requests could not be loaded."
     }
   },
   "balances": {
