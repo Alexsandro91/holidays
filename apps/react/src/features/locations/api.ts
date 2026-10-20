@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { request, requestData } from '@/lib/api'
-import { adminQueryKey, locationsQueryKey, userQueryKey } from '@/lib/queryKeys'
+import { adminQueryKey, balancesQueryKey, locationsQueryKey, userQueryKey } from '@/lib/queryKeys'
 
 export const workScheduleSchema = z.object({
   id: z.number(),
@@ -130,7 +130,9 @@ const closureBody = ({ locationId, startsOn, endsOn, description }: ClosureInput
 
 /**
  * Dopo ogni modifica si ricaricano le query admin (sedi, utenti, amministratori) e l'utente corrente: rinominare la
- * propria sede o crearne una seconda cambia profilo e campi Sede. Lo storico no: sedi e orari non scrivono tappe.
+ * propria sede o crearne una seconda cambia profilo e campi Sede. Anche i saldi: gli orari di persona e sede cambiano
+ * ore settimanali, part-time e quote, il nome della sede compare nella pagina Saldi. Lo storico no: sedi e orari non
+ * scrivono tappe.
  */
 const useLocationMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) => {
   const queryClient = useQueryClient()
@@ -141,6 +143,7 @@ const useLocationMutation = <TInput, TResult>(mutationFn: (input: TInput) => Pro
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminQueryKey }),
         queryClient.invalidateQueries({ queryKey: userQueryKey }),
+        queryClient.invalidateQueries({ queryKey: balancesQueryKey }),
       ])
     },
   })

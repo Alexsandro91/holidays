@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { z } from 'zod'
 import { request, requestData } from '@/lib/api'
 import { locationRefSchema, type EmploymentType, type User } from '@/features/auth/api'
-import { adminQueryKey, historyQueryKey, userQueryKey } from '@/lib/queryKeys'
+import { adminQueryKey, balancesQueryKey, historyQueryKey, userQueryKey } from '@/lib/queryKeys'
 
 export const managedUserSchema = z.object({
   id: z.number(),
@@ -151,6 +151,7 @@ const userResourceSchema = z.object({ data: managedUserSchema })
 /**
  * Dopo ogni modifica si ricaricano tutte le query admin (lista utenti, amministratori, conteggi) e lo storico: invito,
  * ruolo, tipo, sede e stato aggiungono tappe, che il dialog Storico deve mostrare subito e non dopo lo staleTime.
+ * Anche i saldi: ruolo, sede, tipo di rapporto e stato cambiano righe, quote e applicabilità della pagina Saldi.
  */
 const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>, onSuccess?: (result: TResult) => void) => {
   const queryClient = useQueryClient()
@@ -160,7 +161,12 @@ const useAdminMutation = <TInput, TResult>(mutationFn: (input: TInput) => Promis
     // Variabili (password di conferma comprese) fuori dalla cache appena il dialog si chiude
     gcTime: 0,
     // Anche dopo un errore (es. 409): l'elenco mostrato potrebbe essere superato
-    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: adminQueryKey }), queryClient.invalidateQueries({ queryKey: historyQueryKey })]),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminQueryKey }),
+        queryClient.invalidateQueries({ queryKey: historyQueryKey }),
+        queryClient.invalidateQueries({ queryKey: balancesQueryKey }),
+      ]),
   })
 }
 

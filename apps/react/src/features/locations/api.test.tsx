@@ -8,12 +8,14 @@ import {
   useAddUserSchedule,
   useClosures,
   useCreateClosure,
+  useDeleteUserSchedule,
   useLocationCalendar,
   useLocationOptions,
   useLocations,
   useUserSchedules,
 } from '@/features/locations/api'
 import { createQueryClient } from '@/lib/queryClient'
+import { balancesQueryKey } from '@/lib/queryKeys'
 import { closure, location, locationListResponse, schedule } from '@/test/locationsFixtures'
 import { server } from '@/test/server'
 
@@ -115,6 +117,29 @@ describe('locations api', () => {
       { valid_from: '2026-11-01', follows_location: true },
       { location_id: null, starts_on: '2026-08-10', ends_on: '2026-08-21', description: 'Chiusura estiva' },
     ])
+  })
+
+  it('invalidates the balances after a change to a schedule or a location', async () => {
+    server.use(
+      http.post('/api/users/7/schedules', () => HttpResponse.json({ data: schedule({ id: 10, follows_location: true }) }, { status: 201 })),
+      http.delete('/api/users/7/schedules/10', () => new HttpResponse(null, { status: 204 })),
+      http.post('/api/locations/1/schedules', () => HttpResponse.json({ data: schedule({ id: 9 }) }, { status: 201 })),
+    )
+    const { result, queryClient } = renderWithClient(() => ({ user: useAddUserSchedule(7), remove: useDeleteUserSchedule(7), location: useAddLocationSchedule(1) }))
+    const mutations: [string, () => Promise<unknown>][] = [
+      ['user', () => result.current.user.mutateAsync({ validFrom: '2026-11-01', followsLocation: true })],
+      ['remove', () => result.current.remove.mutateAsync(10)],
+      ['location', () => result.current.location.mutateAsync({ validFrom: '2026-11-01', minutes: [240, 240, 240, 240, 240, 0, 0] })],
+    ]
+
+    // Ore settimanali, part-time e quote della pagina Saldi dipendono dagli orari di persona e sede
+    for (const [name, mutate] of mutations) {
+      queryClient.setQueryData([...balancesQueryKey, 'probe', name], 1)
+      await act(async () => {
+        await mutate()
+      })
+      expect(queryClient.getQueryState([...balancesQueryKey, 'probe', name])?.isInvalidated).toBe(true)
+    }
   })
 
   it('reads personal schedules and the schedule of the location', async () => {
